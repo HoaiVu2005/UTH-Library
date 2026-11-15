@@ -44,12 +44,14 @@ export interface CopyItem {
   book_id?: number;
   book_title?: string;
   book_isbn?: string;
+  book_cover_image?: string;
   category_name?: string;
   category_code?: string;
   book?: {
     id: number;
     title: string;
     isbn?: string;
+    cover_image?: string;
     publisher?: string;
     category?: { id?: number; code: string; name: string };
     authors_names?: string[];
@@ -266,6 +268,10 @@ export const CopiesManagementPage: React.FC = () => {
       return copy.book.authors_names.join(', ');
     }
     return '';
+  };
+
+  const getCopyCoverImage = (copy: CopyItem): string | undefined => {
+    return copy.book_cover_image || copy.book?.cover_image;
   };
 
   const getStatusBadgeVariant = (status: string): 'success' | 'warning' | 'danger' | 'neutral' | 'info' => {
@@ -581,12 +587,12 @@ export const CopiesManagementPage: React.FC = () => {
             <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
-                  <TableHead className="w-44">Mã vạch (Barcode)</TableHead>
-                  <TableHead>Tài liệu</TableHead>
+                  <TableHead className="w-16">Mã</TableHead>
+                  <TableHead>Tài liệu & Tác giả</TableHead>
                   <TableHead className="w-56">Vị trí lưu kho</TableHead>
-                  <TableHead className="w-36 text-center">Hình thức</TableHead>
-                  <TableHead className="w-36 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-28 text-center whitespace-nowrap">Tem nhãn</TableHead>
+                  <TableHead className="w-32 text-center">Hình thức</TableHead>
+                  <TableHead className="w-32 text-center">Trạng thái</TableHead>
+                  <TableHead className="w-28 text-center whitespace-nowrap">Mã vạch</TableHead>
                   <TableHead className="w-20 text-center whitespace-nowrap">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -596,45 +602,61 @@ export const CopiesManagementPage: React.FC = () => {
                   const catCode = getCopyCategoryCode(copy);
                   const catName = getCopyCategoryName(copy);
                   const authors = getCopyAuthors(copy);
+                  const coverImage = getCopyCoverImage(copy);
                   const bookId = copy.book_id || copy.book?.id;
 
                   return (
                     <TableRow key={copy.id} className="hover:bg-teal-50/15 transition-colors">
-                      {/* Barcode */}
-                      <TableCell className="font-mono font-bold text-brand text-xs">
-                        <div className="flex items-center space-x-1.5">
-                          <BarcodeIcon className="w-4 h-4 text-brand shrink-0" />
-                          <span>{copy.barcode}</span>
-                        </div>
+                      {/* ID */}
+                      <TableCell className="font-mono text-gray-400 text-xs">
+                        #{copy.id}
                       </TableCell>
 
-                      {/* Book & Category Info */}
+                      {/* Book & Category Info: Styled identically to BooksManagementPage */}
                       <TableCell className="max-w-md">
-                        {bookId ? (
-                          <Link
-                            to={`/books/${bookId}`}
-                            className="font-medium text-gray-800 hover:text-brand transition-colors text-xs line-clamp-1 block leading-snug"
-                            title={bookTitle}
-                          >
-                            {bookTitle}
-                          </Link>
-                        ) : (
-                          <span className="font-medium text-gray-800 text-xs line-clamp-1 block leading-snug">
-                            {bookTitle}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500">
-                          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-semibold font-mono text-[10px]">
-                            {catCode}
-                          </span>
-                          <span>&bull;</span>
-                          <span className="truncate">{catName}</span>
-                          {authors && (
-                            <>
+                        <div className="flex items-start gap-3">
+                          {/* Book Cover Thumbnail */}
+                          <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                            {coverImage ? (
+                              <img
+                                src={coverImage}
+                                alt={bookTitle}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <BookOpen className="w-4 h-4 text-slate-300" />
+                            )}
+                          </div>
+
+                          {/* Title & Info */}
+                          <div className="flex-1 min-w-0">
+                            {bookId ? (
+                              <Link
+                                to={`/books/${bookId}`}
+                                className="font-medium text-gray-800 hover:text-brand transition-colors text-xs line-clamp-1 block leading-snug"
+                                title={bookTitle}
+                              >
+                                {bookTitle}
+                              </Link>
+                            ) : (
+                              <span className="font-medium text-gray-800 text-xs line-clamp-1 block leading-snug">
+                                {bookTitle}
+                              </span>
+                            )}
+                            <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5" title={authors}>
+                              {authors || 'Chưa rõ tác giả'}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-gray-400">
+                              <span className="bg-teal-50 text-brand px-1.5 py-0.2 rounded font-semibold font-mono text-[10px] border border-teal-200">
+                                {catCode}
+                              </span>
                               <span>&bull;</span>
-                              <span className="truncate text-gray-400">{authors}</span>
-                            </>
-                          )}
+                              <span className="truncate">{catName}</span>
+                            </div>
+                          </div>
                         </div>
                       </TableCell>
 
@@ -666,7 +688,7 @@ export const CopiesManagementPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Print Barcode */}
+                      {/* Barcode: Renamed from "Tem nhãn" to "Mã vạch", button "Xem" */}
                       <TableCell className="text-center whitespace-nowrap">
                         <Button
                           variant="secondary"

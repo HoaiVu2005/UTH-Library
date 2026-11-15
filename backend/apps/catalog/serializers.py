@@ -20,6 +20,7 @@ class CopySerializer(serializers.ModelSerializer):
     book_id = serializers.IntegerField(source='book.id', read_only=True)
     book_title = serializers.CharField(source='book.title', read_only=True)
     book_isbn = serializers.CharField(source='book.isbn', read_only=True, default='')
+    book_cover_image = serializers.SerializerMethodField()
     category_name = serializers.CharField(source='book.category.name', read_only=True)
     category_code = serializers.CharField(source='book.category.code', read_only=True)
     book = serializers.SerializerMethodField()
@@ -31,18 +32,33 @@ class CopySerializer(serializers.ModelSerializer):
             'reading_room_only', 'held_for_user', 'held_for_user_code',
             'hold_expires_at', 'acquired_date', 'purchase_price',
             'source', 'supplier', 'note',
-            'book_id', 'book_title', 'book_isbn', 'category_name', 'category_code', 'book',
+            'book_id', 'book_title', 'book_isbn', 'book_cover_image', 'category_name', 'category_code', 'book',
         ]
         read_only_fields = ['id', 'barcode', 'acquired_date', 'held_for_user', 'hold_expires_at']
+
+    def get_book_cover_image(self, obj):
+        if obj.book and obj.book.cover_image:
+            try:
+                return obj.book.cover_image.url
+            except Exception:
+                return None
+        return None
 
     def get_book(self, obj):
         if not obj.book:
             return None
+        cover_url = None
+        if obj.book.cover_image:
+            try:
+                cover_url = obj.book.cover_image.url
+            except Exception:
+                cover_url = None
         return {
             'id': obj.book.id,
             'title': obj.book.title,
             'isbn': obj.book.isbn or '',
             'publisher': obj.book.publisher or '',
+            'cover_image': cover_url,
             'category': {
                 'id': obj.book.category.id if obj.book.category else None,
                 'code': obj.book.category.code if obj.book.category else '',
