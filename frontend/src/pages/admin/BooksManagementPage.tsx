@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   Plus,
@@ -31,6 +31,7 @@ import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { Card, CardContent } from '@/components/ui/Card';
 import { formatCurrencyVND, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
@@ -62,6 +63,7 @@ interface CategoryOption {
 }
 
 export const BooksManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const [books, setBooks] = useState<BookItem[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -572,9 +574,9 @@ export const BooksManagementPage: React.FC = () => {
           onAction={handleOpenAddModal}
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-16">Mã</TableHead>
@@ -583,11 +585,11 @@ export const BooksManagementPage: React.FC = () => {
                   <TableHead className="w-36">ISBN</TableHead>
                   <TableHead className="w-28 text-right">Giá bìa</TableHead>
                   <TableHead className="w-40 text-center">Bản sao (Sẵn sàng / Tổng)</TableHead>
-                  <TableHead className="w-36 text-right">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {books.map((book) => {
+                {books.map((book, index) => {
                   const catCode = getCategoryCode(book);
                   const catName = getCategoryName(book);
                   const authorText = getAuthorsText(book);
@@ -684,39 +686,40 @@ export const BooksManagementPage: React.FC = () => {
                         </Link>
                       </TableCell>
 
-                      {/* Actions */}
-                      <TableCell className="text-right whitespace-nowrap">
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          <Link
-                            to={`/books/${book.id}`}
-                            className="h-7 px-2 text-xs border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-lg inline-flex items-center gap-1 shadow-2xs"
-                            title="Xem trang độc giả OPAC"
-                          >
-                            <ExternalLink className="w-3 h-3 text-gray-500" />
-                            <span className="text-[11px]">OPAC</span>
-                          </Link>
-
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => handleOpenEditModal(book)}
-                            className="h-7 px-2 text-xs border border-teal-200/90 hover:bg-teal-50 text-brand font-medium rounded-lg"
-                            title="Chỉnh sửa thông tin"
-                          >
-                            <Edit2 className="w-3 h-3 mr-1" />
-                            Sửa
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => setDeletingBook(book)}
-                            className="h-7 px-2 text-xs border border-red-200 hover:bg-red-50 text-red-600 font-medium rounded-lg"
-                            title="Xóa đầu sách"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        <ActionMenu
+                          title={`Đầu sách #${book.id}`}
+                          statusDot={avail > 0 ? 'success' : 'warning'}
+                          isNearBottom={index >= books.length - 2 && books.length > 2}
+                          items={[
+                            {
+                              label: 'Chỉnh sửa thông tin',
+                              icon: <Edit2 className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => handleOpenEditModal(book),
+                            },
+                            {
+                              label: `Quản lý bản sao (${avail}/${total})`,
+                              icon: <BookCopy className="w-3.5 h-3.5" />,
+                              variant: 'info',
+                              onClick: () => navigate(`/admin/copies?book_id=${book.id}`),
+                            },
+                            {
+                              label: 'Xem trang OPAC',
+                              icon: <ExternalLink className="w-3.5 h-3.5" />,
+                              variant: 'default',
+                              onClick: () => navigate(`/books/${book.id}`),
+                            },
+                            {
+                              label: 'Xóa đầu sách',
+                              icon: <Trash2 className="w-3.5 h-3.5" />,
+                              variant: 'danger',
+                              isDividerBefore: true,
+                              onClick: () => setDeletingBook(book),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   );

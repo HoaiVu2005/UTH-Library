@@ -13,6 +13,7 @@ import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { cn, formatDateVN } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -507,9 +508,9 @@ export const UsersManagementPage: React.FC = () => {
           description={search ? `Không có bạn đọc nào khớp với từ khóa "${search}".` : 'Không có bạn đọc nào phù hợp với bộ lọc.'}
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-20">Mã</TableHead>
@@ -518,11 +519,11 @@ export const UsersManagementPage: React.FC = () => {
                   <TableHead>Khoa / Đơn vị</TableHead>
                   <TableHead className="w-32">Hạn thẻ</TableHead>
                   <TableHead className="w-32 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-44 text-right">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => {
+                {users.map((u, index) => {
                   const roleAbbr = getRoleAbbr(u.role);
                   const firstChar = u.full_name?.trim()?.charAt(0)?.toUpperCase() || 'U';
 
@@ -595,49 +596,40 @@ export const UsersManagementPage: React.FC = () => {
                         )}
                       </TableCell>
 
-                      {/* Actions: Outline style buttons */}
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setLockingUser(u)}
-                            className={cn(
-                              'h-7 px-2 text-xs rounded-lg border font-medium transition-colors inline-flex items-center gap-1 shadow-2xs bg-white',
-                              u.is_locked
-                                ? 'border-emerald-500 text-emerald-700 hover:bg-emerald-50'
-                                : 'border-amber-400 text-amber-700 hover:bg-amber-50'
-                            )}
-                            title={u.is_locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
-                          >
-                            {u.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                            <span>{u.is_locked ? 'Mở' : 'Khóa'}</span>
-                          </button>
-
-                          <button
-                            onClick={() => setExtendingUser(u)}
-                            title="Gia hạn thời hạn thẻ"
-                            className="h-7 px-2 text-xs rounded-lg border border-teal-500 text-teal-600 hover:bg-teal-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
-                          >
-                            <Calendar className="w-3 h-3 text-teal-600" />
-                            <span>Gia hạn</span>
-                          </button>
-
-                          <button
-                            onClick={() => setResettingUser(u)}
-                            title="Đặt lại mật khẩu"
-                            className="h-7 px-2 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
-                          >
-                            <Key className="w-3 h-3 text-gray-500" />
-                            <span>Reset</span>
-                          </button>
-
-                          <button
-                            onClick={() => setDeletingUser(u)}
-                            title="Xóa tài khoản"
-                            className="h-7 px-2 text-xs rounded-lg border border-rose-300 text-rose-500 hover:bg-rose-50 bg-white font-medium transition-colors inline-flex items-center shadow-2xs"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        <ActionMenu
+                          title={`Bạn đọc #${u.id}`}
+                          statusDot={u.is_locked ? 'danger' : 'success'}
+                          isNearBottom={index >= users.length - 2 && users.length > 2}
+                          items={[
+                            {
+                              label: u.is_locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản',
+                              icon: u.is_locked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />,
+                              variant: u.is_locked ? 'primary' : 'warning',
+                              onClick: () => setLockingUser(u),
+                            },
+                            {
+                              label: 'Gia hạn thời hạn thẻ',
+                              icon: <Calendar className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => setExtendingUser(u),
+                            },
+                            {
+                              label: 'Đặt lại mật khẩu',
+                              icon: <Key className="w-3.5 h-3.5" />,
+                              variant: 'default',
+                              onClick: () => setResettingUser(u),
+                            },
+                            {
+                              label: 'Xóa tài khoản',
+                              icon: <Trash2 className="w-3.5 h-3.5" />,
+                              variant: 'danger',
+                              isDividerBefore: true,
+                              onClick: () => setDeletingUser(u),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Copy,
   Plus,
@@ -29,6 +29,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Barcode } from '@/components/ui/Barcode';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerModal';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ export interface CopyItem {
 }
 
 export const CopiesManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialBookId = searchParams.get('book_id') || '';
 
@@ -576,9 +578,9 @@ export const CopiesManagementPage: React.FC = () => {
           onAction={() => setIsBatchModalOpen(true)}
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-44">Mã vạch (Barcode)</TableHead>
@@ -587,11 +589,11 @@ export const CopiesManagementPage: React.FC = () => {
                   <TableHead className="w-36 text-center">Hình thức</TableHead>
                   <TableHead className="w-36 text-center">Trạng thái</TableHead>
                   <TableHead className="w-28 text-center whitespace-nowrap">Tem nhãn</TableHead>
-                  <TableHead className="w-28 text-right whitespace-nowrap">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center whitespace-nowrap">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {copies.map((copy) => {
+                {copies.map((copy, index) => {
                   const bookTitle = getCopyBookTitle(copy);
                   const catCode = getCopyCategoryCode(copy);
                   const catName = getCopyCategoryName(copy);
@@ -680,22 +682,42 @@ export const CopiesManagementPage: React.FC = () => {
                         </Button>
                       </TableCell>
 
-                      {/* Actions */}
-                      <TableCell className="text-right whitespace-nowrap">
-                        {copy.status !== 'withdrawn' && copy.status !== 'borrowed' ? (
-                          <Button
-                            variant="ghost"
-                            size="xs"
-                            onClick={() => setWithdrawingCopy(copy)}
-                            className="h-7 px-2.5 text-xs border border-red-200 hover:bg-red-50 text-red-600 font-medium rounded-lg"
-                            title="Chuyển sang thanh lý sách"
-                          >
-                            <Trash2 className="w-3 h-3 mr-1" />
-                            Thanh lý
-                          </Button>
-                        ) : (
-                          <span className="text-gray-400 text-xs italic">—</span>
-                        )}
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        <ActionMenu
+                          title={`Bản sao #${copy.id}`}
+                          statusDot={copy.status === 'available' ? 'success' : copy.status === 'borrowed' ? 'warning' : 'default'}
+                          isNearBottom={index >= copies.length - 2 && copies.length > 2}
+                          items={[
+                            {
+                              label: 'Xem tem nhãn mã vạch',
+                              icon: <BarcodeIcon className="w-3.5 h-3.5" />,
+                              variant: 'primary',
+                              onClick: () => setBarcodeModalCopy(copy),
+                            },
+                            ...(bookId
+                              ? [
+                                  {
+                                    label: 'Xem trang sách OPAC',
+                                    icon: <ExternalLink className="w-3.5 h-3.5" />,
+                                    variant: 'default' as const,
+                                    onClick: () => navigate(`/books/${bookId}`),
+                                  },
+                                ]
+                              : []),
+                            ...(copy.status !== 'withdrawn' && copy.status !== 'borrowed'
+                              ? [
+                                  {
+                                    label: 'Thanh lý bản sao',
+                                    icon: <Trash2 className="w-3.5 h-3.5" />,
+                                    variant: 'danger' as const,
+                                    isDividerBefore: true,
+                                    onClick: () => setWithdrawingCopy(copy),
+                                  },
+                                ]
+                              : []),
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   );

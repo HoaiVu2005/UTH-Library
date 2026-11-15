@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -400,9 +401,9 @@ export const FinesManagementPage: React.FC = () => {
           description={appliedSearch ? `Không có bản ghi nào khớp với từ khóa "${appliedSearch}".` : 'Hệ thống không ghi nhận khoản phạt nào phù hợp với bộ lọc.'}
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-16">Mã</TableHead>
@@ -412,11 +413,11 @@ export const FinesManagementPage: React.FC = () => {
                   <TableHead className="w-32">Đã nộp</TableHead>
                   <TableHead className="w-32">Còn nợ</TableHead>
                   <TableHead className="w-32 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-40 text-right">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fines.map((f) => {
+                {fines.map((f, index) => {
                   const roleAbbr = getRoleAbbr(f.patron_role);
                   const firstChar = f.patron_name?.trim()?.charAt(0)?.toUpperCase() || 'U';
 
@@ -516,30 +517,32 @@ export const FinesManagementPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Actions: Outline style buttons */}
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          {f.remaining_amount > 0 && f.status !== 'waived' && (
-                            <>
-                              <button
-                                onClick={() => handleOpenCollect(f)}
-                                className="h-7 px-2.5 text-xs rounded-lg border border-teal-500 text-teal-600 hover:bg-teal-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                title="Thu tiền trực tiếp tại quầy"
-                              >
-                                <DollarSign className="w-3 h-3 text-teal-600" />
-                                <span>Thu tiền</span>
-                              </button>
-                              <button
-                                onClick={() => handleOpenWaive(f)}
-                                className="h-7 px-2.5 text-xs rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
-                                title="Miễn giảm khoản phạt theo chính sách"
-                              >
-                                <ShieldCheck className="w-3 h-3 text-purple-600" />
-                                <span>Miễn giảm</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        {f.remaining_amount > 0 && f.status !== 'waived' ? (
+                          <ActionMenu
+                            title={`Khoản phạt #${f.id}`}
+                            statusDot={f.status === 'partial' ? 'warning' : 'danger'}
+                            isNearBottom={index >= fines.length - 2 && fines.length > 2}
+                            items={[
+                              {
+                                label: 'Thu tiền phạt tại quầy',
+                                icon: <DollarSign className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => handleOpenCollect(f),
+                              },
+                              {
+                                label: 'Miễn giảm khoản phạt',
+                                icon: <ShieldCheck className="w-3.5 h-3.5" />,
+                                variant: 'purple',
+                                isDividerBefore: true,
+                                onClick: () => handleOpenWaive(f),
+                              },
+                            ]}
+                          />
+                        ) : (
+                          <span className="text-gray-300 select-none font-bold">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

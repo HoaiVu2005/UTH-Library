@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Textarea } from '@/components/ui/Textarea';
 import { Pagination } from '@/components/ui/Pagination';
@@ -376,9 +377,9 @@ export const SuggestionsReviewPage: React.FC = () => {
           }
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-16">Mã</TableHead>
@@ -387,11 +388,11 @@ export const SuggestionsReviewPage: React.FC = () => {
                   <TableHead className="w-56">Lý do</TableHead>
                   <TableHead className="w-32 text-center">Trạng thái</TableHead>
                   <TableHead className="w-44">Phản hồi</TableHead>
-                  <TableHead className="w-36 text-right">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {suggestions.map((s) => {
+                {suggestions.map((s, index) => {
                   const firstChar = s.user?.full_name?.trim()?.charAt(0)?.toUpperCase() || 'U';
                   const roleAbbr = getRoleAbbr(s.user?.role, s.user?.card_code);
 
@@ -463,49 +464,46 @@ export const SuggestionsReviewPage: React.FC = () => {
                         {s.review_note || '—'}
                       </TableCell>
 
-                      {/* Actions: Re-formatted with clean outline buttons */}
-                      <TableCell className="text-right whitespace-nowrap">
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          {s.status === 'pending' && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => handleOpenActionModal(s, 'approve')}
-                                title="Duyệt mua tài liệu"
-                                className="h-7 px-2.5 text-xs border border-emerald-300 hover:bg-emerald-50 text-emerald-700 font-medium rounded-lg"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                                <span>Duyệt</span>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => handleOpenActionModal(s, 'reject')}
-                                title="Từ chối đề xuất"
-                                className="h-7 px-2.5 text-xs border border-red-200 hover:bg-red-50 text-red-600 font-medium rounded-lg"
-                              >
-                                <XCircle className="w-3.5 h-3.5 mr-1" />
-                                <span>Từ chối</span>
-                              </Button>
-                            </>
-                          )}
-                          {s.status === 'approved' && (
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              onClick={() => handleMarkReceived(s)}
-                              title="Xác nhận sách đã nhập kho"
-                              className="h-7 px-2.5 text-xs border border-teal-200 hover:bg-teal-50 text-brand font-medium rounded-lg"
-                            >
-                              <PackageCheck className="w-3.5 h-3.5 mr-1" />
-                              <span>Nhập kho</span>
-                            </Button>
-                          )}
-                          {(s.status === 'received' || s.status === 'rejected') && (
-                            <span className="text-gray-400 text-xs italic">—</span>
-                          )}
-                        </div>
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        {s.status === 'pending' ? (
+                          <ActionMenu
+                            title={`Đề xuất #${s.id}`}
+                            statusDot="warning"
+                            isNearBottom={index >= suggestions.length - 2 && suggestions.length > 2}
+                            items={[
+                              {
+                                label: 'Phê duyệt mua sách',
+                                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => handleOpenActionModal(s, 'approve'),
+                              },
+                              {
+                                label: 'Từ chối đề xuất',
+                                icon: <XCircle className="w-3.5 h-3.5" />,
+                                variant: 'danger',
+                                isDividerBefore: true,
+                                onClick: () => handleOpenActionModal(s, 'reject'),
+                              },
+                            ]}
+                          />
+                        ) : s.status === 'approved' ? (
+                          <ActionMenu
+                            title={`Đề xuất #${s.id}`}
+                            statusDot="info"
+                            isNearBottom={index >= suggestions.length - 2 && suggestions.length > 2}
+                            items={[
+                              {
+                                label: 'Xác nhận nhập kho',
+                                icon: <PackageCheck className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => handleMarkReceived(s),
+                              },
+                            ]}
+                          />
+                        ) : (
+                          <span className="text-gray-300 select-none font-bold">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

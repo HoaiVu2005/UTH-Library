@@ -29,6 +29,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Barcode } from '@/components/ui/Barcode';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { toast } from '@/components/ui/Toast';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 import { cn, formatDateVN } from '@/lib/utils';
@@ -90,25 +91,6 @@ export const AdminReservationsPage: React.FC = () => {
 
   // Barcode detail modal
   const [barcodeModalItem, setBarcodeModalItem] = useState<ReservationItem | null>(null);
-
-  // Action dropdown menu state
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!(event.target as HTMLElement).closest('.reservation-action-menu')) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Close dropdown when changing page, filter, or search
-  useEffect(() => {
-    setOpenMenuId(null);
-  }, [page, statusFilter, appliedSearch]);
 
   const fetchReservations = useCallback(async (isBackground = false) => {
     try {
@@ -551,116 +533,51 @@ export const AdminReservationsPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Actions: 3-dots Dropdown Menu */}
+                      {/* Actions: ActionMenu Component */}
                       <TableCell className="text-center relative">
-                        {r.status === 'ready' || r.status === 'pending' ? (
-                          <div className="relative inline-block reservation-action-menu">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOpenMenuId(openMenuId === r.id ? null : r.id);
-                              }}
-                              className={cn(
-                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150',
-                                openMenuId === r.id
-                                  ? 'bg-teal-100/80 text-teal-800 ring-2 ring-teal-500/25 shadow-2xs'
-                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200'
-                              )}
-                              title="Thao tác"
-                              aria-expanded={openMenuId === r.id}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
-
-                            {openMenuId === r.id && (
-                              <div
-                                className={cn(
-                                  'absolute right-0 z-50 min-w-[200px] rounded-xl bg-white p-1.5 shadow-xl border border-slate-200/90 text-xs animate-in fade-in-50 zoom-in-95 duration-100 text-left space-y-1',
-                                  index >= reservations.length - 2 && reservations.length > 2
-                                    ? 'bottom-full mb-2'
-                                    : 'top-full mt-2'
-                                )}
-                              >
-                                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none border-b border-slate-100 flex items-center justify-between">
-                                  <span>Thao tác #{r.id}</span>
-                                  <span className={cn(
-                                    'w-1.5 h-1.5 rounded-full',
-                                    r.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500'
-                                  )} />
-                                </div>
-
-                                {r.status === 'ready' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        setCheckoutTarget(r);
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-teal-800 hover:bg-teal-50/80 font-medium transition-all group"
-                                    >
-                                      <div className="w-6 h-6 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-all shadow-2xs">
-                                        <BookOpen className="w-3.5 h-3.5" />
-                                      </div>
-                                      <span className="whitespace-nowrap text-xs font-semibold">Phát sách cho bạn đọc</span>
-                                    </button>
-
-                                    <div className="h-px bg-slate-100 my-0.5" />
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        setCancelTarget(r);
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-rose-700 hover:bg-rose-50/80 font-medium transition-all group"
-                                    >
-                                      <div className="w-6 h-6 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
-                                        <XCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <span className="whitespace-nowrap text-xs font-semibold">Hủy giữ chỗ</span>
-                                    </button>
-                                  </>
-                                )}
-
-                                {r.status === 'pending' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={advancingId === r.id}
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        handleAdvance(r.id);
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-teal-800 hover:bg-teal-50/80 font-medium transition-all disabled:opacity-50 group"
-                                    >
-                                      <div className="w-6 h-6 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-all shadow-2xs">
-                                        <ArrowUpCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <span className="whitespace-nowrap text-xs font-semibold">Ưu tiên lên vị trí #1</span>
-                                    </button>
-
-                                    <div className="h-px bg-slate-100 my-0.5" />
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenMenuId(null);
-                                        setCancelTarget(r);
-                                      }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-rose-700 hover:bg-rose-50/80 font-medium transition-all group"
-                                    >
-                                      <div className="w-6 h-6 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
-                                        <XCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <span className="whitespace-nowrap text-xs font-semibold">Hủy đặt trước</span>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                        {r.status === 'ready' ? (
+                          <ActionMenu
+                            title={`Thao tác #${r.id}`}
+                            statusDot="success"
+                            isNearBottom={index >= reservations.length - 2 && reservations.length > 2}
+                            items={[
+                              {
+                                label: 'Phát sách cho bạn đọc',
+                                icon: <BookOpen className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => setCheckoutTarget(r),
+                              },
+                              {
+                                label: 'Hủy giữ chỗ',
+                                icon: <XCircle className="w-3.5 h-3.5" />,
+                                variant: 'danger',
+                                isDividerBefore: true,
+                                onClick: () => setCancelTarget(r),
+                              },
+                            ]}
+                          />
+                        ) : r.status === 'pending' ? (
+                          <ActionMenu
+                            title={`Thao tác #${r.id}`}
+                            statusDot="warning"
+                            isNearBottom={index >= reservations.length - 2 && reservations.length > 2}
+                            items={[
+                              {
+                                label: 'Ưu tiên lên vị trí #1',
+                                icon: <ArrowUpCircle className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                disabled: advancingId === r.id,
+                                onClick: () => handleAdvance(r.id),
+                              },
+                              {
+                                label: 'Hủy đặt trước',
+                                icon: <XCircle className="w-3.5 h-3.5" />,
+                                variant: 'danger',
+                                isDividerBefore: true,
+                                onClick: () => setCancelTarget(r),
+                              },
+                            ]}
+                          />
                         ) : (
                           <span className="text-gray-300 select-none font-bold">—</span>
                         )}

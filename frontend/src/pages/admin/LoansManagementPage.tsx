@@ -28,6 +28,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Barcode } from '@/components/ui/Barcode';
+import { ActionMenu } from '@/components/ui/ActionMenu';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -573,9 +574,9 @@ export const LoansManagementPage: React.FC = () => {
           }
         />
       ) : (
-        <Card className="shadow-xs overflow-hidden border-gray-200/80">
-          <div className="overflow-x-auto">
-            <Table>
+        <Card className="shadow-xs border-gray-200/80">
+          <div className="overflow-x-auto min-h-[320px]">
+            <Table containerClassName="border-0 shadow-none rounded-none">
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead className="w-16">Mã</TableHead>
@@ -585,11 +586,11 @@ export const LoansManagementPage: React.FC = () => {
                   <TableHead className="w-28 text-center">Ngày mượn</TableHead>
                   <TableHead className="w-36 text-center">Hạn trả</TableHead>
                   <TableHead className="w-32 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-32 text-right">Thao tác</TableHead>
+                  <TableHead className="w-20 text-center">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loans.map((l) => {
+                {loans.map((l, index) => {
                   const daysRemaining = getDaysRemaining(l.due_at);
                   const firstChar = l.patron_name?.trim()?.charAt(0)?.toUpperCase() || 'U';
                   const roleAbbr = getRoleAbbr(l.patron_role);
@@ -739,42 +740,38 @@ export const LoansManagementPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Actions: Re-formatted buttons */}
-                      <TableCell className="text-right">
-                        <div className="inline-flex items-center justify-end gap-1.5">
-                          {l.status === 'active' ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => {
+                      {/* Actions: ActionMenu */}
+                      <TableCell className="text-center relative">
+                        {l.status === 'active' ? (
+                          <ActionMenu
+                            title={`Phiếu mượn #${l.id}`}
+                            statusDot={l.is_overdue ? 'danger' : 'success'}
+                            isNearBottom={index >= loans.length - 2 && loans.length > 2}
+                            items={[
+                              {
+                                label: `Gia hạn sách (Lần ${l.renewal_count || 0})`,
+                                icon: <RotateCw className="w-3.5 h-3.5" />,
+                                variant: 'primary',
+                                onClick: () => {
                                   setSelectedLoan(l);
                                   setActionType('renew');
-                                }}
-                                title={`Gia hạn thêm 7 ngày (Đã gia hạn: ${l.renewal_count || 0})`}
-                                className="h-7 px-2.5 text-xs border border-teal-200/90 hover:bg-teal-50 text-brand font-medium rounded-lg"
-                              >
-                                <RotateCw className="w-3 h-3 mr-1" />
-                                Gia hạn
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                onClick={() => {
+                                },
+                              },
+                              {
+                                label: 'Báo mất sách (Biên bản)',
+                                icon: <AlertCircle className="w-3.5 h-3.5" />,
+                                variant: 'danger',
+                                isDividerBefore: true,
+                                onClick: () => {
                                   setSelectedLoan(l);
                                   setActionType('lost');
-                                }}
-                                title="Báo mất sách để lập biên bản bồi thường"
-                                className="h-7 px-2.5 text-xs border border-red-200/90 hover:bg-red-50 text-red-600 font-medium rounded-lg"
-                              >
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                Báo mất
-                              </Button>
-                            </>
-                          ) : (
-                            <span className="text-gray-300 text-xs select-none px-2">—</span>
-                          )}
-                        </div>
+                                },
+                              },
+                            ]}
+                          />
+                        ) : (
+                          <span className="text-gray-300 select-none font-bold">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
