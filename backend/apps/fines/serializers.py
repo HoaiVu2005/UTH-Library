@@ -34,3 +34,11 @@ class CollectFineSerializer(serializers.Serializer):
 class WaiveFineSerializer(serializers.Serializer):
     reason = serializers.CharField(required=True, trim_whitespace=True, min_length=3)
 
+class PayFineOnlineSerializer(serializers.Serializer):
+    amount = serializers.IntegerField(required=False, min_value=1)
+    transaction_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+class PayAllFinesOnlineSerializer(serializers.Serializer):
+    transaction_code = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+

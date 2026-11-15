@@ -14,6 +14,7 @@ import {
   Layers,
   Clock,
   Sparkles,
+  QrCode,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +27,7 @@ import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
 import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
@@ -72,6 +74,10 @@ export const FinesManagementPage: React.FC = () => {
   const [waiveTarget, setWaiveTarget] = useState<FineRecord | null>(null);
   const [waiveReason, setWaiveReason] = useState<string>('');
   const [waiveLoading, setWaiveLoading] = useState(false);
+
+  // VietQR modal for librarian / desk
+  const [qrTarget, setQrTarget] = useState<FineRecord | null>(null);
+
 
   const fetchFines = useCallback(async (isBackground = false) => {
     if (!isBackground) setLoading(true);
@@ -526,6 +532,12 @@ export const FinesManagementPage: React.FC = () => {
                             isNearBottom={index >= fines.length - 2 && fines.length > 2}
                             items={[
                               {
+                                label: 'Hiện mã VietQR thanh toán',
+                                icon: <QrCode className="w-3.5 h-3.5" />,
+                                variant: 'info',
+                                onClick: () => setQrTarget(f),
+                              },
+                              {
                                 label: 'Thu tiền phạt tại quầy',
                                 icon: <DollarSign className="w-3.5 h-3.5" />,
                                 variant: 'primary',
@@ -690,6 +702,25 @@ export const FinesManagementPage: React.FC = () => {
           </ModalFooter>
         </form>
       </Modal>
+
+      {/* VietQR Payment Modal for Desk / Admin */}
+      <QRFinePaymentModal
+        isOpen={!!qrTarget}
+        onClose={() => setQrTarget(null)}
+        fineId={qrTarget?.id}
+        amount={qrTarget?.remaining_amount || 0}
+        fineTypeDisplay={
+          qrTarget?.type === 'overdue'
+            ? 'Quá hạn trả tài liệu'
+            : qrTarget?.type === 'damage'
+            ? 'Hư hỏng tài liệu'
+            : 'Làm mất tài liệu'
+        }
+        bookTitle={qrTarget?.book_title}
+        patronCardCode={qrTarget?.patron_card_code || ''}
+        patronName={qrTarget?.patron_name}
+        onSuccess={() => fetchFines(true)}
+      />
     </div>
   );
 };

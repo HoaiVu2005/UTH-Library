@@ -390,3 +390,54 @@ def test_fine_waive_requires_reason(admin_user, student_user):
     assert waived.waive_reason == 'Miễn phạt do có giấy chứng nhận y tế'
     assert waived.waived_by == admin_user
 
+@pytest.mark.django_db
+def test_fine_pay_online_success(student_user, lecturer_user):
+    from rest_framework.test import APIClient
+    from apps.core.enums import LockReason
+
+    fine = Fine.objects.create(
+        user=student_user,
+        type=FineType.OVERDUE,
+        amount=15000,
+        status=FineStatus.UNPAID
+    )
+    student_user.is_locked = True
+    student_user.lock_reason = LockReason.UNPAID_LOST_FINE
+    student_user.save()
+
+    client = APIClient()
+    client.force_authenticate(user=student_user)
+
+    res = client.post(f'/api/v1/fines/{fine.id}/pay-online', {'transaction_code': 'FT123456'})
+    assert res.status_code == 200
+    fine.refresh_from_db()
+    assert fine.status == FineStatus.PAID
+    assert fine.paid_amount == 15000
+
+    student_user.refresh_from_db()
+    assert student_user.is_locked is False
+
+    # IDOR test: another patron cannot pay someone else's fine
+    fine2 = Fine.objects.create(user=student_user, type=FineType.OVERDUE, amount=5000)
+    client.force_authenticate(user=lecturer_user)
+    res2 = client.post(f'/api/v1/fines/{fine2.id}/pay-online')
+    assert res2.status_code == 403
+
+@pytest.mark.django_db
+def test_fine_pay_all_online_success(student_user):
+    from rest_framework.test import APIClient
+
+    Fine.objects.create(user=student_user, type=FineType.OVERDUE, amount=10000, status=FineStatus.UNPAID)
+    Fine.objects.create(user=student_user, type=FineType.OVERDUE, amount=5000, status=FineStatus.UNPAID)
+
+    client = APIClient()
+    client.force_authenticate(user=student_user)
+
+    res = client.post('/api/v1/fines/pay-all-online', {'transaction_code': 'ALL_VCB_999'})
+    assert res.status_code == 200
+    assert res.data['total_paid'] == 15000
+    assert res.data['count'] == 2
+
+    assert Fine.objects.filter(user=student_user, status=FineStatus.UNPAID).count() == 0
+
+

@@ -14,11 +14,13 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
 import { formatDateVN, formatCurrencyVND } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -45,10 +47,25 @@ interface FineItem {
 }
 
 export const MyFinesPage: React.FC = () => {
+  const { user } = useAuth();
   const [fines, setFines] = useState<FineItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showQRGuide, setShowQRGuide] = useState<boolean>(false);
+
+  // QR Modal state for paying online from home
+  const [qrModalData, setQrModalData] = useState<{
+    isOpen: boolean;
+    isPayAll: boolean;
+    fineId?: number | null;
+    amount: number;
+    fineTypeDisplay?: string;
+    bookTitle?: string;
+  }>({
+    isOpen: false,
+    isPayAll: false,
+    amount: 0,
+  });
 
   const fetchFines = useCallback(async (showSpinner = false, isBackground = false) => {
     try {
@@ -123,25 +140,46 @@ export const MyFinesPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Card 1: Tổng nợ */}
         <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
-            <span>TỔNG NỢ CẦN THANH TOÁN</span>
-            <DollarSign className="w-4 h-4 text-gray-400" />
+          <div>
+            <div className="flex items-center justify-between text-xs font-semibold text-gray-500">
+              <span>TỔNG NỢ CẦN THANH TOÁN</span>
+              <DollarSign className="w-4 h-4 text-gray-400" />
+            </div>
+            <div className="my-2">
+              <span
+                className={cn(
+                  'text-2xl sm:text-3xl font-extrabold font-mono',
+                  totalDebt > 0 ? 'text-red-600' : 'text-gray-800'
+                )}
+              >
+                {formatCurrencyVND(totalDebt)}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 leading-snug">
+              {totalDebt > 0
+                ? 'Vui lòng thanh toán để tránh bị tạm khóa quyền mượn/đặt trước sách.'
+                : 'Tài khoản sạch, không có công nợ nào cần thanh toán.'}
+            </p>
           </div>
-          <div className="my-2">
-            <span
-              className={cn(
-                'text-2xl sm:text-3xl font-extrabold font-mono',
-                totalDebt > 0 ? 'text-red-600' : 'text-gray-800'
-              )}
+
+          {totalDebt > 0 && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() =>
+                setQrModalData({
+                  isOpen: true,
+                  isPayAll: true,
+                  amount: totalDebt,
+                  fineTypeDisplay: 'Nộp phạt toàn bộ công nợ',
+                })
+              }
+              className="mt-3 w-full bg-[#008B8B] hover:bg-[#007A7A] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 shadow-sm"
             >
-              {formatCurrencyVND(totalDebt)}
-            </span>
-          </div>
-          <p className="text-[11px] text-gray-400 leading-snug">
-            {totalDebt > 0
-              ? 'Vui lòng thanh toán để tránh bị tạm khóa quyền mượn/đặt trước sách.'
-              : 'Tài khoản sạch, không có công nợ nào cần thanh toán.'}
-          </p>
+              <QrCode className="w-4 h-4" />
+              <span>Nộp phạt tại nhà qua VietQR</span>
+            </Button>
+          )}
         </div>
 
         {/* Card 2: Đã nộp */}
@@ -260,12 +298,13 @@ export const MyFinesPage: React.FC = () => {
               <TableHeader>
                 <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
                   <TableHead>Lý do phạt / Tài liệu</TableHead>
-                  <TableHead className="w-36 text-center">Ngày phát sinh</TableHead>
-                  <TableHead className="w-32 text-right">Mức phạt</TableHead>
-                  <TableHead className="w-32 text-right">Đã nộp</TableHead>
-                  <TableHead className="w-32 text-right">Còn nợ</TableHead>
-                  <TableHead className="w-32 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-48">Ghi chú / Biên lai</TableHead>
+                  <TableHead className="w-32 text-center">Ngày phát sinh</TableHead>
+                  <TableHead className="w-28 text-right">Mức phạt</TableHead>
+                  <TableHead className="w-28 text-right">Đã nộp</TableHead>
+                  <TableHead className="w-28 text-right">Còn nợ</TableHead>
+                  <TableHead className="w-28 text-center">Trạng thái</TableHead>
+                  <TableHead className="w-40">Ghi chú / Biên lai</TableHead>
+                  <TableHead className="w-28 text-center">Nộp phạt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -325,6 +364,36 @@ export const MyFinesPage: React.FC = () => {
                         fine.note || '—'
                       )}
                     </TableCell>
+
+                    {/* Pay Button via VietQR */}
+                    <TableCell className="text-center whitespace-nowrap">
+                      {fine.remaining_amount > 0 ? (
+                        <Button
+                          size="xs"
+                          variant="primary"
+                          onClick={() =>
+                            setQrModalData({
+                              isOpen: true,
+                              isPayAll: false,
+                              fineId: fine.id,
+                              amount: fine.remaining_amount,
+                              fineTypeDisplay: fine.type_display,
+                              bookTitle: fine.loan?.book_title,
+                            })
+                          }
+                          className="h-7 px-2.5 text-[11px] font-semibold bg-teal-50 hover:bg-[#008B8B] text-teal-800 hover:text-white border border-teal-200 transition-all rounded-lg flex items-center gap-1 mx-auto shadow-2xs"
+                          title="Nộp phạt khoản này qua VietQR"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          <span>Quét mã</span>
+                        </Button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Đã nộp</span>
+                        </span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -332,6 +401,20 @@ export const MyFinesPage: React.FC = () => {
           </Card>
         )}
       </div>
+
+      {/* VietQR Payment Modal */}
+      <QRFinePaymentModal
+        isOpen={qrModalData.isOpen}
+        onClose={() => setQrModalData((prev) => ({ ...prev, isOpen: false }))}
+        isPayAll={qrModalData.isPayAll}
+        fineId={qrModalData.fineId}
+        amount={qrModalData.amount}
+        fineTypeDisplay={qrModalData.fineTypeDisplay}
+        bookTitle={qrModalData.bookTitle}
+        patronCardCode={user?.card_code || 'SV20260001'}
+        patronName={user?.full_name}
+        onSuccess={() => fetchFines(true)}
+      />
     </div>
   );
 };

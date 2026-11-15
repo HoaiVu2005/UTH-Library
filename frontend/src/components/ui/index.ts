@@ -20,4 +20,5 @@ export * from './Pagination';
 export * from './BookCard';
 export * from './UnauthorizedState';
 export * from './ActionMenu';
+export * from './QRFinePaymentModal';
 
