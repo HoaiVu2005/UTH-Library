@@ -29,21 +29,19 @@ import { useRealtimeSync } from '@/lib/realtime';
 interface FineItem {
   id: number;
   type: string;
-  type_display: string;
+  type_display?: string;
+  book_title?: string;
+  copy_barcode?: string;
   amount: number;
   paid_amount: number;
   remaining_amount: number;
   status: string;
-  status_display: string;
+  status_display?: string;
   damage_level?: string;
   note?: string;
   waive_reason?: string;
   created_at: string;
-  loan?: {
-    id: number;
-    book_title: string;
-    barcode: string;
-  };
+  loan?: any;
 }
 
 export const MyFinesPage: React.FC = () => {
@@ -312,94 +310,123 @@ export const MyFinesPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fines.map((fine) => (
-                  <TableRow key={fine.id} className="hover:bg-teal-50/15 transition-colors">
-                    {/* Reason & Book Title */}
-                    <TableCell className="max-w-[260px]">
-                      <p className="font-medium text-gray-800 text-xs">
-                        {fine.type_display}
-                      </p>
-                      {fine.loan && (
-                        <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                          Sách: {fine.loan.book_title}{' '}
-                          <span className="font-mono text-gray-400">
-                            ({fine.loan.barcode})
-                          </span>
+                {fines.map((fine) => {
+                  const bookTitle = fine.book_title || (typeof fine.loan === 'object' && fine.loan?.book_title) || '';
+                  const barcode = fine.copy_barcode || (typeof fine.loan === 'object' && fine.loan?.barcode) || '';
+                  const typeDisplay =
+                    fine.type_display ||
+                    (fine.type === 'overdue'
+                      ? 'Quá hạn trả tài liệu'
+                      : fine.type === 'damage'
+                      ? 'Hư hỏng tài liệu'
+                      : fine.type === 'lost'
+                      ? 'Làm mất tài liệu'
+                      : 'Khoản phạt vi phạm');
+                  const statusDisplay =
+                    fine.status_display ||
+                    (fine.status === 'paid'
+                      ? 'Đã thanh toán'
+                      : fine.status === 'partial'
+                      ? 'Thanh toán một phần'
+                      : fine.status === 'waived'
+                      ? 'Được miễn giảm'
+                      : 'Chưa thanh toán');
+
+                  return (
+                    <TableRow key={fine.id} className="hover:bg-teal-50/15 transition-colors">
+                      {/* Reason & Book Title */}
+                      <TableCell className="max-w-[280px]">
+                        <p className="font-semibold text-gray-800 text-xs">
+                          {typeDisplay}
                         </p>
-                      )}
-                    </TableCell>
+                        {bookTitle ? (
+                          <p className="text-[11.5px] text-gray-600 mt-0.5 line-clamp-1" title={bookTitle}>
+                            Sách: <span className="font-medium text-gray-800">{bookTitle}</span>{' '}
+                            {barcode && (
+                              <span className="font-mono text-gray-400">
+                                ({barcode})
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-[10.5px] text-gray-400 mt-0.5 italic">
+                            Phạt vi phạm quy chế lưu thông Thư viện
+                          </p>
+                        )}
+                      </TableCell>
 
-                    {/* Date */}
-                    <TableCell className="text-xs text-gray-500 text-center whitespace-nowrap">
-                      {formatDateVN(fine.created_at)}
-                    </TableCell>
+                      {/* Date */}
+                      <TableCell className="text-xs text-gray-500 text-center whitespace-nowrap">
+                        {formatDateVN(fine.created_at)}
+                      </TableCell>
 
-                    {/* Amount */}
-                    <TableCell className="font-mono font-medium text-gray-800 text-xs text-right whitespace-nowrap">
-                      {formatCurrencyVND(fine.amount)}
-                    </TableCell>
+                      {/* Amount */}
+                      <TableCell className="font-mono font-medium text-gray-800 text-xs text-right whitespace-nowrap">
+                        {formatCurrencyVND(fine.amount)}
+                      </TableCell>
 
-                    {/* Paid Amount */}
-                    <TableCell className="font-mono font-medium text-emerald-600 text-xs text-right whitespace-nowrap">
-                      {formatCurrencyVND(fine.paid_amount || 0)}
-                    </TableCell>
+                      {/* Paid Amount */}
+                      <TableCell className="font-mono font-medium text-emerald-600 text-xs text-right whitespace-nowrap">
+                        {formatCurrencyVND(fine.paid_amount || 0)}
+                      </TableCell>
 
-                    {/* Remaining */}
-                    <TableCell className="font-mono font-bold text-xs text-right whitespace-nowrap">
-                      {fine.remaining_amount > 0 ? (
-                        <span className="text-red-600">{formatCurrencyVND(fine.remaining_amount)}</span>
-                      ) : (
-                        <span className="text-emerald-600">0 đ</span>
-                      )}
-                    </TableCell>
+                      {/* Remaining */}
+                      <TableCell className="font-mono font-bold text-xs text-right whitespace-nowrap">
+                        {fine.remaining_amount > 0 ? (
+                          <span className="text-red-600">{formatCurrencyVND(fine.remaining_amount)}</span>
+                        ) : (
+                          <span className="text-emerald-600">0 đ</span>
+                        )}
+                      </TableCell>
 
-                    {/* Status Badge */}
-                    <TableCell className="text-center">
-                      <Badge status={fine.status} size="sm">
-                        {fine.status_display}
-                      </Badge>
-                    </TableCell>
+                      {/* Status Badge */}
+                      <TableCell className="text-center">
+                        <Badge status={fine.status} size="sm">
+                          {statusDisplay}
+                        </Badge>
+                      </TableCell>
 
-                    {/* Notes */}
-                    <TableCell className="text-xs text-gray-500">
-                      {fine.waive_reason ? (
-                        <span className="text-purple-700 italic">Miễn giảm: {fine.waive_reason}</span>
-                      ) : (
-                        fine.note || '—'
-                      )}
-                    </TableCell>
+                      {/* Notes */}
+                      <TableCell className="text-xs text-gray-500">
+                        {fine.waive_reason ? (
+                          <span className="text-purple-700 italic">Miễn giảm: {fine.waive_reason}</span>
+                        ) : (
+                          fine.note || '—'
+                        )}
+                      </TableCell>
 
-                    {/* Pay Button via VietQR */}
-                    <TableCell className="text-center whitespace-nowrap">
-                      {fine.remaining_amount > 0 ? (
-                        <Button
-                          size="xs"
-                          variant="primary"
-                          onClick={() =>
-                            setQrModalData({
-                              isOpen: true,
-                              isPayAll: false,
-                              fineId: fine.id,
-                              amount: fine.remaining_amount,
-                              fineTypeDisplay: fine.type_display,
-                              bookTitle: fine.loan?.book_title,
-                            })
-                          }
-                          className="h-7 px-2.5 text-[11px] font-semibold bg-teal-50 hover:bg-[#008B8B] text-teal-800 hover:text-white border border-teal-200 transition-all rounded-lg flex items-center gap-1 mx-auto shadow-2xs"
-                          title="Nộp phạt khoản này qua VietQR"
-                        >
-                          <QrCode className="w-3.5 h-3.5" />
-                          <span>Quét mã</span>
-                        </Button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Đã nộp</span>
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      {/* Pay Button via VietQR */}
+                      <TableCell className="text-center whitespace-nowrap">
+                        {fine.remaining_amount > 0 ? (
+                          <Button
+                            size="xs"
+                            variant="primary"
+                            onClick={() =>
+                              setQrModalData({
+                                isOpen: true,
+                                isPayAll: false,
+                                fineId: fine.id,
+                                amount: fine.remaining_amount,
+                                fineTypeDisplay: typeDisplay,
+                                bookTitle: bookTitle,
+                              })
+                            }
+                            className="h-7 px-2.5 text-[11px] font-semibold bg-teal-50 hover:bg-[#008B8B] text-teal-800 hover:text-white border border-teal-200 transition-all rounded-lg flex items-center gap-1 mx-auto shadow-2xs"
+                            title="Nộp phạt khoản này qua VietQR"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                            <span>Quét mã</span>
+                          </Button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Đã nộp</span>
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
@@ -422,3 +449,4 @@ export const MyFinesPage: React.FC = () => {
     </div>
   );
 };
+
