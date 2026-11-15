@@ -20,7 +20,7 @@ class CopySerializer(serializers.ModelSerializer):
     book_id = serializers.IntegerField(source='book.id', read_only=True)
     book_title = serializers.CharField(source='book.title', read_only=True)
     book_isbn = serializers.CharField(source='book.isbn', read_only=True, default='')
-    book_cover_image = serializers.SerializerMethodField()
+    book_cover_image = serializers.CharField(source='book.cover_image', read_only=True, default=None)
     category_name = serializers.CharField(source='book.category.name', read_only=True)
     category_code = serializers.CharField(source='book.category.code', read_only=True)
     book = serializers.SerializerMethodField()
@@ -36,29 +36,15 @@ class CopySerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'barcode', 'acquired_date', 'held_for_user', 'hold_expires_at']
 
-    def get_book_cover_image(self, obj):
-        if obj.book and obj.book.cover_image:
-            try:
-                return obj.book.cover_image.url
-            except Exception:
-                return None
-        return None
-
     def get_book(self, obj):
         if not obj.book:
             return None
-        cover_url = None
-        if obj.book.cover_image:
-            try:
-                cover_url = obj.book.cover_image.url
-            except Exception:
-                cover_url = None
         return {
             'id': obj.book.id,
             'title': obj.book.title,
             'isbn': obj.book.isbn or '',
             'publisher': obj.book.publisher or '',
-            'cover_image': cover_url,
+            'cover_image': obj.book.cover_image,
             'category': {
                 'id': obj.book.category.id if obj.book.category else None,
                 'code': obj.book.category.code if obj.book.category else '',

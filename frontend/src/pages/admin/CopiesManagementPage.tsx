@@ -616,19 +616,24 @@ export const CopiesManagementPage: React.FC = () => {
                       <TableCell className="max-w-md">
                         <div className="flex items-start gap-3">
                           {/* Book Cover Thumbnail */}
-                          <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                          <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs relative">
                             {coverImage ? (
                               <img
                                 src={coverImage}
                                 alt={bookTitle}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.style.display = 'none';
+                                  const fallback = target.parentElement?.querySelector('.book-fallback-icon');
+                                  if (fallback) fallback.classList.remove('hidden');
                                 }}
                               />
-                            ) : (
+                            ) : null}
+                            <div className={cn("book-fallback-icon flex items-center justify-center", coverImage ? "hidden" : "")}>
                               <BookOpen className="w-4 h-4 text-slate-300" />
-                            )}
+                            </div>
                           </div>
 
                           {/* Title & Info */}
