@@ -6,6 +6,112 @@
 
 ---
 
+## 🚀 HƯỚNG DẪN DÀNH CHO BẠN BÈ / TEAMMATES (Chạy dự án trong 3 phút)
+
+> **💡 Dữ liệu gốc:** Toàn bộ dữ liệu thực tế (Đầu sách, Bản sao mã vạch Code128, Tài khoản bạn đọc, Lịch sử mượn trả, Tiền phạt) đã được đóng gói sẵn trong tệp `backend/fixtures/backup_data.json`. Chỉ cần làm theo 3 bước dưới đây là máy bạn sẽ có **100% dữ liệu giống hệt**.
+
+### 📋 Bước 1: Clone mã nguồn về máy
+```bash
+git clone https://github.com/HoaiVu2005/UTH-Library.git
+cd UTH-Library
+```
+
+---
+
+### 🐍 Bước 2: Khởi chạy Backend (Django REST Framework) & Nạp 100% Dữ liệu
+
+1. **Chuẩn bị Database PostgreSQL:**
+   - Mở **pgAdmin** hoặc terminal PostgreSQL, tạo một cơ sở dữ liệu tên là `uth_library`:
+     ```sql
+     CREATE DATABASE uth_library;
+     ```
+   - Copy file mẫu cấu hình:
+     ```bash
+     cp .env.example .env
+     ```
+   - Mở file `.env` và kiểm tra dòng `DATABASE_URL`:
+     ```env
+     # Mẫu chuẩn: postgres://<username>:<password>@localhost:<port>/uth_library
+     DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5432/uth_library
+     ```
+     *(Lưu ý: Nếu PostgreSQL trên máy bạn dùng cổng `5432` hoặc `5433`, hãy chỉnh số cổng và mật khẩu postgres cho đúng).*
+
+2. **Cài đặt thư viện & Nạp dữ liệu:**
+   ```bash
+   cd backend
+   python -m venv .venv
+
+   # Kích hoạt môi trường ảo:
+   # Trên Windows (cmd hoặc PowerShell):
+   .venv\Scripts\activate
+   # Trên macOS / Linux:
+   source .venv/bin/activate
+
+   # Cài đặt các gói phụ thuộc:
+   pip install -r requirements/dev.txt
+
+   # Khởi tạo các bảng cơ sở dữ liệu:
+   python manage.py migrate
+
+   # 👉 LỆNH QUAN TRỌNG: Nạp 100% dữ liệu gốc (Sách, Users, Phiếu mượn, Tiền phạt):
+   python manage.py loaddata fixtures/backup_data.json
+
+   # Khởi chạy server Backend:
+   python manage.py runserver 8000
+   ```
+   ✅ Backend hoạt động tại: `http://localhost:8000`  
+   ✅ Swagger API Docs xem tại: `http://localhost:8000/api/docs/`
+
+---
+
+### ⚛️ Bước 3: Khởi chạy Frontend (React + Vite + Tailwind CSS)
+
+Mở một cửa sổ Terminal **mới**:
+```bash
+cd UTH-Library/frontend
+
+# Cài đặt dependencies (dùng pnpm hoặc npm):
+pnpm install
+# (Nếu máy bạn chưa có pnpm, chạy: npm install)
+
+# Chạy server phát triển Frontend:
+pnpm dev
+# (hoặc: npm run dev)
+```
+✅ Mở trình duyệt và truy cập: **`http://localhost:5173`**
+
+---
+
+### 🔑 Danh sách Tài khoản Demo Đăng nhập Thử nghiệm
+
+Tất cả tài khoản đều đã có sẵn trong cơ sở dữ liệu sau khi chạy lệnh `loaddata`:
+
+| Vai trò | Tên đăng nhập (Username) | Mật khẩu | Mã số thẻ | Mô tả nghiệp vụ |
+|---|---|---|---|---|
+| **Admin / Thủ thư** | `admin` | `AdminPassword123` | `ADMIN_ADMIN01` | Toàn quyền: Quầy lưu thông (Circulation Desk), Quản lý sách & barcode, Quản lý tài khoản, Duyệt đề xuất, Báo cáo |
+| **Sinh viên (Bình thường)** | `sv001` | `Password123` | `21110001` | Mượn tối đa 5 cuốn / 14 ngày, tra cứu sách OPAC, gia hạn online, xem thông báo |
+| **Giảng viên** | `gv01` | `Password123` | `GV0001` | Hạn mức ưu tiên: 10 cuốn / 30 ngày |
+| **Sinh viên (Hết hạn thẻ)** | `sv018` | `Password123` | `21110018` | Kiểm thử nghiệp vụ chặn mượn sách/đặt trước khi thẻ hết hạn (BR01) |
+| **Sinh viên (Thẻ bị khóa)** | `sv019` | `Password123` | `21110019` | Kiểm thử nghiệp vụ chặn mượn sách do quá hạn/vi phạm (BR01, BR20) |
+| **Sinh viên (Phạt No-show)** | `sv020` | `Password123` | `21110020` | Kiểm thử nghiệp vụ khóa quyền đặt trước do 3 lần không lấy sách (BR19) |
+
+---
+
+### 🐳 Lựa chọn thay thế: Chạy bằng Docker Compose (1 lệnh duy nhất)
+
+Nếu máy bạn đã cài sẵn **Docker Desktop**:
+```bash
+# 1. Khởi chạy toàn bộ hệ thống bằng Docker:
+docker compose up -d --build
+
+# 2. Khởi tạo database & nạp dữ liệu gốc:
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py loaddata fixtures/backup_data.json
+```
+Truy cập: `http://localhost` (Frontend được phục vụ qua Nginx ở cổng 80, tự động kết nối Backend).
+
+---
+
 ## 1. Giới thiệu tổng quan
 
 Hệ thống Quản lý Thư viện UTH là giải pháp chuyển đổi số toàn diện phục vụ công tác quản lý tài liệu, phục vụ bạn đọc (sinh viên, giảng viên) và nghiệp vụ lưu thông của thủ thư Trường Đại học Giao thông vận tải TP.HCM.
