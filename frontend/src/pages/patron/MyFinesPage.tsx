@@ -250,23 +250,27 @@ export const MyFinesPage: React.FC = () => {
 
       {/* Expandable Bank Transfer Box */}
       {showQRGuide && (
-        <div className="bg-gradient-to-r from-teal-50/80 via-white to-slate-50 border border-teal-200 rounded-2xl p-5 shadow-xs animate-in fade-in zoom-in-95 duration-150 text-xs">
-          <h4 className="font-bold text-brand mb-2 flex items-center gap-1.5">
-            <CreditCard className="w-4 h-4 text-brand" />
-            <span>Tài khoản tiếp nhận nộp phạt Thư viện UTH:</span>
+        <div className="bg-gradient-to-r from-blue-50/80 via-white to-slate-50 border border-blue-200 rounded-2xl p-5 shadow-xs animate-in fade-in zoom-in-95 duration-150 text-xs">
+          <h4 className="font-bold text-blue-900 mb-2 flex items-center gap-1.5">
+            <CreditCard className="w-4 h-4 text-blue-700" />
+            <span>Tài khoản tiếp nhận nộp phạt Thư viện UTH (Sacombank):</span>
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-gray-700">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-gray-700">
             <div className="p-3 bg-white border border-gray-200/80 rounded-xl shadow-2xs">
               <span className="text-[11px] text-gray-500 block">Ngân hàng thụ hưởng:</span>
-              <strong className="text-xs">Agribank / Vietcombank - CN TP.HCM</strong>
+              <strong className="text-xs text-slate-800">Sacombank (STB)</strong>
             </div>
             <div className="p-3 bg-white border border-gray-200/80 rounded-xl shadow-2xs">
               <span className="text-[11px] text-gray-500 block">Số tài khoản:</span>
-              <strong className="text-xs font-mono text-brand">1023 8888 9999</strong>
+              <strong className="text-xs font-mono text-blue-800">040117536833</strong>
+            </div>
+            <div className="p-3 bg-white border border-gray-200/80 rounded-xl shadow-2xs">
+              <span className="text-[11px] text-gray-500 block">Chủ tài khoản:</span>
+              <strong className="text-xs font-mono text-slate-900">LE HOAI VU</strong>
             </div>
             <div className="p-3 bg-white border border-gray-200/80 rounded-xl shadow-2xs">
               <span className="text-[11px] text-gray-500 block">Cú pháp chuyển khoản:</span>
-              <strong className="text-xs font-mono text-gray-900">UTH [Mã_Số_Thẻ] NOP PHAT</strong>
+              <strong className="text-xs font-mono text-amber-900">UTH [Mã_Thẻ] NOP PHAT</strong>
             </div>
           </div>
         </div>
