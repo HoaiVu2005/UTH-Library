@@ -830,7 +830,15 @@ export const BooksManagementPage: React.FC = () => {
         description="Nhập thông tin ấn phẩm để cập nhật vào cơ sở dữ liệu Thư viện UTH"
         size="2xl"
       >
-        <form onSubmit={handleSaveBook} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <form
+          onSubmit={handleSaveBook}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+              e.preventDefault();
+            }
+          }}
+          className="flex flex-col flex-1 min-h-0 overflow-hidden"
+        >
           <ModalBody className="overflow-y-auto flex-1 min-h-0 p-6 space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* LEFT COLUMN: Cover Image & Summary (4 cols) */}
@@ -845,7 +853,11 @@ export const BooksManagementPage: React.FC = () => {
                     {coverPreview && (
                       <button
                         type="button"
-                        onClick={handleRemoveCover}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveCover();
+                        }}
                         className="text-[11px] text-danger hover:underline flex items-center gap-1 font-medium cursor-pointer"
                       >
                         <X className="w-3 h-3" />
@@ -921,10 +933,15 @@ export const BooksManagementPage: React.FC = () => {
                     <label className="text-[13px] font-medium text-textPrimary">Mã ISBN</label>
                     <button
                       type="button"
-                      onClick={() => setIsCameraScannerOpen(true)}
-                      className="text-xs text-brand hover:underline font-medium cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsCameraScannerOpen(true);
+                      }}
+                      className="text-xs text-brand hover:text-brand-dark hover:underline font-medium cursor-pointer inline-flex items-center gap-1"
                     >
-                      Quét mã vạch
+                      <Barcode className="w-3.5 h-3.5 text-brand" />
+                      <span>Quét mã vạch</span>
                     </button>
                   </div>
                   <div className="flex gap-2">
@@ -935,23 +952,29 @@ export const BooksManagementPage: React.FC = () => {
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
+                          e.stopPropagation();
                           handleLookupIsbn();
                         }
                       }}
                       placeholder="Nhập mã ISBN"
                       className="flex-1 px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleLookupIsbn()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleLookupIsbn();
+                      }}
                       disabled={isLookingUpIsbn || !formIsbn.trim()}
-                      isLoading={isLookingUpIsbn}
-                      className="shrink-0 text-xs px-3.5 h-auto py-2 font-medium border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg"
+                      className="shrink-0 text-xs px-3.5 py-2 font-medium border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer flex items-center justify-center min-w-[95px]"
                     >
-                      Tự động điền
-                    </Button>
+                      {isLookingUpIsbn ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />
+                      ) : (
+                        <span>Tự động điền</span>
+                      )}
+                    </button>
                   </div>
 
                   {isbnLookupSuccessInfo && (
@@ -961,7 +984,11 @@ export const BooksManagementPage: React.FC = () => {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setIsbnLookupSuccessInfo(null)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsbnLookupSuccessInfo(null);
+                        }}
                         className="text-emerald-700 hover:text-emerald-900 ml-2 text-sm font-semibold cursor-pointer"
                       >
                         &times;
