@@ -562,10 +562,10 @@ export const AdminReservationsPage: React.FC = () => {
                                 setOpenMenuId(openMenuId === r.id ? null : r.id);
                               }}
                               className={cn(
-                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 border',
+                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150',
                                 openMenuId === r.id
-                                  ? 'bg-teal-50 text-brand border-teal-300 shadow-2xs'
-                                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100/80 border-transparent hover:border-gray-200'
+                                  ? 'bg-teal-100/80 text-teal-800 ring-2 ring-teal-500/25 shadow-2xs'
+                                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100 active:bg-slate-200'
                               )}
                               title="Thao tác"
                               aria-expanded={openMenuId === r.id}
@@ -576,12 +576,20 @@ export const AdminReservationsPage: React.FC = () => {
                             {openMenuId === r.id && (
                               <div
                                 className={cn(
-                                  'absolute right-0 z-50 w-44 rounded-xl bg-white p-1.5 shadow-xl border border-gray-200 text-xs animate-in fade-in-50 zoom-in-95 duration-100 text-left space-y-0.5',
+                                  'absolute right-0 z-50 min-w-[200px] rounded-xl bg-white p-1.5 shadow-xl border border-slate-200/90 text-xs animate-in fade-in-50 zoom-in-95 duration-100 text-left space-y-1',
                                   index >= reservations.length - 2 && reservations.length > 2
-                                    ? 'bottom-full mb-1.5'
-                                    : 'top-full mt-1.5'
+                                    ? 'bottom-full mb-2'
+                                    : 'top-full mt-2'
                                 )}
                               >
+                                <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider select-none border-b border-slate-100 flex items-center justify-between">
+                                  <span>Thao tác #{r.id}</span>
+                                  <span className={cn(
+                                    'w-1.5 h-1.5 rounded-full',
+                                    r.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500'
+                                  )} />
+                                </div>
+
                                 {r.status === 'ready' && (
                                   <>
                                     <button
@@ -590,11 +598,15 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCheckoutTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-teal-700 hover:bg-teal-50 font-medium transition-colors"
+                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-teal-800 hover:bg-teal-50/80 font-medium transition-all group"
                                     >
-                                      <BookOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                                      <span>Phát sách cho bạn đọc</span>
+                                      <div className="w-6 h-6 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-all shadow-2xs">
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                      </div>
+                                      <span className="whitespace-nowrap text-xs font-semibold">Phát sách cho bạn đọc</span>
                                     </button>
+
+                                    <div className="h-px bg-slate-100 my-0.5" />
 
                                     <button
                                       type="button"
@@ -602,10 +614,12 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCancelTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-red-600 hover:bg-red-50 font-medium transition-colors"
+                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-rose-700 hover:bg-rose-50/80 font-medium transition-all group"
                                     >
-                                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                                      <span>Hủy giữ chỗ</span>
+                                      <div className="w-6 h-6 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
+                                        <XCircle className="w-3.5 h-3.5" />
+                                      </div>
+                                      <span className="whitespace-nowrap text-xs font-semibold">Hủy giữ chỗ</span>
                                     </button>
                                   </>
                                 )}
@@ -619,11 +633,15 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         handleAdvance(r.id);
                                       }}
-                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-slate-700 hover:bg-teal-50 hover:text-teal-800 font-medium transition-colors disabled:opacity-50"
+                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-teal-800 hover:bg-teal-50/80 font-medium transition-all disabled:opacity-50 group"
                                     >
-                                      <ArrowUpCircle className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                                      <span>Ưu tiên (#1)</span>
+                                      <div className="w-6 h-6 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-600 group-hover:text-white transition-all shadow-2xs">
+                                        <ArrowUpCircle className="w-3.5 h-3.5" />
+                                      </div>
+                                      <span className="whitespace-nowrap text-xs font-semibold">Ưu tiên lên vị trí #1</span>
                                     </button>
+
+                                    <div className="h-px bg-slate-100 my-0.5" />
 
                                     <button
                                       type="button"
@@ -631,10 +649,12 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCancelTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-red-600 hover:bg-red-50 font-medium transition-colors"
+                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-slate-700 hover:text-rose-700 hover:bg-rose-50/80 font-medium transition-all group"
                                     >
-                                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                                      <span>Hủy đặt trước</span>
+                                      <div className="w-6 h-6 rounded-md bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 group-hover:bg-rose-600 group-hover:text-white transition-all shadow-2xs">
+                                        <XCircle className="w-3.5 h-3.5" />
+                                      </div>
+                                      <span className="whitespace-nowrap text-xs font-semibold">Hủy đặt trước</span>
                                     </button>
                                   </>
                                 )}
