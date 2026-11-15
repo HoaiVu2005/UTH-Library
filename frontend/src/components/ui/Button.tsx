@@ -43,7 +43,7 @@ export const Button: React.FC<ButtonProps> = ({
     danger:
       'bg-danger hover:bg-danger-hover active:bg-danger-dark text-white shadow-xs font-semibold',
     outline:
-      'border border-border bg-white hover:bg-slate-50 text-textPrimary shadow-2xs font-medium',
+      'border border-brand bg-white hover:bg-teal-50/70 text-brand shadow-2xs font-semibold',
   }[variant];
 
   return (

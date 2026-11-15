@@ -282,23 +282,21 @@ export const LoansManagementPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={() => fetchLoans()}
             disabled={loading}
-            className="text-xs h-9 px-3.5 border border-gray-200 text-gray-600 hover:text-gray-900 rounded-xl"
+            className="text-xs h-9 px-3.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl bg-white transition-colors inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 font-medium cursor-pointer"
             title="Tải lại dữ liệu"
           >
-            <RotateCw className={cn('w-3.5 h-3.5 mr-1.5 text-gray-500', loading && 'animate-spin')} />
-            Làm mới
-          </Button>
+            <RotateCw className={cn('w-3.5 h-3.5 text-gray-500', loading && 'animate-spin')} />
+            <span>Làm mới</span>
+          </button>
           <Link
             to="/admin/circulation"
-            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl bg-brand text-white hover:bg-brand-dark transition-all shadow-xs shrink-0"
+            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0"
           >
-            <ScanLine className="w-3.5 h-3.5 mr-1.5" />
-            Mở Quầy lưu thông
+            <ScanLine className="w-3.5 h-3.5 mr-1.5 text-brand" />
+            <span>Mở Quầy lưu thông</span>
           </Link>
         </div>
       </div>

@@ -120,9 +120,9 @@ export const AdminDashboardPage: React.FC = () => {
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <Link
             to="/admin/circulation"
-            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl bg-brand text-white hover:bg-brand-dark transition-all shadow-xs shrink-0"
+            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0"
           >
-            <ScanLine className="w-3.5 h-3.5 mr-1.5" />
+            <ScanLine className="w-3.5 h-3.5 mr-1.5 text-brand" />
             <span>Mở Quầy lưu thông</span>
           </Link>
         </div>

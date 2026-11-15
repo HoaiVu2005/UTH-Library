@@ -500,46 +500,40 @@ export const BooksManagementPage: React.FC = () => {
 
         {/* Action Buttons: Clean & Outlined */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
+          <button
             onClick={handleOpenAddModal}
-            className="text-xs font-semibold h-9 px-3.5 rounded-xl bg-brand text-white hover:bg-brand-dark transition-all shadow-xs shrink-0"
+            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            <Plus className="w-4 h-4 mr-1.5 text-brand" />
             <span>Thêm đầu sách</span>
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={() => setIsImportModalOpen(true)}
-            className="text-xs h-9 px-3 border border-gray-200 text-gray-700 hover:text-gray-900 rounded-xl"
+            className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
             title="Nhập danh mục từ Excel/CSV"
           >
             <Upload className="w-3.5 h-3.5 mr-1.5 text-brand" />
             <span>Nhập CSV</span>
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={handleExportCsv}
-            className="text-xs h-9 px-3 border border-gray-200 text-gray-700 hover:text-gray-900 rounded-xl"
+            className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
             title="Xuất danh mục sách ra file CSV"
           >
             <Download className="w-3.5 h-3.5 mr-1.5 text-gray-500" />
             <span>Xuất CSV</span>
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={handleDownloadTemplate}
-            className="text-xs h-9 px-3 border border-gray-200 text-gray-700 hover:text-gray-900 rounded-xl"
+            className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
             title="Tải file mẫu Excel/CSV chuẩn UTH"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
             <span>Mẫu CSV</span>
-          </Button>
+          </button>
         </div>
       </div>
 

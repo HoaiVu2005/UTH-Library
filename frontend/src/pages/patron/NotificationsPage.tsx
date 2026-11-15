@@ -374,15 +374,14 @@ export const NotificationsPage: React.FC = () => {
             </Button>
 
             {totalUnread > 0 && (
-              <Button
-                variant="primary"
-                size="sm"
+              <button
+                type="button"
                 onClick={handleBulkMarkRead}
-                className="text-xs font-semibold h-9 px-3.5 rounded-xl bg-brand text-white hover:bg-brand-dark transition-all shadow-xs shrink-0"
+                className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
               >
-                <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
-                Đọc tất cả ({totalUnread})
-              </Button>
+                <CheckCheck className="w-3.5 h-3.5 mr-1.5 text-brand" />
+                <span>Đọc tất cả ({totalUnread})</span>
+              </button>
             )}
           </div>
         </div>

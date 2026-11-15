@@ -178,17 +178,15 @@ export const SuggestionsReviewPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={() => fetchSuggestions(true)}
             disabled={isLoading}
-            className="text-xs h-9 px-3.5 border border-gray-200 text-gray-600 hover:text-gray-900 rounded-xl"
+            className="text-xs h-9 px-3.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl bg-white transition-colors inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 font-medium cursor-pointer"
             title="Tải lại dữ liệu"
           >
-            <RotateCcw className={cn('w-3.5 h-3.5 mr-1.5 text-gray-500', isLoading && 'animate-spin')} />
-            Làm mới
-          </Button>
+            <RotateCcw className={cn('w-3.5 h-3.5 text-gray-500', isLoading && 'animate-spin')} />
+            <span>Làm mới</span>
+          </button>
         </div>
       </div>
 
