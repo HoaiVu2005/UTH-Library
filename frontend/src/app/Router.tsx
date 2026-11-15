@@ -1,31 +1,37 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { HomePage } from '@/pages/HomePage';
-import { LoginPage } from '@/pages/LoginPage';
-import { BookSearchPage } from '@/pages/BookSearchPage';
-import { BookDetailPage } from '@/pages/BookDetailPage';
 import { UnauthorizedState } from '@/components/ui/UnauthorizedState';
-import { CirculationDeskPage } from '@/pages/admin/CirculationDeskPage';
-import { LoansManagementPage } from '@/pages/admin/LoansManagementPage';
-import { FinesManagementPage } from '@/pages/admin/FinesManagementPage';
-import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
-import { BooksManagementPage } from '@/pages/admin/BooksManagementPage';
-import { CopiesManagementPage } from '@/pages/admin/CopiesManagementPage';
-import { UsersManagementPage } from '@/pages/admin/UsersManagementPage';
-import { SuggestionsReviewPage } from '@/pages/admin/SuggestionsReviewPage';
-import { AdminReservationsPage } from '@/pages/admin/AdminReservationsPage';
-import { ReportsPage } from '@/pages/admin/ReportsPage';
-import { SystemSettingsPage } from '@/pages/admin/SystemSettingsPage';
-import { AuditLogsPage } from '@/pages/admin/AuditLogsPage';
-import { DashboardPage } from '@/pages/patron/DashboardPage';
-import { MyLoansPage } from '@/pages/patron/MyLoansPage';
-import { MyReservationsPage } from '@/pages/patron/MyReservationsPage';
-import { MyFinesPage } from '@/pages/patron/MyFinesPage';
-import { MySuggestionsPage } from '@/pages/patron/MySuggestionsPage';
-import { NotificationsPage } from '@/pages/patron/NotificationsPage';
-import { ProfilePage } from '@/pages/patron/ProfilePage';
+
+// Public Pages (Lazy Loaded)
+const HomePage = lazy(() => import('@/pages/HomePage').then((m) => ({ default: m.HomePage })));
+const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const BookSearchPage = lazy(() => import('@/pages/BookSearchPage').then((m) => ({ default: m.BookSearchPage })));
+const BookDetailPage = lazy(() => import('@/pages/BookDetailPage').then((m) => ({ default: m.BookDetailPage })));
+
+// Patron Pages (Lazy Loaded)
+const DashboardPage = lazy(() => import('@/pages/patron/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const MyLoansPage = lazy(() => import('@/pages/patron/MyLoansPage').then((m) => ({ default: m.MyLoansPage })));
+const MyReservationsPage = lazy(() => import('@/pages/patron/MyReservationsPage').then((m) => ({ default: m.MyReservationsPage })));
+const MyFinesPage = lazy(() => import('@/pages/patron/MyFinesPage').then((m) => ({ default: m.MyFinesPage })));
+const MySuggestionsPage = lazy(() => import('@/pages/patron/MySuggestionsPage').then((m) => ({ default: m.MySuggestionsPage })));
+const NotificationsPage = lazy(() => import('@/pages/patron/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const ProfilePage = lazy(() => import('@/pages/patron/ProfilePage').then((m) => ({ default: m.ProfilePage })));
+
+// Admin Pages (Lazy Loaded)
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
+const CirculationDeskPage = lazy(() => import('@/pages/admin/CirculationDeskPage').then((m) => ({ default: m.CirculationDeskPage })));
+const BooksManagementPage = lazy(() => import('@/pages/admin/BooksManagementPage').then((m) => ({ default: m.BooksManagementPage })));
+const CopiesManagementPage = lazy(() => import('@/pages/admin/CopiesManagementPage').then((m) => ({ default: m.CopiesManagementPage })));
+const UsersManagementPage = lazy(() => import('@/pages/admin/UsersManagementPage').then((m) => ({ default: m.UsersManagementPage })));
+const LoansManagementPage = lazy(() => import('@/pages/admin/LoansManagementPage').then((m) => ({ default: m.LoansManagementPage })));
+const AdminReservationsPage = lazy(() => import('@/pages/admin/AdminReservationsPage').then((m) => ({ default: m.AdminReservationsPage })));
+const FinesManagementPage = lazy(() => import('@/pages/admin/FinesManagementPage').then((m) => ({ default: m.FinesManagementPage })));
+const SuggestionsReviewPage = lazy(() => import('@/pages/admin/SuggestionsReviewPage').then((m) => ({ default: m.SuggestionsReviewPage })));
+const ReportsPage = lazy(() => import('@/pages/admin/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const SystemSettingsPage = lazy(() => import('@/pages/admin/SystemSettingsPage').then((m) => ({ default: m.SystemSettingsPage })));
+const AuditLogsPage = lazy(() => import('@/pages/admin/AuditLogsPage').then((m) => ({ default: m.AuditLogsPage })));
 
 // Guard for authenticated users
 export const ProtectedRoute: React.FC<{ allowedRoles?: string[] }> = ({ allowedRoles }) => {

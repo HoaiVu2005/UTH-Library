@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, AlertCircle, Package } from 'lucide-react';
+import { BarChart3, TrendingUp, AlertCircle, Package, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs } from '@/components/ui/Tabs';
 import { Card } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty } from '@/components/ui/Table';
-import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
+import { formatCurrencyVND, formatDateVN, cn, exportToCsv } from '@/lib/utils';
 
 export const ReportsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'top_borrowed' | 'overdue' | 'inventory'>('top_borrowed');
@@ -37,6 +37,47 @@ export const ReportsPage: React.FC = () => {
   useEffect(() => {
     fetchReportData();
   }, [activeTab]);
+
+  const handleExportCsv = () => {
+    const today = new Date().toISOString().substring(0, 10);
+    if (activeTab === 'top_borrowed') {
+      const headers = ['Thứ hạng', 'Tên đầu sách', 'Chuyên ngành', 'ISBN', 'Tổng lượt mượn'];
+      const rows = topBorrowed.map((b, idx) => [
+        idx + 1,
+        b.title || '',
+        b.category || '',
+        b.isbn || '',
+        b.total_borrows || 0,
+      ]);
+      exportToCsv(`UTH_BaoCao_TopMuon_${today}`, headers, rows);
+    } else if (activeTab === 'overdue') {
+      const headers = ['Mã phiếu', 'Tên sách', 'Mã vạch', 'Tên bạn đọc', 'Mã thẻ bạn đọc', 'Hạn trả', 'Số ngày trễ', 'Tiền phạt ước tính (VND)'];
+      const rows = overdueList.map((l) => [
+        `#${l.loan_id}`,
+        l.book_title || '',
+        l.barcode || '',
+        l.user_name || '',
+        l.card_code || '',
+        formatDateVN(l.due_at),
+        l.days_late || 0,
+        l.estimated_fine || 0,
+      ]);
+      exportToCsv(`UTH_BaoCao_SachQuaHan_${today}`, headers, rows);
+    } else if (activeTab === 'inventory') {
+      const headers = ['Mã khoa', 'Chuyên ngành', 'Tổng bản sao', 'Sẵn sàng', 'Đang mượn', 'Đang giữ chỗ', 'Hỏng/Mất', 'Đã thanh lý'];
+      const rows = inventoryList.map((c) => [
+        c.category_code || '',
+        c.category_name || '',
+        c.total_copies || 0,
+        c.available || 0,
+        c.borrowed || 0,
+        c.reserved || 0,
+        (c.damaged || 0) + (c.lost || 0),
+        c.withdrawn || 0,
+      ]);
+      exportToCsv(`UTH_KiemKe_BanSao_${today}`, headers, rows);
+    }
+  };
 
   return (
     <div className="space-y-5 pb-12 animate-page-enter">
@@ -97,6 +138,16 @@ export const ReportsPage: React.FC = () => {
           >
             <Package className="w-3.5 h-3.5" />
             <span>Kiểm kê kho</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition-colors flex items-center gap-1.5 shadow-2xs ml-1"
+            title="Xuất file CSV mở trên Excel"
+          >
+            <Download className="w-3.5 h-3.5 text-brand" />
+            <span>Xuất CSV</span>
           </button>
         </div>
       </div>
