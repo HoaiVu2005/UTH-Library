@@ -25,6 +25,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Barcode } from '@/components/ui/Barcode';
 import { toast } from '@/components/ui/Toast';
@@ -81,6 +82,11 @@ export const AdminReservationsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [advancingId, setAdvancingId] = useState<number | null>(null);
 
+  // Checkout & Cancel reservation states
+  const [checkoutTarget, setCheckoutTarget] = useState<ReservationItem | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ReservationItem | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
+
   // Barcode detail modal
   const [barcodeModalItem, setBarcodeModalItem] = useState<ReservationItem | null>(null);
 
@@ -136,6 +142,55 @@ export const AdminReservationsPage: React.FC = () => {
       toast.error(err.response?.data?.detail || 'Không thể điều chỉnh vị trí hàng chờ.');
     } finally {
       setAdvancingId(null);
+    }
+  };
+
+  const handleConfirmCheckout = async () => {
+    if (!checkoutTarget) return;
+    const barcode = checkoutTarget.copy?.barcode || checkoutTarget.copy_barcode;
+    if (!barcode) {
+      toast.error('Yêu cầu giữ chỗ này chưa có mã vạch bản sao để xuất mượn.');
+      return;
+    }
+
+    try {
+      setIsActionLoading(true);
+      await api.post('/loans/from-reservation', {
+        reservation_id: checkoutTarget.id,
+        barcode: barcode.trim(),
+      });
+      const patronName = checkoutTarget.user?.full_name || checkoutTarget.patron_name || 'bạn đọc';
+      const bookTitle = checkoutTarget.book?.title || checkoutTarget.book_title || 'sách';
+      toast.success(`Đã xuất mượn thành công sách "${bookTitle}" cho ${patronName}!`);
+      setCheckoutTarget(null);
+      fetchReservations(true);
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('books');
+      broadcastRealtimeSync('notifications');
+      broadcastRealtimeSync('dashboard');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Không thể xuất mượn từ yêu cầu giữ chỗ này.');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+    try {
+      setIsActionLoading(true);
+      await api.delete(`/reservations/${cancelTarget.id}`);
+      toast.success('Đã hủy yêu cầu giữ chỗ. Bản sao đã được chuyển cho bạn đọc tiếp theo (nếu có)!');
+      setCancelTarget(null);
+      fetchReservations(true);
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('notifications');
+      broadcastRealtimeSync('dashboard');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu đặt trước.');
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -476,20 +531,51 @@ export const AdminReservationsPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Actions: Outline style button */}
+                      {/* Actions: Action buttons for ready and pending */}
                       <TableCell className="text-right">
-                        {r.status === 'pending' ? (
-                          <button
-                            onClick={() => handleAdvance(r.id)}
-                            disabled={advancingId === r.id}
-                            title="Đôn lên vị trí đầu hàng chờ"
-                            className="h-7 px-2.5 text-xs rounded-lg border border-teal-500 text-teal-600 hover:bg-teal-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs disabled:opacity-50"
-                          >
-                            <ArrowUpCircle className="w-3.5 h-3.5 text-teal-600" />
-                            <span>Ưu tiên (#1)</span>
-                          </button>
+                        {r.status === 'ready' ? (
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setCheckoutTarget(r)}
+                              title="Xuất mượn / Phát sách ngay cho bạn đọc"
+                              className="h-7 px-2.5 text-xs rounded-lg border border-teal-500 text-teal-700 bg-teal-50 hover:bg-teal-100 font-semibold transition-colors inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <BookOpen className="w-3.5 h-3.5 text-teal-700" />
+                              <span>Phát sách</span>
+                            </button>
+                            <button
+                              onClick={() => setCancelTarget(r)}
+                              title="Hủy giữ chỗ để chuyển sang bạn đọc tiếp theo trong hàng chờ"
+                              className="h-7 px-2 text-xs rounded-lg border border-red-200 text-red-600 bg-white hover:bg-red-50 font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <XCircle className="w-3.5 h-3.5 text-red-500" />
+                              <span>Hủy giữ</span>
+                            </button>
+                          </div>
+                        ) : r.status === 'pending' ? (
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleAdvance(r.id)}
+                              disabled={advancingId === r.id}
+                              title="Đôn lên vị trí đầu hàng chờ"
+                              className="h-7 px-2.5 text-xs rounded-lg border border-teal-500 text-teal-600 hover:bg-teal-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs disabled:opacity-50"
+                            >
+                              <ArrowUpCircle className="w-3.5 h-3.5 text-teal-600" />
+                              <span>Ưu tiên (#1)</span>
+                            </button>
+                            <button
+                              onClick={() => setCancelTarget(r)}
+                              title="Hủy yêu cầu khỏi hàng chờ"
+                              className="h-7 px-2 text-xs rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-red-50 bg-white font-medium transition-colors inline-flex items-center gap-1 shadow-2xs"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Hủy</span>
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-gray-300 text-xs select-none px-2">—</span>
+                          <span className="text-gray-400 text-xs select-none px-2 font-medium">
+                            {r.status === 'fulfilled' ? 'Đã nhận' : r.status === 'cancelled' ? 'Đã hủy' : 'Hết hạn'}
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -582,6 +668,40 @@ export const AdminReservationsPage: React.FC = () => {
           </>
         )}
       </Modal>
+
+      {/* Confirm Checkout Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(checkoutTarget)}
+        title="Xác nhận phát sách giữ chỗ"
+        message={
+          checkoutTarget
+            ? `Bạn có muốn hoàn tất thủ tục xuất mượn sách "${checkoutTarget.book?.title || checkoutTarget.book_title}" (Mã vạch: ${checkoutTarget.copy?.barcode || checkoutTarget.copy_barcode}) cho bạn đọc ${checkoutTarget.user?.full_name || checkoutTarget.patron_name} (${checkoutTarget.user?.card_code || checkoutTarget.patron_card_code})?`
+            : ''
+        }
+        confirmText="Xác nhận phát sách"
+        cancelText="Đóng"
+        variant="primary"
+        isLoading={isActionLoading}
+        onConfirm={handleConfirmCheckout}
+        onClose={() => setCheckoutTarget(null)}
+      />
+
+      {/* Confirm Cancel Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(cancelTarget)}
+        title="Xác nhận hủy yêu cầu giữ chỗ / đặt trước"
+        message={
+          cancelTarget
+            ? `Hủy yêu cầu #${cancelTarget.id} của bạn đọc ${cancelTarget.user?.full_name || cancelTarget.patron_name}? Sách sẽ tự động được chuyển cho bạn đọc tiếp theo trong hàng chờ (nếu có) hoặc trả về kệ sẵn sàng.`
+            : ''
+        }
+        confirmText="Xác nhận hủy"
+        cancelText="Không"
+        variant="danger"
+        isLoading={isActionLoading}
+        onConfirm={handleConfirmCancel}
+        onClose={() => setCancelTarget(null)}
+      />
     </div>
   );
 };
