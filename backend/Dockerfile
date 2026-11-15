@@ -1,0 +1,45 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    TZ=Asia/Ho_Chi_Minh
+
+# Install system dependencies including PostgreSQL client tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    postgresql-client \
+    curl \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install supercronic for cron tasks
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.29/supercronic-linux-amd64 \
+    SUPERCRONIC=supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=cd48d45c4b10f300308d21123322169ac5608171
+RUN curl -fsSLO "$SUPERCRONIC_URL" \
+    && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
+    && chmod +x "$SUPERCRONIC" \
+    && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
+    && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
+
+WORKDIR /app
+
+# Install Python requirements
+COPY requirements/ /app/requirements/
+RUN pip install --no-cache-dir -r requirements/dev.txt
+
+# Create non-root user
+RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/media /app/static /backups && \
+    chown -R appuser:appuser /app /backups
+
+COPY --chown=appuser:appuser . /app
+COPY --chown=appuser:appuser deploy/ /deploy/
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+
