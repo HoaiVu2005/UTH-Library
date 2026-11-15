@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -17,6 +17,9 @@ import {
   ArrowUpRight,
   ShieldAlert,
   Percent,
+  FileSpreadsheet,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -34,6 +37,7 @@ import {
   Legend,
 } from 'recharts';
 import { api } from '@/lib/api';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
 import { StatCard } from '@/components/ui/StatCard';
@@ -45,7 +49,14 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/Table';
-import { formatCurrencyVND, formatDateVN, cn, exportToCsv } from '@/lib/utils';
+import {
+  formatCurrencyVND,
+  formatDateVN,
+  formatDateTimeVN,
+  formatNumberVN,
+  cn,
+  exportStructuredCsvReport,
+} from '@/lib/utils';
 import { useRealtimeSync } from '@/lib/realtime';
 
 interface SummaryData {
@@ -109,6 +120,7 @@ interface InventoryItem {
 }
 
 export const ReportsPage: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'top_borrowed' | 'overdue' | 'inventory'>('overview');
   const [trendDays, setTrendDays] = useState<number>(7);
   const [summary, setSummary] = useState<SummaryData | null>(null);
@@ -118,6 +130,19 @@ export const ReportsPage: React.FC = () => {
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close export dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch all report datasets
   const fetchAllData = useCallback(async (showFullLoading = true) => {
@@ -153,64 +178,321 @@ export const ReportsPage: React.FC = () => {
   // Realtime synchronization: updates live when loans/fines/returns occur
   useRealtimeSync(['loans', 'reservations', 'fines', 'dashboard'], () => fetchAllData(false), 8000);
 
-  // Handle Export CSV
-  const handleExportCsv = () => {
+  // --- COMPREHENSIVE CSV EXPORT SUITE ---
+
+  // 1. Export Master Comprehensive Report (Toàn diện tất cả chỉ số, xu hướng, kho sách, quá hạn)
+  const exportMasterReport = () => {
     const today = new Date().toISOString().substring(0, 10);
-    if (activeTab === 'overview' || activeTab === 'top_borrowed') {
-      const headers = ['Thứ hạng', 'Tên đầu sách', 'Chuyên ngành', 'ISBN', 'Tổng lượt mượn'];
-      const rows = topBorrowed.map((b, idx) => [
-        idx + 1,
-        b.title || '',
-        b.category || '',
-        b.isbn || '',
-        b.total_borrows || 0,
-      ]);
-      exportToCsv(`UTH_BaoCao_TopMuon_${today}`, headers, rows);
-    } else if (activeTab === 'overdue') {
-      const headers = [
-        'Mã phiếu',
-        'Tên sách',
-        'Mã vạch',
-        'Tên bạn đọc',
-        'Mã thẻ bạn đọc',
-        'Hạn trả',
-        'Số ngày trễ',
-        'Tiền phạt ước tính (VND)',
-      ];
-      const rows = overdueList.map((l) => [
-        `#${l.loan_id}`,
-        l.book_title || '',
-        l.barcode || '',
-        l.user_name || '',
-        l.card_code || '',
-        formatDateVN(l.due_at),
-        l.days_late || 0,
-        l.estimated_fine || 0,
-      ]);
-      exportToCsv(`UTH_BaoCao_SachQuaHan_${today}`, headers, rows);
-    } else if (activeTab === 'inventory') {
-      const headers = [
-        'Mã khoa',
-        'Chuyên ngành',
-        'Tổng bản sao',
-        'Sẵn sàng',
-        'Đang mượn',
-        'Đang giữ chỗ',
-        'Hỏng/Mất',
-        'Đã thanh lý',
-      ];
-      const rows = inventoryList.map((c) => [
-        c.category_code || '',
-        c.category_name || '',
-        c.total_copies || 0,
-        c.available || 0,
-        c.borrowed || 0,
-        c.reserved || 0,
-        (c.damaged || 0) + (c.lost || 0),
-        c.withdrawn || 0,
-      ]);
-      exportToCsv(`UTH_KiemKe_BanSao_${today}`, headers, rows);
-    }
+    const authorName = `${user?.full_name || 'Quản trị viên'} (${user?.card_code || 'ADMIN'})`;
+
+    exportStructuredCsvReport({
+      filename: `UTH_BaoCao_TongHop_LuuThong_${today}`,
+      reportTitle: 'BÁO CÁO TỔNG HỢP VẬN HÀNH & LƯU THÔNG THƯ VIỆN SỐ UTH',
+      reportSubtitle: 'Số liệu thống kê toàn diện về kho sách, tình hình mượn trả, độc giả và công nợ phạt',
+      author: authorName,
+      metadata: [
+        { label: 'Phạm vi báo cáo', value: 'Trường Đại học Giao thông vận tải TP.HCM (Cơ sở 1 & 2 & 3)' },
+        { label: 'Chu kỳ phân tích xu hướng', value: `${trendDays} ngày gần nhất` },
+        { label: 'Tổng số đầu sách quản lý', value: `${formatNumberVN(summary?.total_books || 0)} đầu sách` },
+        { label: 'Tổng số bản sao mã vạch', value: `${formatNumberVN(summary?.total_copies || 0)} bản sao` },
+      ],
+      kpis: [
+        { label: '1. Sách đang lưu thông toàn trường', value: `${formatNumberVN(summary?.active_loans || 0)} cuốn` },
+        { label: '2. Sách trễ hạn thu hồi', value: `${formatNumberVN(summary?.overdue_loans || 0)} cuốn` },
+        { label: '3. Bản sao khả dụng trên kệ', value: `${formatNumberVN(summary?.available_copies || 0)} bản (${availableRatio}%)` },
+        { label: '4. Công nợ phạt quá hạn tồn đọng', value: formatCurrencyVND(summary?.total_unpaid_fines || 0) },
+        { label: '5. Tiền phạt đã thu ngân (VietQR & Quầy)', value: formatCurrencyVND(summary?.total_collected_fines || 0) },
+        { label: '6. Tỷ lệ thu hồi tiền phạt', value: `${fineMetrics.recoveryRate}%` },
+        { label: '7. Tỷ lệ mượn theo đối tượng', value: `Sinh viên: ${summary?.student_loans || summary?.active_loans || 0} cuốn | Giảng viên: ${summary?.lecturer_loans || 0} cuốn` },
+      ],
+      sections: [
+        // Phần 1: Xu hướng Mượn & Trả sách
+        {
+          sectionTitle: `Xu hướng Mượn & Trả sách (${trendDays} ngày gần nhất)`,
+          sectionSubtitle: 'Thống kê chi tiết từng ngày và tỷ lệ hoàn trả sách',
+          headers: ['STT', 'Ngày', 'Lượt mượn mới (lượt)', 'Lượt trả sách (lượt)', 'Chênh lệch (Mượn - Trả)', 'Tỷ lệ hoàn trả (%)'],
+          rows: trends.map((t, idx) => [
+            idx + 1,
+            t.date,
+            formatNumberVN(t.borrows),
+            formatNumberVN(t.returns),
+            formatNumberVN(t.borrows - t.returns),
+            t.borrows > 0 ? `${Math.round((t.returns / t.borrows) * 100)}%` : '100%',
+          ]),
+          summaryRow: [
+            'TỔNG CỘNG',
+            `Toàn kỳ ${trendDays} ngày`,
+            `${formatNumberVN(trendAggregates.totalBorrows)} lượt`,
+            `${formatNumberVN(trendAggregates.totalReturns)} lượt`,
+            `${formatNumberVN(trendAggregates.totalBorrows - trendAggregates.totalReturns)} lượt`,
+            `${trendAggregates.returnRate}%`,
+          ],
+        },
+
+        // Phần 2: Cơ cấu Tình trạng Bản sao Kho sách
+        {
+          sectionTitle: 'Cơ cấu Tình trạng Bản sao Kho sách',
+          headers: ['STT', 'Tình trạng bản sao', 'Số lượng bản', 'Tỷ lệ phần trăm (%)', 'Ghi chú quản lý'],
+          rows: copyDistributionData.map((item, idx) => [
+            idx + 1,
+            item.name,
+            `${formatNumberVN(item.value)} bản`,
+            `${Math.round((item.value / (summary?.total_copies || 1)) * 100)}%`,
+            item.name === 'Sẵn sàng mượn' ? 'Đang trên kệ sẵn sàng phục vụ' : item.name === 'Đang lưu thông' ? 'Độc giả đang giữ' : item.name === 'Đang giữ chỗ' ? 'Chờ bạn đọc đến lấy' : 'Đang xử lý biên bản đền bù',
+          ]),
+          summaryRow: ['TỔNG CỘNG', 'Toàn bộ kho sách UTH', `${formatNumberVN(summary?.total_copies || 0)} bản`, '100%', 'Mã vạch Code128'],
+        },
+
+        // Phần 3: Top 20 Sách mượn nhiều nhất
+        {
+          sectionTitle: 'Top 20 Đầu sách có tần suất mượn cao nhất',
+          headers: ['Thứ hạng', 'Mã sách', 'Tên đầu sách', 'Chuyên ngành đào tạo', 'Mã chuẩn ISBN', 'Tổng lượt mượn (lượt)'],
+          rows: topBorrowed.map((b, idx) => [
+            idx + 1,
+            `#${b.book_id}`,
+            b.title,
+            b.category,
+            b.isbn || '—',
+            `${formatNumberVN(b.total_borrows)} lượt`,
+          ]),
+          summaryRow: [
+            'TỔNG LƯỢT MƯỢN TOP 20',
+            '',
+            '',
+            '',
+            '',
+            `${formatNumberVN(topBorrowed.reduce((acc, b) => acc + b.total_borrows, 0))} lượt`,
+          ],
+        },
+
+        // Phần 4: Danh sách Quá hạn cần thu hồi
+        {
+          sectionTitle: `Danh sách Sách quá hạn cần thu hồi (${overdueList.length} phiếu)`,
+          headers: ['STT', 'Mã phiếu', 'Tên sách', 'Mã vạch bản sao', 'Tên bạn đọc', 'Mã thẻ bạn đọc', 'Ngày mượn', 'Hạn trả', 'Số ngày trễ', 'Mức độ cảnh báo', 'Tiền phạt ước tính (VND)'],
+          rows: overdueList.map((l, idx) => [
+            idx + 1,
+            `#${l.loan_id}`,
+            l.book_title,
+            l.barcode,
+            l.user_name,
+            l.card_code,
+            formatDateVN(l.borrowed_at),
+            formatDateVN(l.due_at),
+            `${l.days_late} ngày`,
+            l.days_late > 14 ? 'Nguy cơ mất sách' : l.days_late > 7 ? 'Tạm khóa thẻ' : l.days_late > 3 ? 'Cảnh báo hạn' : 'Trễ nhẹ',
+            formatCurrencyVND(l.estimated_fine || 0),
+          ]),
+          summaryRow: [
+            'TỔNG CỘNG',
+            `${overdueList.length} phiếu trễ`,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            formatCurrencyVND(overdueList.reduce((acc, l) => acc + (l.estimated_fine || 0), 0)),
+          ],
+        },
+
+        // Phần 5: Kiểm kê Hiện trạng Kho theo Chuyên ngành
+        {
+          sectionTitle: 'Kiểm kê Bản sao theo Chuyên ngành đào tạo',
+          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng', 'Đang mượn', 'Đang giữ chỗ', 'Hỏng/Mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
+          rows: inventoryList.map((c, idx) => [
+            idx + 1,
+            c.category_code,
+            c.category_name,
+            formatNumberVN(c.total_copies),
+            formatNumberVN(c.available),
+            formatNumberVN(c.borrowed),
+            formatNumberVN(c.reserved),
+            formatNumberVN(c.damaged + c.lost),
+            formatNumberVN(c.withdrawn),
+            `${Math.round((c.available / (c.total_copies || 1)) * 100)}%`,
+          ]),
+          summaryRow: [
+            'TỔNG TOÀN TRƯỜNG',
+            '',
+            '',
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.total_copies, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.available, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.borrowed, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.reserved, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + (c.damaged + c.lost), 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.withdrawn, 0)),
+            `${availableRatio}%`,
+          ],
+        },
+      ],
+      footerNotes: [
+        'Dữ liệu số tiền phạt tính theo công thức lũy tiến quy chế UTH (5.000 đ/ngày/cuốn).',
+        'Các trường Mã vạch và Mã thẻ sinh viên được định dạng dạng văn bản (Text) bảo toàn số 0 và cấu trúc chuỗi khi mở trên Microsoft Excel.',
+      ],
+    });
+    setIsExportMenuOpen(false);
+  };
+
+  // 2. Export Top Borrowed Books Report
+  const exportTopBorrowedReport = () => {
+    const today = new Date().toISOString().substring(0, 10);
+    const authorName = `${user?.full_name || 'Quản trị viên'} (${user?.card_code || 'ADMIN'})`;
+
+    exportStructuredCsvReport({
+      filename: `UTH_BaoCao_TopMuon_ChiTiet_${today}`,
+      reportTitle: 'BÁO CÁO XẾP HẠNG TOP ĐẦU SÁCH MƯỢN NHIỀU NHẤT',
+      reportSubtitle: 'Thống kê tần suất lưu thông các đầu sách giáo trình & tài liệu tham khảo UTH',
+      author: authorName,
+      metadata: [
+        { label: 'Phạm vi dữ liệu', value: 'Toàn bộ lượt mượn ghi nhận trong hệ thống' },
+        { label: 'Số lượng đầu sách xếp hạng', value: `${topBorrowed.length} đầu sách` },
+        { label: 'Đầu sách dẫn đầu', value: topBorrowed[0]?.title || 'Chưa có' },
+      ],
+      sections: [
+        {
+          sectionTitle: 'Bảng xếp hạng Chi tiết Top Đầu sách',
+          headers: ['Thứ hạng', 'Mã sách', 'Tên đầu sách', 'Chuyên ngành đào tạo', 'Mã chuẩn ISBN', 'Tổng lượt mượn (lượt)', 'Tỷ trọng mượn (%)'],
+          rows: topBorrowed.map((b, idx) => {
+            const totalTopBorrows = topBorrowed.reduce((acc, item) => acc + item.total_borrows, 0) || 1;
+            const share = Math.round((b.total_borrows / totalTopBorrows) * 100);
+            return [
+              idx === 0 ? 'Hạng 1 (Vàng)' : idx === 1 ? 'Hạng 2 (Bạc)' : idx === 2 ? 'Hạng 3 (Đồng)' : `Hạng ${idx + 1}`,
+              `#${b.book_id}`,
+              b.title,
+              b.category,
+              b.isbn || '—',
+              `${formatNumberVN(b.total_borrows)} lượt`,
+              `${share}%`,
+            ];
+          }),
+          summaryRow: [
+            'TỔNG LƯỢT MƯỢN',
+            '',
+            '',
+            '',
+            '',
+            `${formatNumberVN(topBorrowed.reduce((acc, b) => acc + b.total_borrows, 0))} lượt`,
+            '100%',
+          ],
+        },
+      ],
+    });
+    setIsExportMenuOpen(false);
+  };
+
+  // 3. Export Overdue Recovery Report
+  const exportOverdueReport = () => {
+    const today = new Date().toISOString().substring(0, 10);
+    const authorName = `${user?.full_name || 'Quản trị viên'} (${user?.card_code || 'ADMIN'})`;
+    const totalEstFine = overdueList.reduce((acc, l) => acc + (l.estimated_fine || 0), 0);
+
+    exportStructuredCsvReport({
+      filename: `UTH_BaoCao_SachQuaHan_ChiTiet_${today}`,
+      reportTitle: 'BÁO CÁO DANH SÁCH SÁCH QUÁ HẠN & CÔNG NỢ PHẠT CẦN THU HỒI',
+      reportSubtitle: 'Danh sách bạn đọc trễ hạn mượn, phân tầng rủi ro và tiền phạt tạm tính theo quy chế UTH',
+      author: authorName,
+      metadata: [
+        { label: 'Tổng số phiếu trễ hạn', value: `${overdueList.length} phiếu mượn` },
+        { label: 'Tổng tiền phạt tạm tính', value: formatCurrencyVND(totalEstFine) },
+        { label: 'Mức phạt quy định', value: '5.000 VND / ngày trễ / cuốn sách' },
+      ],
+      sections: [
+        {
+          sectionTitle: 'Danh sách chi tiết Bạn đọc vi phạm trễ hạn',
+          headers: ['STT', 'Mã phiếu', 'Tên đầu sách', 'Mã vạch bản sao', 'Tên bạn đọc', 'Mã thẻ bạn đọc', 'Ngày mượn', 'Hạn trả', 'Số ngày trễ', 'Phân tầng rủi ro', 'Tiền phạt ước tính (VND)'],
+          rows: overdueList.map((l, idx) => [
+            idx + 1,
+            `#${l.loan_id}`,
+            l.book_title,
+            l.barcode,
+            l.user_name,
+            l.card_code,
+            formatDateVN(l.borrowed_at),
+            formatDateVN(l.due_at),
+            `${l.days_late} ngày`,
+            l.days_late > 14 ? 'Cực kỳ nghiêm trọng (Nguy cơ mất)' : l.days_late > 7 ? 'Nghiêm trọng (Tạm khóa thẻ)' : l.days_late > 3 ? 'Cảnh báo hạn chót' : 'Trễ nhẹ (Nhắc nhở)',
+            formatCurrencyVND(l.estimated_fine || 0),
+          ]),
+          summaryRow: [
+            'TỔNG CỘNG',
+            `${overdueList.length} phiếu trễ`,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            formatCurrencyVND(totalEstFine),
+          ],
+        },
+      ],
+      footerNotes: [
+        'Độc giả có thể thanh toán phạt tức thì qua VietQR Sacombank tại trang tra cứu nợ phạt.',
+        'Sau 30 ngày quá hạn không hoàn trả hoặc liên hệ, hệ thống sẽ tự động chuyển trạng thái bản sao thành MẤT và chuyển hồ sơ đền bù sang Phòng Công tác Sinh viên.',
+      ],
+    });
+    setIsExportMenuOpen(false);
+  };
+
+  // 4. Export Department Inventory Report
+  const exportInventoryReport = () => {
+    const today = new Date().toISOString().substring(0, 10);
+    const authorName = `${user?.full_name || 'Quản trị viên'} (${user?.card_code || 'ADMIN'})`;
+
+    exportStructuredCsvReport({
+      filename: `UTH_BaoCao_KiemKeKho_ChiTiet_${today}`,
+      reportTitle: 'BÁO CÁO KIỂM KÊ HIỆN TRẠNG BẢN SAO KHO SÁCH THEO KHOA',
+      reportSubtitle: 'Thống kê tổng hợp số lượng bản sao sẵn sàng, đang mượn, hỏng/mất theo từng chuyên ngành đào tạo',
+      author: authorName,
+      metadata: [
+        { label: 'Tổng số chuyên ngành kiểm kê', value: `${inventoryList.length} chuyên ngành` },
+        { label: 'Tổng bản sao toàn trường', value: `${formatNumberVN(summary?.total_copies || 0)} bản sao` },
+        { label: 'Tỷ lệ khả dụng toàn trường', value: `${availableRatio}%` },
+      ],
+      sections: [
+        {
+          sectionTitle: 'Chi tiết Hiện trạng Bản sao theo Chuyên ngành',
+          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng phục vụ', 'Đang lưu thông', 'Đang giữ chỗ', 'Hỏng / Báo mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
+          rows: inventoryList.map((c, idx) => [
+            idx + 1,
+            c.category_code,
+            c.category_name,
+            formatNumberVN(c.total_copies),
+            formatNumberVN(c.available),
+            formatNumberVN(c.borrowed),
+            formatNumberVN(c.reserved),
+            formatNumberVN(c.damaged + c.lost),
+            formatNumberVN(c.withdrawn),
+            `${Math.round((c.available / (c.total_copies || 1)) * 100)}%`,
+          ]),
+          summaryRow: [
+            'TỔNG TOÀN TRƯỜNG',
+            '',
+            '',
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.total_copies, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.available, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.borrowed, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.reserved, 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + (c.damaged + c.lost), 0)),
+            formatNumberVN(inventoryList.reduce((acc, c) => acc + c.withdrawn, 0)),
+            `${availableRatio}%`,
+          ],
+        },
+      ],
+    });
+    setIsExportMenuOpen(false);
+  };
+
+  // Smart export based on active tab
+  const handleSmartExport = () => {
+    if (activeTab === 'overview') exportMasterReport();
+    else if (activeTab === 'top_borrowed') exportTopBorrowedReport();
+    else if (activeTab === 'overdue') exportOverdueReport();
+    else if (activeTab === 'inventory') exportInventoryReport();
   };
 
   // 1. Pie Chart: Copy Status Distribution
@@ -395,15 +677,93 @@ export const ReportsPage: React.FC = () => {
             <RefreshCw className={cn('w-4 h-4', isRefreshing && 'animate-spin text-primary')} />
           </button>
 
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="px-3.5 py-1.5 text-xs font-bold rounded-xl border border-border bg-white hover:bg-gray-50 text-textPrimary transition-colors flex items-center gap-1.5 shadow-2xs"
-            title="Xuất dữ liệu tab hiện tại sang file CSV mở trên Excel"
-          >
-            <Download className="w-3.5 h-3.5 text-primary" />
-            <span>Xuất CSV</span>
-          </button>
+          {/* Export Dropdown Menu */}
+          <div className="relative" ref={exportMenuRef}>
+            <div className="inline-flex rounded-xl shadow-2xs">
+              <button
+                type="button"
+                onClick={handleSmartExport}
+                className="px-3.5 py-1.5 text-xs font-bold rounded-l-xl border border-r-0 border-border bg-white hover:bg-teal-50/60 hover:text-primary text-textPrimary transition-colors flex items-center gap-1.5"
+                title="Xuất file CSV báo cáo mở trên Excel (Chuẩn UTF-8 có dấu)"
+              >
+                <Download className="w-3.5 h-3.5 text-primary" />
+                <span>Xuất CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                className="px-2 py-1.5 text-xs font-bold rounded-r-xl border border-border bg-white hover:bg-teal-50/60 hover:text-primary text-textSecondary transition-colors flex items-center"
+                title="Tùy chọn mẫu báo cáo CSV"
+              >
+                <ChevronDown className={cn('w-3.5 h-3.5 transition-transform duration-150', isExportMenuOpen && 'rotate-180 text-primary')} />
+              </button>
+            </div>
+
+            {/* Dropdown Options */}
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-xl shadow-lg border border-border py-1.5 z-50 animate-in fade-in-50 zoom-in-95">
+                <div className="px-3 py-1.5 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-textSecondary tracking-wider block">
+                    Mẫu Báo cáo CSV Chuẩn UTH
+                  </span>
+                  <span className="text-[10px] font-mono text-primary font-semibold">Excel UTF-8</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={exportMasterReport}
+                  className="w-full text-left px-3.5 py-2 hover:bg-teal-50/70 transition-colors flex items-start space-x-2.5 group"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-bold text-textPrimary group-hover:text-primary flex items-center gap-1">
+                      <span>Báo cáo Tổng hợp Toàn diện</span>
+                      <span className="text-[9px] px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded font-bold">VIP</span>
+                    </div>
+                    <p className="text-[10px] text-textSecondary">Bao gồm 5 phần: KPI, Xu hướng, Bản sao, Quá hạn & Kho</p>
+                  </div>
+                </button>
+
+                <div className="h-px bg-gray-100 my-1" />
+
+                <button
+                  type="button"
+                  onClick={exportTopBorrowedReport}
+                  className="w-full text-left px-3.5 py-2 hover:bg-teal-50/70 transition-colors flex items-center space-x-2.5 group"
+                >
+                  <TrendingUp className="w-4 h-4 text-primary shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-textPrimary group-hover:text-primary">Báo cáo Top mượn nhiều</div>
+                    <p className="text-[10px] text-textSecondary">Bảng xếp hạng 20 đầu sách có nhu cầu cao nhất</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportOverdueReport}
+                  className="w-full text-left px-3.5 py-2 hover:bg-red-50/60 transition-colors flex items-center space-x-2.5 group"
+                >
+                  <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-textPrimary group-hover:text-red-600">Báo cáo Sách quá hạn thu hồi</div>
+                    <p className="text-[10px] text-textSecondary">Chi tiết ngày trễ, mức phạt và mã bạn đọc vi phạm</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exportInventoryReport}
+                  className="w-full text-left px-3.5 py-2 hover:bg-blue-50/60 transition-colors flex items-center space-x-2.5 group"
+                >
+                  <Package className="w-4 h-4 text-blue-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-textPrimary group-hover:text-blue-700">Báo cáo Kiểm kê Kho chuyên ngành</div>
+                    <p className="text-[10px] text-textSecondary">Số lượng bản sao sẵn sàng, đang mượn theo từng khoa</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

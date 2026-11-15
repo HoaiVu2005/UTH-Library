@@ -20,6 +20,13 @@ export function formatCurrencyVND(amount: number): string {
 }
 
 /**
+ * Formats standard number in Vietnamese localized format (e.g. 1.250).
+ */
+export function formatNumberVN(val: number): string {
+  return new Intl.NumberFormat('vi-VN').format(val);
+}
+
+/**
  * Formats a date string into Vietnamese localized format (DD/MM/YYYY).
  */
 export function formatDateVN(dateInput: string | Date | null | undefined): string {
@@ -38,6 +45,22 @@ export function formatDateVN(dateInput: string | Date | null | undefined): strin
 }
 
 /**
+ * Formats a date-time string into Vietnamese localized format (HH:mm DD/MM/YYYY).
+ */
+export function formatDateTimeVN(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return '—';
+  try {
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return '—';
+    const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const date = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `${time} ${date}`;
+  } catch {
+    return '—';
+  }
+}
+
+/**
  * Truncates text safely with an ellipsis.
  */
 export function truncate(text: string, maxLength: number): string {
@@ -46,20 +69,157 @@ export function truncate(text: string, maxLength: number): string {
 }
 
 /**
- * Exports data rows to CSV file with UTF-8 BOM so Vietnamese characters display cleanly in Microsoft Excel.
+ * Escapes a cell for CSV output.
+ * If preserveExactText is true (e.g. barcodes, card IDs, ISBNs), formats as ="..." so Excel preserves text format without scientific notation.
+ */
+export function escapeCsvCell(cell: string | number | null | undefined, preserveExactText = false): string {
+  if (cell === null || cell === undefined) return '""';
+  const str = String(cell).replace(/"/g, '""');
+
+  // If cell is a barcode, phone, or ISBN that shouldn't be converted to scientific notation
+  if (preserveExactText || (/^0\d+$/.test(str) && str.length > 3) || (/^\d{10,}$/.test(str))) {
+    return `="""${str}"""`;
+  }
+
+  return `"${str}"`;
+}
+
+/**
+ * Section interface for structured CSV report export.
+ */
+export interface CsvReportSection {
+  sectionTitle?: string;
+  sectionSubtitle?: string;
+  headers: string[];
+  rows: (string | number)[][];
+  summaryRow?: (string | number)[];
+}
+
+/**
+ * Options for exporting a rich, professional university CSV report.
+ */
+export interface StructuredCsvReportOptions {
+  filename: string;
+  reportTitle: string;
+  reportSubtitle?: string;
+  institution?: string;
+  department?: string;
+  author?: string;
+  metadata?: Array<{ label: string; value: string | number }>;
+  kpis?: Array<{ label: string; value: string | number }>;
+  sections: CsvReportSection[];
+  footerNotes?: string[];
+}
+
+/**
+ * Exports a fully-structured, formal university report to CSV with UTF-8 BOM.
+ * Formatted cleanly with official headers, metadata blocks, tables, and signature section.
+ */
+export function exportStructuredCsvReport(options: StructuredCsvReportOptions): void {
+  const lines: string[] = [];
+
+  // 1. Institution & Organization Header
+  const inst = options.institution || 'TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI THÀNH PHỐ HỒ CHÍ MINH (UTH)';
+  const dept = options.department || 'TRUNG TÂM THÔNG TIN - THƯ VIỆN SỐ (UTH DIGITAL LIBRARY)';
+  lines.push(`"${inst}"`);
+  lines.push(`"${dept}"`);
+  lines.push('""'); // Blank line separator
+
+  // 2. Report Main Title
+  lines.push(`"=== ${options.reportTitle.toUpperCase()} ==="`);
+  if (options.reportSubtitle) {
+    lines.push(`"${options.reportSubtitle}"`);
+  }
+  lines.push('""');
+
+  // 3. Metadata block (Date, Author, Status...)
+  const nowStr = formatDateTimeVN(new Date());
+  lines.push('"--- THÔNG TIN KẾT XUẤT BÁO CÁO ---"');
+  lines.push(`"Thời gian trích xuất:", "${nowStr}"`);
+  if (options.author) {
+    lines.push(`"Người lập biểu:", "${options.author}"`);
+  }
+  lines.push('"Hệ thống nguồn:", "Cổng Thư viện Số UTH (Digital Library Portal - https://uth.edu.vn)"');
+
+  if (options.metadata && options.metadata.length > 0) {
+    options.metadata.forEach((m) => {
+      lines.push(`${escapeCsvCell(m.label)}, ${escapeCsvCell(m.value)}`);
+    });
+  }
+  lines.push('""');
+
+  // 4. KPI Highlights block (if provided)
+  if (options.kpis && options.kpis.length > 0) {
+    lines.push('"--- CHỈ SỐ LƯU THÔNG THEN CHỐT (KPI) ---"');
+    options.kpis.forEach((kpi) => {
+      lines.push(`${escapeCsvCell(kpi.label)}, ${escapeCsvCell(kpi.value)}`);
+    });
+    lines.push('""');
+  }
+
+  // 5. Report Sections (Tables)
+  options.sections.forEach((sec, idx) => {
+    if (sec.sectionTitle) {
+      lines.push(`"=== PHẦN ${idx + 1}: ${sec.sectionTitle.toUpperCase()} ==="`);
+      if (sec.sectionSubtitle) {
+        lines.push(`"${sec.sectionSubtitle}"`);
+      }
+    }
+
+    // Headers
+    lines.push(sec.headers.map((h) => escapeCsvCell(h)).join(','));
+
+    // Data Rows
+    sec.rows.forEach((row) => {
+      lines.push(row.map((cell) => escapeCsvCell(cell)).join(','));
+    });
+
+    // Summary / Total Row
+    if (sec.summaryRow) {
+      lines.push(sec.summaryRow.map((cell) => escapeCsvCell(cell)).join(','));
+    }
+
+    lines.push('""'); // Blank separator
+  });
+
+  // 6. Signatures & Footer Verification Block
+  lines.push('"--- XÁC NHẬN & CHỮ KÝ TRÁCH NHIỆM ---"');
+  lines.push('"Người lập biểu", "", "Trưởng bộ phận Lưu thông", "", "Giám đốc Thư viện UTH"');
+  lines.push('"(Ký và ghi rõ họ tên)", "", "(Ký và ghi rõ họ tên)", "", "(Ký và đóng dấu)"');
+  lines.push('""');
+  lines.push('""');
+  lines.push('""');
+
+  // Footer notes
+  lines.push(
+    `"* Báo cáo được kết xuất tự động từ Hệ thống Quản lý Thư viện Số UTH vào lúc ${nowStr}. Dữ liệu được mã hóa chuẩn UTF-8 tương thích Microsoft Excel và Google Sheets."`
+  );
+  if (options.footerNotes) {
+    options.footerNotes.forEach((note) => lines.push(`"* ${note}"`));
+  }
+
+  // Build CSV Blob with UTF-8 BOM (\uFEFF)
+  const csvContent = '\uFEFF' + lines.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `${options.filename}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Standard legacy export to CSV file with UTF-8 BOM so Vietnamese characters display cleanly in Microsoft Excel.
  */
 export function exportToCsv(filename: string, headers: string[], rows: (string | number)[][]): void {
-  const escapeCell = (cell: string | number | null | undefined): string => {
-    if (cell === null || cell === undefined) return '""';
-    const str = String(cell).replace(/"/g, '""');
-    return `"${str}"`;
-  };
-
   const csvContent =
     '\uFEFF' + // UTF-8 BOM for Excel
-    headers.map(escapeCell).join(',') +
+    headers.map((h) => escapeCsvCell(h)).join(',') +
     '\n' +
-    rows.map((row) => row.map(escapeCell).join(',')).join('\n');
+    rows.map((row) => row.map((cell) => escapeCsvCell(cell)).join(',')).join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -71,4 +231,3 @@ export function exportToCsv(filename: string, headers: string[], rows: (string |
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
-
