@@ -10,6 +10,7 @@ from .views import (
 
 urlpatterns = [
     path('dashboard/summary', DashboardSummaryView.as_view(), name='dashboard-summary'),
+    path('reports/summary', DashboardSummaryView.as_view(), name='reports-summary'),
     path('dashboard/action-items', DashboardActionItemsView.as_view(), name='dashboard-action-items'),
     path('reports/top-borrowed', TopBorrowedReportView.as_view(), name='report-top-borrowed'),
     path('reports/overdue', OverdueReportView.as_view(), name='report-overdue'),
