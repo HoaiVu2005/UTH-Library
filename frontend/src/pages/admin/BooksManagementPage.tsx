@@ -842,192 +842,50 @@ export const BooksManagementPage: React.FC = () => {
       >
         <form onSubmit={handleSaveBook} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <ModalBody className="overflow-y-auto flex-1 min-h-0 p-6 space-y-4">
-            {/* Smart ISBN Auto-fetch & Camera Barcode Scanner Banner */}
-            <div className="bg-gradient-to-r from-teal-50/90 via-emerald-50/30 to-teal-50/50 border border-teal-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                      <span>⚡ Tra cứu & Tự động điền dữ liệu theo ISBN</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-teal-100 text-teal-800 rounded-full border border-teal-200">
-                        Nhập kho 1-chạm
-                      </span>
-                    </h4>
-                    <p className="text-xs text-gray-500">
-                      Quét mã vạch bìa sau hoặc nhập số ISBN để hệ thống tự động điền Tên sách, Tác giả, NXB, Năm, Tóm tắt & Ảnh bìa thật
-                    </p>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setIsCameraScannerOpen(true)}
-                  className="bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-semibold h-8.5 px-3 flex items-center gap-1.5 shadow-2xs shrink-0 self-start sm:self-auto"
-                >
-                  <Camera className="w-3.5 h-3.5 text-amber-300" />
-                  <span>📷 Quét Camera bìa sau</span>
-                </Button>
-              </div>
-
-              {/* Input & Lookup Row */}
-              <div className="flex items-center gap-2 pt-1">
-                <div className="relative flex-1">
-                  <Barcode className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={formIsbn}
-                    onChange={(e) => setFormIsbn(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleLookupIsbn();
-                      }
-                    }}
-                    placeholder="Nhập hoặc quét mã ISBN (VD: 9780132350884 hoặc 978-604-0-10002-8)..."
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-teal-200/90 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
-                  />
-                </div>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={isLookingUpIsbn || !formIsbn.trim()}
-                  isLoading={isLookingUpIsbn}
-                  onClick={() => handleLookupIsbn()}
-                  className="rounded-xl text-xs font-semibold h-9 px-3.5 border-teal-500 text-teal-700 hover:bg-teal-50 shrink-0"
-                >
-                  <Zap className="w-3.5 h-3.5 mr-1 text-teal-600" />
-                  <span>Tra cứu ngay</span>
-                </Button>
-              </div>
-
-              {/* Sample Demo Chips */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-gray-500">
-                <span className="font-medium text-gray-600">Thử nhanh ISBN:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormIsbn('9780132350884');
-                    handleLookupIsbn('9780132350884');
-                  }}
-                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
-                >
-                  Clean Code (9780132350884)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormIsbn('9786040100028');
-                    handleLookupIsbn('9786040100028');
-                  }}
-                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
-                >
-                  Đường cao tốc UTH (9786040100028)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormIsbn('9780134685991');
-                    handleLookupIsbn('9780134685991');
-                  }}
-                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
-                >
-                  Effective Java (9780134685991)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormIsbn('9781119584346');
-                    handleLookupIsbn('9781119584346');
-                  }}
-                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
-                >
-                  Supply Chain (9781119584346)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormIsbn('9786040300015');
-                    handleLookupIsbn('9786040300015');
-                  }}
-                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
-                >
-                  Cơ điện tử Ô tô (9786040300015)
-                </button>
-              </div>
-
-              {/* Success Banner if metadata was populated */}
-              {isbnLookupSuccessInfo && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between animate-fade-in">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>
-                      <strong>Đã nhận diện:</strong> {isbnLookupSuccessInfo.title} — <em>{isbnLookupSuccessInfo.author}</em>
-                      <span className="ml-2 text-[11px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full font-medium">
-                        Nguồn: {isbnLookupSuccessInfo.source}
-                      </span>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsbnLookupSuccessInfo(null)}
-                    className="text-emerald-700 hover:text-emerald-900 p-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* LEFT COLUMN: Cover Image & Summary (4 cols) */}
-              <div className="lg:col-span-4 space-y-4">
+              <div className="lg:col-span-4 space-y-3.5">
                 {/* Book Cover Upload Section */}
-                <div className="p-4 bg-slate-50 border border-border rounded-xl space-y-3">
+                <div className="p-3.5 bg-slate-50 border border-border rounded-xl space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[13.5px] font-medium text-textPrimary flex items-center gap-1.5">
-                      <ImageIcon className="w-4 h-4 text-primary" />
+                    <label className="text-xs font-semibold text-textPrimary flex items-center gap-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-primary" />
                       <span>Ảnh bìa sách</span>
                     </label>
                     {coverPreview && (
                       <button
                         type="button"
                         onClick={handleRemoveCover}
-                        className="text-xs text-danger hover:underline flex items-center gap-1 font-medium"
+                        className="text-[11px] text-danger hover:underline flex items-center gap-1 font-medium cursor-pointer"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3 h-3" />
                         <span>Xóa ảnh</span>
                       </button>
                     )}
                   </div>
 
                   {/* Cover Preview Box */}
-                  <div className="w-full h-56 bg-white border border-border rounded-lg shadow-2xs overflow-hidden flex items-center justify-center">
+                  <div className="w-full h-48 bg-white border border-border rounded-lg shadow-2xs overflow-hidden flex items-center justify-center">
                     {coverPreview ? (
                       <img
                         src={coverPreview}
                         alt="Xem trước ảnh bìa"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-slate-100/50"
                       />
                     ) : (
                       <div className="text-center p-3 text-textSecondary/60">
-                        <ImageIcon className="w-9 h-9 mx-auto mb-2 text-slate-300" />
+                        <ImageIcon className="w-8 h-8 mx-auto mb-1 text-slate-300" />
                         <span className="text-xs block font-medium">Chưa có ảnh bìa</span>
-                        <span className="text-[11px] text-textSecondary/70 block mt-0.5">Tải file từ máy hoặc dán URL</span>
+                        <span className="text-[11px] text-textSecondary/70 block mt-0.5">Tự động nạp khi quét ISBN</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Upload button */}
-                  <div>
-                    <label className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-white border border-border hover:border-primary/50 text-textPrimary hover:text-primary text-[13px] font-medium rounded-lg cursor-pointer transition-colors shadow-2xs">
-                      <Upload className="w-4 h-4 text-primary" />
-                      <span>Chọn ảnh từ máy tính</span>
+                  {/* File upload & URL input */}
+                  <div className="space-y-1.5">
+                    <label className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-white border border-border hover:border-primary/50 text-textPrimary hover:text-primary text-xs font-medium rounded-lg cursor-pointer transition-colors shadow-2xs">
+                      <Upload className="w-3.5 h-3.5 text-primary" />
+                      <span>Tải ảnh từ máy tính</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
@@ -1035,43 +893,139 @@ export const BooksManagementPage: React.FC = () => {
                         className="hidden"
                       />
                     </label>
-                    <p className="text-[11px] text-textSecondary text-center mt-1">Hỗ trợ JPG, PNG, WebP (&le; 5MB)</p>
-                  </div>
-
-                  {/* URL Input */}
-                  <div className="relative">
-                    <LinkIcon className="w-3.5 h-3.5 text-textSecondary absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={formCoverImage}
-                      onChange={(e) => {
-                        setFormCoverImage(e.target.value);
-                        if (!coverFile) setCoverPreview(e.target.value || null);
-                      }}
-                      placeholder="Hoặc dán URL ảnh trực tiếp..."
-                      className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
-                    />
+                    <div className="relative">
+                      <LinkIcon className="w-3 h-3 text-textSecondary absolute left-2.5 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={formCoverImage}
+                        onChange={(e) => {
+                          setFormCoverImage(e.target.value);
+                          if (!coverFile) setCoverPreview(e.target.value || null);
+                        }}
+                        placeholder="Hoặc dán URL ảnh trực tiếp..."
+                        className="w-full pl-7 pr-2.5 py-1.5 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-[13.5px] font-medium text-textPrimary mb-1.5">
+                  <label className="block text-xs font-semibold text-textPrimary mb-1">
                     Tóm tắt nội dung tài liệu
                   </label>
                   <textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    rows={4}
-                    placeholder="Tài liệu phục vụ giảng dạy và nghiên cứu cho sinh viên và giảng viên UTH..."
+                    rows={3}
+                    placeholder="Tóm tắt ngắn gọn nội dung tài liệu phục vụ giảng dạy và nghiên cứu..."
                     className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                   />
                 </div>
               </div>
 
               {/* RIGHT COLUMN: Metadata Form (8 cols) */}
-              <div className="lg:col-span-8 space-y-4">
-                {/* Title */}
+              <div className="lg:col-span-8 space-y-3.5">
+                {/* 1. Integrated ISBN Quick-Fill Field */}
+                <div className="p-3 bg-teal-50/50 border border-teal-200/80 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-teal-900 flex items-center gap-1.5">
+                      <Barcode className="w-3.5 h-3.5 text-brand" />
+                      <span>Mã ISBN / Mã vạch bìa sách</span>
+                      <span className="text-[11px] font-normal text-teal-700/80">(Tự động điền dữ liệu)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCameraScannerOpen(true)}
+                      className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 px-2 py-0.5 rounded hover:bg-teal-100/70 transition-colors cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Quét Camera</span>
+                    </button>
+                  </div>
+
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={formIsbn}
+                      onChange={(e) => setFormIsbn(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleLookupIsbn();
+                        }
+                      }}
+                      placeholder="Nhập hoặc quét mã ISBN (VD: 9780132350884)..."
+                      className="w-full pl-3 pr-28 py-2 text-xs rounded-lg border border-teal-200 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleLookupIsbn()}
+                      disabled={isLookingUpIsbn || !formIsbn.trim()}
+                      className="absolute right-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-brand text-white hover:bg-brand-dark disabled:opacity-40 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                    >
+                      {isLookingUpIsbn ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Zap className="w-3 h-3 text-amber-300" />
+                      )}
+                      <span>Tự động điền</span>
+                    </button>
+                  </div>
+
+                  {isbnLookupSuccessInfo ? (
+                    <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-1 flex items-center justify-between animate-fade-in">
+                      <span className="truncate">
+                        ✓ Đã nhận diện: <strong>{isbnLookupSuccessInfo.title}</strong> — <em>{isbnLookupSuccessInfo.author}</em>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsbnLookupSuccessInfo(null)}
+                        className="text-emerald-700 hover:text-emerald-900 ml-1.5 shrink-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[11px] text-teal-800/70 pt-0.5">
+                      <span className="font-medium text-teal-900/60">Thử nhanh:</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormIsbn('9780132350884');
+                          handleLookupIsbn('9780132350884');
+                        }}
+                        className="hover:underline text-brand font-medium"
+                      >
+                        Clean Code
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormIsbn('9786040100028');
+                          handleLookupIsbn('9786040100028');
+                        }}
+                        className="hover:underline text-brand font-medium"
+                      >
+                        Đường cao tốc UTH
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormIsbn('9780134685991');
+                          handleLookupIsbn('9780134685991');
+                        }}
+                        className="hover:underline text-brand font-medium"
+                      >
+                        Effective Java
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Title */}
                 <Input
                   label="Tên đầu sách"
                   value={formTitle}
@@ -1080,18 +1034,18 @@ export const BooksManagementPage: React.FC = () => {
                   required
                 />
 
-                {/* Author */}
+                {/* 3. Author */}
                 <Input
                   label="Tác giả / Nhóm tác giả"
                   value={formAuthorNames}
                   onChange={(e) => setFormAuthorNames(e.target.value)}
-                  placeholder="VD: GS.TS. Nguyễn Xuân Trục, PGS.TS. Khuất Việt Hùng (ngăn cách bởi dấu phẩy)"
+                  placeholder="VD: GS.TS. Nguyễn Xuân Trục, PGS.TS. Khuất Việt Hùng (cách nhau bởi dấu phẩy)"
                   helperText="Hệ thống tự động liên kết hoặc tạo hồ sơ tác giả mới"
                   required
                 />
 
-                {/* Category & ISBN */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* 4. Category & Publisher */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Select
                     label="Chuyên ngành (Khoa)"
                     value={String(formCategoryId)}
@@ -1105,50 +1059,16 @@ export const BooksManagementPage: React.FC = () => {
                     ))}
                   </Select>
 
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="block text-[13px] font-medium text-textPrimary">Mã ISBN</label>
-                      <button
-                        type="button"
-                        onClick={() => setIsCameraScannerOpen(true)}
-                        className="text-[11px] font-medium text-brand hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <Camera className="w-3 h-3 text-brand" />
-                        <span>Quét camera</span>
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={formIsbn}
-                        onChange={(e) => setFormIsbn(e.target.value)}
-                        placeholder="VD: 978-604-0-12345-6"
-                        className="w-full px-3 py-2 pr-16 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
-                      />
-                      {formIsbn.trim() && (
-                        <button
-                          type="button"
-                          onClick={() => handleLookupIsbn()}
-                          disabled={isLookingUpIsbn}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          {isLookingUpIsbn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-2.5 h-2.5" />}
-                          <span>Điền</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Publisher & Year & Price */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Input
                     label="Nhà xuất bản"
                     value={formPublisher}
                     onChange={(e) => setFormPublisher(e.target.value)}
                     placeholder="VD: NXB Giao thông Vận tải"
                   />
+                </div>
 
+                {/* 5. Year & Price */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="Năm XB"
                     type="number"
@@ -1166,16 +1086,16 @@ export const BooksManagementPage: React.FC = () => {
                   />
                 </div>
 
-                {/* Initial Copies (Only when creating) */}
+                {/* 6. Initial Copies (Only when creating) */}
                 {!editingBook && (
-                  <div className="p-4 bg-teal-50/40 border border-teal-100 rounded-xl space-y-3 mt-2">
+                  <div className="p-3.5 bg-teal-50/40 border border-teal-100 rounded-xl space-y-2.5">
                     <div className="flex items-center space-x-2 text-xs font-bold text-primary">
-                      <Layers className="w-4 h-4 text-primary" />
+                      <Layers className="w-3.5 h-3.5 text-primary" />
                       <span>Khởi tạo bản sao lưu kho ngay (Tùy chọn)</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
-                        label="Số lượng bản sao tạo ban đầu"
+                        label="Số lượng bản sao"
                         type="number"
                         min="0"
                         max="20"
