@@ -3,13 +3,61 @@ import logging
 import re
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from apps.catalog.models import Book, Category
 
 logger = logging.getLogger(__name__)
 
 # Curated library knowledge base for rapid lookup and offline resilience
 CURATED_ISBN_CATALOG: Dict[str, Dict[str, Any]] = {
+    '9780136681557': {
+        'title': 'Computer Networking: A Top-Down Approach (8th Edition)',
+        'author_names': 'James F. Kurose, Keith W. Ross',
+        'publisher': 'Pearson',
+        'year': 2021,
+        'price': 240000,
+        'description': 'Giáo trình mạng máy tính kinh điển của James F. Kurose và Keith W. Ross (Pearson, 8th Edition). Tiếp cận kiến trúc mạng theo mô hình từ trên xuống (Top-Down Approach): từ tầng ứng dụng (HTTP, DNS, socket programming), tầng giao vận (TCP, UDP, kiểm soát tắc nghẽn), tầng mạng (IP, định tuyến BGP/OSPF, SDN), tầng liên kết dữ liệu, mạng không dây di động và an toàn mạng.',
+        'cover_image': 'https://covers.openlibrary.org/b/isbn/9780136681557-L.jpg',
+        'suggested_category_code': 'CNTT',
+        'page_count': 764,
+        'source': 'UTH Knowledge Base',
+    },
+    '9780133594140': {
+        'title': 'Computer Networking: A Top-Down Approach (7th Edition)',
+        'author_names': 'James F. Kurose, Keith W. Ross',
+        'publisher': 'Pearson',
+        'year': 2017,
+        'price': 220000,
+        'description': 'Giáo trình mạng máy tính từ tầng ứng dụng đến tầng vật lý của James F. Kurose và Keith W. Ross, giải thích chi tiết các giao thức Internet cốt lõi TCP/IP, DNS, HTTP/2 và SDN.',
+        'cover_image': 'https://covers.openlibrary.org/b/isbn/9780133594140-L.jpg',
+        'suggested_category_code': 'CNTT',
+        'page_count': 864,
+        'source': 'UTH Knowledge Base',
+    },
+    '9780262046305': {
+        'title': 'Introduction to Algorithms (4th Edition)',
+        'author_names': 'Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein',
+        'publisher': 'The MIT Press',
+        'year': 2022,
+        'price': 350000,
+        'description': 'Tác phẩm toàn diện và chuẩn mực toàn cầu về cấu trúc dữ liệu và giải thuật (CLRS 4th Edition). Bao gồm giải thuật đồ thị, quy hoạch động, luồng cực đại, giải thuật xấp xỉ, giải thuật song song và học máy cơ bản.',
+        'cover_image': 'https://covers.openlibrary.org/b/isbn/9780262046305-L.jpg',
+        'suggested_category_code': 'CNTT',
+        'page_count': 1312,
+        'source': 'UTH Knowledge Base',
+    },
+    '9780262033848': {
+        'title': 'Introduction to Algorithms (3rd Edition)',
+        'author_names': 'Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein',
+        'publisher': 'The MIT Press',
+        'year': 2009,
+        'price': 320000,
+        'description': 'Giáo trình kinh điển về cấu trúc dữ liệu và giải thuật (CLRS) dùng cho giảng dạy đại học và sau đại học toàn cầu.',
+        'cover_image': 'https://covers.openlibrary.org/b/isbn/9780262033848-L.jpg',
+        'suggested_category_code': 'CNTT',
+        'page_count': 1312,
+        'source': 'UTH Knowledge Base',
+    },
     '9780132350884': {
         'title': 'Clean Code: A Handbook of Agile Software Craftsmanship',
         'author_names': 'Robert C. Martin',
@@ -80,18 +128,6 @@ CURATED_ISBN_CATALOG: Dict[str, Dict[str, Any]] = {
         'cover_image': 'https://covers.openlibrary.org/b/isbn/9781593279288-L.jpg',
         'suggested_category_code': 'CNTT',
         'page_count': 544,
-        'source': 'UTH Knowledge Base',
-    },
-    '9780262033848': {
-        'title': 'Introduction to Algorithms (3rd Edition)',
-        'author_names': 'Thomas H. Cormen, Charles E. Leiserson, Ronald L. Rivest, Clifford Stein',
-        'publisher': 'The MIT Press',
-        'year': 2009,
-        'price': 320000,
-        'description': 'Giáo trình kinh điển về cấu trúc dữ liệu và giải thuật (CLRS) dùng cho giảng dạy đại học và sau đại học toàn cầu.',
-        'cover_image': 'https://covers.openlibrary.org/b/isbn/9780262033848-L.jpg',
-        'suggested_category_code': 'CNTT',
-        'page_count': 1312,
         'source': 'UTH Knowledge Base',
     },
     '9786040100028': {
@@ -277,15 +313,126 @@ def format_isbn13(digits: str) -> str:
         return f"{digits[0:3]}-{digits[3:4]}-{digits[4:6]}-{digits[6:12]}-{digits[12:13]}"
     return digits
 
-def infer_category_code(title: str, description: str = '', subjects: list = None) -> str:
+def extract_valid_year(date_str: Any, fallback_year: Any = None) -> int:
+    """Extract a sensible 4-digit publication year between 1960 and 2030."""
+    if date_str:
+        # Search for valid 4-digit year like 2021, 2020, 1998
+        match = re.search(r'\b(19[6-9]\d|20[0-3]\d)\b', str(date_str))
+        if match:
+            return int(match.group(1))
+
+    if fallback_year:
+        try:
+            val = int(fallback_year)
+            if 1960 <= val <= 2030:
+                return val
+        except (ValueError, TypeError):
+            pass
+
+    return 2024
+
+def infer_publisher(isbn: str, existing_publishers: Optional[List[str]] = None) -> str:
+    """
+    Get the authentic publisher. Never arbitrarily assign UTH/GTVT to international books!
+    """
+    if existing_publishers:
+        for p in existing_publishers:
+            clean_p = (p or '').strip()
+            if clean_p and clean_p.lower() not in ['unknown', 'none', 'n/a', '']:
+                return clean_p
+
+    cleaned = clean_isbn(isbn)
+    # Deduce from standard ISBN registrant elements
+    if cleaned.startswith('978604'):
+        # Vietnam publishers prefix
+        if cleaned.startswith('97860401') or cleaned.startswith('9786041'):
+            return 'NXB Giao thông Vận tải'
+        elif cleaned.startswith('97860402') or cleaned.startswith('9786042'):
+            return 'NXB Xây Dựng'
+        elif cleaned.startswith('97860403') or cleaned.startswith('9786043'):
+            return 'NXB Bách Khoa'
+        elif cleaned.startswith('97860404') or cleaned.startswith('9786044'):
+            return 'NXB Hàng Hải'
+        elif cleaned.startswith('9786040'):
+            return 'NXB Giáo dục Việt Nam'
+        return 'NXB Khoa học & Kỹ thuật'
+    elif cleaned.startswith('978013') or cleaned.startswith('9780201') or cleaned.startswith('9780321'):
+        return 'Pearson'
+    elif cleaned.startswith('97814919') or cleaned.startswith('97814493') or cleaned.startswith('9780596'):
+        return "O'Reilly Media"
+    elif cleaned.startswith('9781119') or cleaned.startswith('9780470'):
+        return 'John Wiley & Sons'
+    elif cleaned.startswith('9780262'):
+        return 'The MIT Press'
+    elif cleaned.startswith('978007'):
+        return 'McGraw-Hill Education'
+    elif cleaned.startswith('978159327'):
+        return 'No Starch Press'
+    elif cleaned.startswith('97814842'):
+        return 'Apress'
+    elif cleaned.startswith('978178934'):
+        return 'Packt Publishing'
+    elif cleaned.startswith('978019'):
+        return 'Oxford University Press'
+    elif cleaned.startswith('9780521'):
+        return 'Cambridge University Press'
+
+    return 'Nhà xuất bản Quốc tế'
+
+def generate_smart_description(
+    title: str,
+    author_names: str,
+    publisher: str,
+    year: int,
+    subjects: Optional[List[str]] = None,
+    category_code: str = 'CNTT'
+) -> str:
+    """
+    Generate an authentic, context-rich academic description reflecting the real book subject.
+    Never assigns generic boilerplate claiming every book is UTH.
+    """
+    # Clean subjects
+    meaningful_subjects = []
+    if subjects:
+        for s in subjects:
+            s_clean = s.strip()
+            # filter out call numbers or useless codes
+            if s_clean and not re.match(r'^[0-9A-Z\.\s]{3,15}$', s_clean, re.I):
+                meaningful_subjects.append(s_clean)
+
+    if meaningful_subjects:
+        top_subjects = ', '.join(meaningful_subjects[:4])
+        return (
+            f"Tài liệu chuyên khảo '{title}' của tác giả {author_names}, xuất bản bởi {publisher} ({year}). "
+            f"Giáo trình chuyên ngành chuẩn mực, tập trung vào các chủ đề trọng tâm: {top_subjects}."
+        )
+
+    # Category-based contextual description
+    cat_focus = {
+        'CNTT': 'chuyên sâu về ngành Công nghệ thông tin, kỹ nghệ phần mềm và hệ thống máy tính',
+        'GTVT': 'chuyên ngành Kỹ thuật Giao thông vận tải, quy hoạch hạ tầng và điều hành phương tiện',
+        'LOG': 'chuyên ngành Quản trị Chuỗi cung ứng, kho bãi và giao nhận vận tải quốc tế',
+        'XD': 'chuyên ngành Kỹ thuật Xây dựng công trình, cơ học kết cấu và nền móng',
+        'KT': 'chuyên ngành Kinh tế vận tải, quản trị kinh doanh và tài chính doanh nghiệp',
+        'CK': 'chuyên ngành Kỹ thuật Cơ khí, động cơ đốt trong và hệ thống cơ điện tử ô tô',
+        'DIEN': 'chuyên ngành Kỹ thuật Điện - Điện tử, hệ thống điều khiển tự động hóa và IoT',
+        'NN': 'chuyên ngành Ngoại ngữ học thuật, tiếng Anh kỹ thuật và kỹ năng giao tiếp chuyên nghiệp',
+    }
+    focus_text = cat_focus.get(category_code, 'phục vụ đào tạo đại học và nghiên cứu chuyên sâu')
+    return (
+        f"Ấn phẩm '{title}' của tác giả {author_names}, do {publisher} phát hành ({year}), "
+        f"{focus_text}."
+    )
+
+def infer_category_code(title: str, description: str = '', subjects: Optional[List[str]] = None) -> str:
     """Infer UTH category code based on book title, description and subjects."""
     text = f"{title} {description} {' '.join(subjects or [])}".lower()
-    
+
     if any(k in text for k in ['đường ô tô', 'giao thông', 'highway', 'traffic', 'cầu đường', 'vận tải', 'its', 'its ', 'ga đường sắt']):
         return 'GTVT'
     if any(k in text for k in ['logistics', 'chuỗi cung ứng', 'supply chain', 'kho bãi', 'vận chuyển', 'incoterms', 'cảng biển']):
         return 'LOG'
-    if any(k in text for k in ['lập trình', 'software', 'code', 'python', 'java', 'algorithm', 'thuật toán', 'mạng', 'cntt', 'computer', 'database']):
+    if any(k in text for k in ['mạng', 'network', 'lập trình', 'software', 'code', 'python', 'java', 'algorithm', 'thuật toán', 'cntt', 'computer', 'database']):
         return 'CNTT'
     if any(k in text for k in ['xây dựng', 'kết cấu', 'bê tông', 'nền móng', 'cơ học đất', 'civil', 'kiến trúc']):
         return 'XD'
@@ -297,18 +444,18 @@ def infer_category_code(title: str, description: str = '', subjects: list = None
         return 'DIEN'
     if any(k in text for k in ['english', 'tiếng anh', 'ngoại ngữ', 'kỹ năng', 'đàm phán', 'giao tiếp', 'toeic', 'ielts']):
         return 'NN'
-        
+
     return 'CNTT'
 
 def lookup_isbn_metadata(raw_isbn: str) -> Dict[str, Any]:
     """
-    Look up book metadata by ISBN.
+    Look up book metadata by ISBN with high accuracy.
     Workflow:
     1. Check if book already exists in local Library database.
-    2. Check curated UTH Knowledge Base for instant high-accuracy match.
-    3. Query OpenLibrary Search API (`/search.json?isbn=...`).
-    4. Query OpenLibrary Books API (`/isbn/{isbn}.json`).
-    5. Return structured metadata with suggested category and cover image.
+    2. Check curated UTH Knowledge Base (over 30 core university textbooks).
+    3. Query OpenLibrary Data API (`jscmd=data`) for authentic edition metadata (real publisher, year, subjects).
+    4. Fallback to OpenLibrary Search API (`/search.json?isbn=...`).
+    5. Clean titles, infer valid publisher and year, generate authentic context description.
     """
     cleaned = clean_isbn(raw_isbn)
     if not cleaned or len(cleaned) not in (10, 13):
@@ -350,38 +497,57 @@ def lookup_isbn_metadata(raw_isbn: str) -> Dict[str, Any]:
         curated['success'] = True
         curated['already_in_library'] = False
         curated['isbn'] = format_isbn13(cleaned)
-        
-        # Match category ID if category exists in DB
+
         cat = Category.objects.filter(code=curated.get('suggested_category_code')).first()
         if cat:
             curated['suggested_category_id'] = cat.id
             curated['suggested_category_name'] = cat.name
         return curated
 
-    # 3. Query OpenLibrary Search API
+    # 3. Query OpenLibrary Data API (`jscmd=data`)
     try:
-        search_url = f"https://openlibrary.org/search.json?isbn={cleaned}"
+        data_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{cleaned}&jscmd=data&format=json"
         req = urllib.request.Request(
-            search_url,
-            headers={'User-Agent': 'UTHLibrary-ISBNLookup/1.0 (thuviendientu@uth.edu.vn)'}
+            data_url,
+            headers={'User-Agent': 'UTHLibrary-ISBN/2.0 (contact@uth.edu.vn)'}
         )
-        with urllib.request.urlopen(req, timeout=3.5) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            docs = data.get('docs', [])
-            if docs:
-                doc = docs[0]
-                title = doc.get('title') or ''
-                authors = doc.get('author_name', [])
-                publishers = doc.get('publisher', [])
-                first_year = doc.get('first_publish_year') or 2024
-                cover_id = doc.get('cover_i')
-                cover_image = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else f"https://covers.openlibrary.org/b/isbn/{cleaned}-L.jpg"
-                subjects = doc.get('subject', [])[:5]
+        with urllib.request.urlopen(req, timeout=4.0) as response:
+            res_data = json.loads(response.read().decode('utf-8'))
+            item = res_data.get(f"ISBN:{cleaned}")
+            if item:
+                title = item.get('title', '').strip()
+                # Remove artifacts like [RENTAL EDITION]
+                title = re.sub(r'\s*\[RENTAL EDITION\]', '', title, flags=re.I).strip()
+                subtitle = item.get('subtitle', '').strip()
+                if subtitle and subtitle.lower() not in title.lower():
+                    title = f"{title}: {subtitle}"
 
-                author_str = ', '.join(authors) if authors else 'Nhiều tác giả'
-                pub_str = publishers[0] if publishers else 'NXB Giao thông Vận tải'
+                raw_authors = [a.get('name') for a in item.get('authors', []) if a.get('name')]
+                author_str = ', '.join(raw_authors) if raw_authors else 'Nhiều tác giả'
+
+                raw_publishers = [p.get('name') for p in item.get('publishers', []) if p.get('name')]
+                pub_str = infer_publisher(cleaned, raw_publishers)
+
+                pub_date = item.get('publish_date', '')
+                year = extract_valid_year(pub_date, None)
+
+                subjects = [s.get('name') for s in item.get('subjects', []) if s.get('name')]
                 cat_code = infer_category_code(title, subjects=subjects)
                 cat = Category.objects.filter(code=cat_code).first()
+
+                cover_dict = item.get('cover') or {}
+                cover_image = cover_dict.get('large') or cover_dict.get('medium') or f"https://covers.openlibrary.org/b/isbn/{cleaned}-L.jpg"
+
+                description = generate_smart_description(
+                    title=title,
+                    author_names=author_str,
+                    publisher=pub_str,
+                    year=year,
+                    subjects=subjects,
+                    category_code=cat_code
+                )
+
+                page_count = item.get('number_of_pages') or 350
 
                 return {
                     'success': True,
@@ -391,31 +557,90 @@ def lookup_isbn_metadata(raw_isbn: str) -> Dict[str, Any]:
                     'title': title,
                     'author_names': author_str,
                     'publisher': pub_str,
-                    'year': int(first_year),
+                    'year': year,
+                    'price': 180000,
+                    'description': description,
+                    'cover_image': cover_image,
+                    'suggested_category_code': cat_code,
+                    'suggested_category_id': cat.id if cat else None,
+                    'page_count': page_count,
+                }
+    except Exception as e:
+        logger.warning(f"OpenLibrary Data API error for ISBN {cleaned}: {e}")
+
+    # 4. Fallback to OpenLibrary Search API
+    try:
+        search_url = f"https://openlibrary.org/search.json?isbn={cleaned}"
+        req = urllib.request.Request(
+            search_url,
+            headers={'User-Agent': 'UTHLibrary-ISBN/2.0 (contact@uth.edu.vn)'}
+        )
+        with urllib.request.urlopen(req, timeout=4.0) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            docs = data.get('docs', [])
+            if docs:
+                doc = docs[0]
+                title = (doc.get('title') or '').strip()
+                title = re.sub(r'\s*\[RENTAL EDITION\]', '', title, flags=re.I).strip()
+
+                authors = doc.get('author_name', [])
+                author_str = ', '.join(authors) if authors else 'Nhiều tác giả'
+
+                publishers = doc.get('publisher', [])
+                pub_str = infer_publisher(cleaned, publishers)
+
+                year = extract_valid_year(doc.get('publish_date'), doc.get('first_publish_year'))
+
+                cover_id = doc.get('cover_i')
+                cover_image = f"https://covers.openlibrary.org/b/id/{cover_id}-L.jpg" if cover_id else f"https://covers.openlibrary.org/b/isbn/{cleaned}-L.jpg"
+                subjects = doc.get('subject', [])[:5]
+
+                cat_code = infer_category_code(title, subjects=subjects)
+                cat = Category.objects.filter(code=cat_code).first()
+
+                description = generate_smart_description(
+                    title=title,
+                    author_names=author_str,
+                    publisher=pub_str,
+                    year=year,
+                    subjects=subjects,
+                    category_code=cat_code
+                )
+
+                return {
+                    'success': True,
+                    'source': 'OpenLibrary Global Catalog',
+                    'already_in_library': False,
+                    'isbn': format_isbn13(cleaned),
+                    'title': title,
+                    'author_names': author_str,
+                    'publisher': pub_str,
+                    'year': year,
                     'price': 160000,
-                    'description': f"Tài liệu '{title}' xuất bản bởi {pub_str}, phục vụ nghiên cứu và học tập.",
+                    'description': description,
                     'cover_image': cover_image,
                     'suggested_category_code': cat_code,
                     'suggested_category_id': cat.id if cat else None,
                     'page_count': doc.get('number_of_pages_median') or 320,
                 }
     except Exception as e:
-        logger.warning(f"OpenLibrary search error for ISBN {cleaned}: {e}")
+        logger.warning(f"OpenLibrary Search error for ISBN {cleaned}: {e}")
 
-    # 4. Fallback: Generic recognized ISBN
+    # 5. Last resort fallback
+    pub_str = infer_publisher(cleaned, None)
     cat_code = 'CNTT'
     cat = Category.objects.filter(code=cat_code).first()
     return {
         'success': True,
-        'source': 'Mã ISBN hợp lệ (Tạo mới)',
+        'source': 'Mã ISBN chuẩn quốc tế',
         'already_in_library': False,
         'isbn': format_isbn13(cleaned),
         'title': f"Tài liệu chuyên khảo ISBN {format_isbn13(cleaned)}",
         'author_names': 'Tác giả chuyên ngành',
-        'publisher': 'NXB Giao thông Vận tải',
+        'publisher': pub_str,
         'year': 2024,
         'price': 150000,
-        'description': f"Ấn phẩm sách chuyên khảo và tài liệu giảng dạy, mã chuẩn ISBN: {format_isbn13(cleaned)}.",
+        'description': f"Ấn phẩm sách chuyên khảo chuẩn ISBN: {format_isbn13(cleaned)}, xuất bản bởi {pub_str}.",
         'cover_image': f"https://covers.openlibrary.org/b/isbn/{cleaned}-L.jpg",
         'suggested_category_code': cat_code,
         'suggested_category_id': cat.id if cat else None,
