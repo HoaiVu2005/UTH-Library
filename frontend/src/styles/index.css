@@ -164,3 +164,75 @@ body {
 .focus-ring {
   @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2;
 }
+
+/* ==========================================================================
+   Table Row Spotlight & Action Menu Focus System
+   ========================================================================== */
+
+@keyframes dropdownFadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropdown-enter-down {
+  animation: dropdownFadeInDown 130ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.dropdown-enter-up {
+  animation: dropdownFadeInUp 130ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Active Row Spotlight: The row with open ActionMenu stays bright, clear & highlighted with UTH Teal */
+tbody.table-tbody-has-active-menu > tr.table-row-active-menu > td,
+tbody:has(.action-menu-open) > tr:has(.action-menu-open) > td {
+  background-color: #E6F4F3 !important;
+  transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+tbody.table-tbody-has-active-menu > tr.table-row-active-menu > td:first-child,
+tbody:has(.action-menu-open) > tr:has(.action-menu-open) > td:first-child {
+  box-shadow: inset 4px 0 0 #008B8B !important;
+}
+
+/* Dim & mute all other rows in the table when an ActionMenu is active */
+tbody.table-tbody-has-active-menu > tr:not(.table-row-active-menu) > td,
+tbody:has(.action-menu-open) > tr:not(:has(.action-menu-open)) > td {
+  background-color: #F8FAFC !important;
+  opacity: 0.42 !important;
+  filter: grayscale(25%);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Card list support (for grid/card views with action menus) */
+.action-card-container:has(.action-menu-open) > .action-card:not(:has(.action-menu-open)) {
+  background-color: #F8FAFC !important;
+  opacity: 0.42 !important;
+  filter: grayscale(25%);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.action-card-container:has(.action-menu-open) > .action-card:has(.action-menu-open) {
+  border-color: #008B8B !important;
+  background-color: #E6F4F3 !important;
+  box-shadow: 0 4px 14px -2px rgba(0, 139, 139, 0.15) !important;
+  opacity: 1 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
