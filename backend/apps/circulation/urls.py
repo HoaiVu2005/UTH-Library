@@ -25,7 +25,9 @@ urlpatterns = [
 
     # Existing endpoints
     path('loans/direct', DirectBorrowView.as_view(), name='loan-direct-borrow'),
+    path('loans/direct/', DirectBorrowView.as_view(), name='loan-direct-borrow-slash'),
     path('loans/from-reservation', ReservationBorrowView.as_view(), name='loan-reservation-borrow'),
+    path('loans/from-reservation/', ReservationBorrowView.as_view(), name='loan-reservation-borrow-slash'),
     path('loans', LoanListView.as_view(), name='loan-list'),
     path('loans/me', MyLoansView.as_view(), name='loan-me'),
     path('loans/<int:pk>/renew', RenewLoanView.as_view(), name='loan-renew'),

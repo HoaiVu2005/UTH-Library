@@ -188,7 +188,7 @@ def borrow_direct(patron_card_code: str, barcode: str, admin_user: User, request
 
 def borrow_from_reservation(reservation_id: int, barcode: str, admin_user: User, request=None) -> Loan:
     with transaction.atomic():
-        reservation = Reservation.objects.select_for_update().select_related('user', 'book', 'copy').filter(
+        reservation = Reservation.objects.select_for_update().filter(
             id=reservation_id,
             status=ReservationStatus.READY
         ).first()
@@ -196,14 +196,17 @@ def borrow_from_reservation(reservation_id: int, barcode: str, admin_user: User,
         if not reservation:
             raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy yêu cầu giữ chỗ đã sẵn sàng tương ứng.')
 
-        normalized_bc = barcode.strip().upper()
-        if not reservation.copy or reservation.copy.barcode != normalized_bc:
-            raise BusinessLogicError('CONFLICT', detail=f'Mã vạch quét ({normalized_bc}) không khớp với bản sao đã giữ ({reservation.copy.barcode if reservation.copy else "N/A"}).')
+        if not reservation.copy_id:
+            raise BusinessLogicError('CONFLICT', detail='Yêu cầu giữ chỗ chưa được gán bản sao.')
 
-        copy = Copy.objects.select_for_update().get(id=reservation.copy.id)
+        copy = Copy.objects.select_for_update().select_related('book').get(id=reservation.copy_id)
+
+        normalized_bc = barcode.strip().upper()
+        if copy.barcode != normalized_bc:
+            raise BusinessLogicError('CONFLICT', detail=f'Mã vạch quét ({normalized_bc}) không khớp với bản sao đã giữ ({copy.barcode}).')
 
         patron = reservation.user
-        validate_user_can_borrow(patron)
+        validate_user_can_borrow(patron, reservation.book)
 
         policy = get_current_policy_for_user(patron)
         now = timezone.now()

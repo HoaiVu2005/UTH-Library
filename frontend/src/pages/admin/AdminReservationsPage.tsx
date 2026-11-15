@@ -553,35 +553,35 @@ export const AdminReservationsPage: React.FC = () => {
 
                       {/* Actions: 3-dots Dropdown Menu */}
                       <TableCell className="text-center relative">
-                        <div className="relative inline-block reservation-action-menu">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(openMenuId === r.id ? null : r.id);
-                            }}
-                            className={cn(
-                              'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 border',
-                              openMenuId === r.id
-                                ? 'bg-teal-50 text-brand border-teal-300 shadow-2xs'
-                                : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100/80 border-transparent hover:border-gray-200'
-                            )}
-                            title="Thao tác"
-                            aria-expanded={openMenuId === r.id}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-
-                          {openMenuId === r.id && (
-                            <div
+                        {r.status === 'ready' || r.status === 'pending' ? (
+                          <div className="relative inline-block reservation-action-menu">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(openMenuId === r.id ? null : r.id);
+                              }}
                               className={cn(
-                                'absolute right-0 z-50 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-gray-200 text-xs animate-in fade-in-50 zoom-in-95 duration-100 text-left',
-                                index >= reservations.length - 2 && reservations.length > 2
-                                  ? 'bottom-full mb-1.5'
-                                  : 'top-full mt-1.5'
+                                'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150 border',
+                                openMenuId === r.id
+                                  ? 'bg-teal-50 text-brand border-teal-300 shadow-2xs'
+                                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100/80 border-transparent hover:border-gray-200'
                               )}
+                              title="Thao tác"
+                              aria-expanded={openMenuId === r.id}
                             >
-                              <div className="space-y-0.5">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+
+                            {openMenuId === r.id && (
+                              <div
+                                className={cn(
+                                  'absolute right-0 z-50 w-44 rounded-xl bg-white p-1.5 shadow-xl border border-gray-200 text-xs animate-in fade-in-50 zoom-in-95 duration-100 text-left space-y-0.5',
+                                  index >= reservations.length - 2 && reservations.length > 2
+                                    ? 'bottom-full mb-1.5'
+                                    : 'top-full mt-1.5'
+                                )}
+                              >
                                 {r.status === 'ready' && (
                                   <>
                                     <button
@@ -590,15 +590,10 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCheckoutTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-teal-800 hover:bg-teal-50 font-semibold transition-colors group"
+                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-teal-700 hover:bg-teal-50 font-medium transition-colors"
                                     >
-                                      <div className="w-7 h-7 rounded-md bg-teal-100 text-teal-700 flex items-center justify-center shrink-0 group-hover:bg-teal-200 transition-colors">
-                                        <BookOpen className="w-3.5 h-3.5" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-xs text-teal-900 leading-tight">Phát sách cho bạn đọc</div>
-                                        <div className="text-[10px] text-teal-600 font-normal">Xuất mượn &amp; giao tài liệu</div>
-                                      </div>
+                                      <BookOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                                      <span>Phát sách cho bạn đọc</span>
                                     </button>
 
                                     <button
@@ -607,15 +602,10 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCancelTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-red-700 hover:bg-red-50 font-semibold transition-colors group"
+                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-red-600 hover:bg-red-50 font-medium transition-colors"
                                     >
-                                      <div className="w-7 h-7 rounded-md bg-red-100 text-red-600 flex items-center justify-center shrink-0 group-hover:bg-red-200 transition-colors">
-                                        <XCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-xs text-red-800 leading-tight">Hủy giữ chỗ</div>
-                                        <div className="text-[10px] text-red-500 font-normal">Chuyển sang bạn đọc sau</div>
-                                      </div>
+                                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                      <span>Hủy giữ chỗ</span>
                                     </button>
                                   </>
                                 )}
@@ -629,15 +619,10 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         handleAdvance(r.id);
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-slate-700 hover:bg-teal-50 hover:text-teal-800 font-semibold transition-colors disabled:opacity-50 group"
+                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-slate-700 hover:bg-teal-50 hover:text-teal-800 font-medium transition-colors disabled:opacity-50"
                                     >
-                                      <div className="w-7 h-7 rounded-md bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition-colors">
-                                        <ArrowUpCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-xs text-slate-800 group-hover:text-teal-900 leading-tight">Ưu tiên lên vị trí #1</div>
-                                        <div className="text-[10px] text-slate-400 group-hover:text-teal-600 font-normal">Đôn lên đầu hàng chờ</div>
-                                      </div>
+                                      <ArrowUpCircle className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                                      <span>Ưu tiên (#1)</span>
                                     </button>
 
                                     <button
@@ -646,47 +631,19 @@ export const AdminReservationsPage: React.FC = () => {
                                         setOpenMenuId(null);
                                         setCancelTarget(r);
                                       }}
-                                      className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-red-700 hover:bg-red-50 font-semibold transition-colors group"
+                                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg text-red-600 hover:bg-red-50 font-medium transition-colors"
                                     >
-                                      <div className="w-7 h-7 rounded-md bg-red-100 text-red-600 flex items-center justify-center shrink-0 group-hover:bg-red-200 transition-colors">
-                                        <XCircle className="w-3.5 h-3.5" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-xs text-red-800 leading-tight">Hủy yêu cầu đặt trước</div>
-                                        <div className="text-[10px] text-red-500 font-normal">Xóa khỏi hàng chờ</div>
-                                      </div>
+                                      <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                                      <span>Hủy đặt trước</span>
                                     </button>
                                   </>
                                 )}
-
-                                {copyBarcode && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenMenuId(null);
-                                      setBarcodeModalItem(r);
-                                    }}
-                                    className="w-full flex items-center gap-2.5 px-2.5 py-2 text-left rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors group"
-                                  >
-                                    <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 group-hover:bg-slate-200 transition-colors">
-                                      <BarcodeIcon className="w-3.5 h-3.5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="font-medium text-xs text-slate-700 leading-tight">Xem tem nhãn mã vạch</div>
-                                      <div className="text-[10px] text-slate-400 font-mono">{copyBarcode}</div>
-                                    </div>
-                                  </button>
-                                )}
-
-                                {r.status !== 'ready' && r.status !== 'pending' && !copyBarcode && (
-                                  <div className="px-3 py-2 text-center text-xs text-gray-400 italic">
-                                    Không có thao tác khả dụng
-                                  </div>
-                                )}
                               </div>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 select-none font-bold">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
