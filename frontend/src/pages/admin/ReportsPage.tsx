@@ -11,12 +11,12 @@ import {
   Receipt,
   Layers,
   PieChart as PieIcon,
-  Calendar,
-  CheckCircle2,
+  Users,
   Clock,
-  Sparkles,
+  CheckCircle2,
   ArrowUpRight,
-  Filter,
+  ShieldAlert,
+  Percent,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -58,6 +58,10 @@ interface SummaryData {
   active_loans: number;
   overdue_loans: number;
   total_unpaid_fines: number;
+  total_collected_fines?: number;
+  student_loans?: number;
+  lecturer_loans?: number;
+  total_lifetime_borrows?: number;
   pending_reservations: number;
   ready_reservations: number;
   pending_suggestions: number;
@@ -115,7 +119,7 @@ export const ReportsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Fetch all necessary reporting data
+  // Fetch all report datasets
   const fetchAllData = useCallback(async (showFullLoading = true) => {
     try {
       if (showFullLoading) setIsLoading(true);
@@ -149,7 +153,7 @@ export const ReportsPage: React.FC = () => {
   // Realtime synchronization: updates live when loans/fines/returns occur
   useRealtimeSync(['loans', 'reservations', 'fines', 'dashboard'], () => fetchAllData(false), 8000);
 
-  // Handle Export CSV based on current active tab
+  // Handle Export CSV
   const handleExportCsv = () => {
     const today = new Date().toISOString().substring(0, 10);
     if (activeTab === 'overview' || activeTab === 'top_borrowed') {
@@ -209,7 +213,7 @@ export const ReportsPage: React.FC = () => {
     }
   };
 
-  // Pie chart data for copy status breakdown
+  // 1. Pie Chart: Copy Status Distribution
   const copyDistributionData = useMemo(() => {
     if (!summary) return [];
     return [
@@ -220,7 +224,44 @@ export const ReportsPage: React.FC = () => {
     ].filter((item) => item.value > 0);
   }, [summary]);
 
-  // Horizontal bar data for Top 5 books
+  // 2. Pie Chart: Borrower Role Distribution (Sinh viên vs Giảng viên)
+  const patronRoleDistributionData = useMemo(() => {
+    const studentCount = summary?.student_loans || 0;
+    const lecturerCount = summary?.lecturer_loans || 0;
+    const total = studentCount + lecturerCount;
+
+    if (total === 0) {
+      return [
+        { name: 'Sinh viên UTH', value: summary?.active_loans || 1, color: '#008B8B' },
+        { name: 'Giảng viên', value: 0, color: '#F59E0B' },
+      ];
+    }
+    return [
+      { name: 'Sinh viên UTH', value: studentCount, color: '#008B8B' },
+      { name: 'Giảng viên UTH', value: lecturerCount, color: '#F59E0B' },
+    ].filter((item) => item.value > 0);
+  }, [summary]);
+
+  // 3. Bar Chart: Overdue Severity / Aging Breakdown
+  const overdueAgingData = useMemo(() => {
+    const tiers = [
+      { tier: '1 - 3 ngày', label: 'Trễ nhẹ', count: 0, color: '#F59E0B' },
+      { tier: '4 - 7 ngày', label: 'Cảnh báo', count: 0, color: '#F97316' },
+      { tier: '8 - 14 ngày', label: 'Khóa thẻ', count: 0, color: '#EF4444' },
+      { tier: '> 14 ngày', label: 'Nguy cơ mất', count: 0, color: '#991B1B' },
+    ];
+
+    overdueList.forEach((item) => {
+      if (item.days_late <= 3) tiers[0].count++;
+      else if (item.days_late <= 7) tiers[1].count++;
+      else if (item.days_late <= 14) tiers[2].count++;
+      else tiers[3].count++;
+    });
+
+    return tiers;
+  }, [overdueList]);
+
+  // 4. Horizontal Bar: Top 5 books
   const top5BooksData = useMemo(() => {
     return topBorrowed.slice(0, 5).map((b) => ({
       shortTitle: b.title.length > 22 ? `${b.title.substring(0, 22)}...` : b.title,
@@ -230,7 +271,7 @@ export const ReportsPage: React.FC = () => {
     }));
   }, [topBorrowed]);
 
-  // Category breakdown data
+  // 5. Grouped Bar: Category Department Distribution
   const categoryBarData = useMemo(() => {
     return inventoryList.map((cat) => ({
       name: cat.category_name.length > 16 ? `${cat.category_name.substring(0, 16)}...` : cat.category_name,
@@ -251,6 +292,15 @@ export const ReportsPage: React.FC = () => {
     return { totalBorrows, totalReturns, returnRate };
   }, [trends]);
 
+  // Fine recovery metrics
+  const fineMetrics = useMemo(() => {
+    const unpaid = summary?.total_unpaid_fines || 0;
+    const collected = summary?.total_collected_fines || 0;
+    const total = unpaid + collected;
+    const recoveryRate = total > 0 ? Math.round((collected / total) * 100) : 100;
+    return { unpaid, collected, total, recoveryRate };
+  }, [summary]);
+
   const availableRatio = summary?.total_copies
     ? Math.round((summary.available_copies / summary.total_copies) * 100)
     : 0;
@@ -269,7 +319,7 @@ export const ReportsPage: React.FC = () => {
               <span>Báo cáo & Thống kê Lưu thông (Reports & Analytics)</span>
             </h1>
             <p className="text-xs text-textSecondary mt-0.5">
-              Hệ thống sơ đồ phân tích trực quan xu hướng mượn trả, cơ cấu kho sách và thống kê vi phạm quá hạn UTH
+              Hệ thống sơ đồ phân tích trực quan toàn diện xu hướng mượn trả, cơ cấu kho sách, đối tượng độc giả và thu hồi công nợ UTH
             </p>
           </div>
         </div>
@@ -394,7 +444,7 @@ export const ReportsPage: React.FC = () => {
         />
 
         <StatCard
-          title="Công nợ phạt phát sinh"
+          title="Công nợ phạt tồn đọng"
           value={isLoading ? '—' : formatCurrencyVND(summary?.total_unpaid_fines || 0)}
           subtext="Nộp phạt tức thì qua VietQR Sacombank"
           icon={<Receipt className="w-5 h-5 text-accent" />}
@@ -411,14 +461,14 @@ export const ReportsPage: React.FC = () => {
         <div className="space-y-6">
           {/* Row 1: Circulation Trends (7 cols) + Copy Status Donut (5 cols) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Chart 1: Circulation Borrow/Return Trends */}
+            {/* SƠ ĐỒ 1: Xu hướng Mượn & Trả sách */}
             <Card className="lg:col-span-7 p-5 shadow-xs border-border flex flex-col justify-between">
               <div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2">
                   <div>
                     <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-primary" />
-                      <span>Xu hướng Mượn & Trả sách theo thời gian</span>
+                      <span>Sơ đồ 1: Xu hướng Mượn & Trả sách theo thời gian</span>
                     </h3>
                     <p className="text-[11px] text-textSecondary mt-0.5">
                       Theo dõi lưu lượng bạn đọc đến quầy và gia hạn trực tuyến
@@ -445,7 +495,6 @@ export const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Recharts Area Chart */}
                 <div className="h-64 sm:h-72 w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -517,20 +566,19 @@ export const ReportsPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Chart 2: Copy Status Donut Chart */}
+            {/* SƠ ĐỒ 2: Cơ cấu Tình trạng Bản sao Kho sách */}
             <Card className="lg:col-span-5 p-5 shadow-xs border-border flex flex-col justify-between">
               <div>
                 <div className="pb-4 border-b border-gray-100">
                   <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
                     <PieIcon className="w-4 h-4 text-primary" />
-                    <span>Cơ cấu Tình trạng Bản sao Kho sách</span>
+                    <span>Sơ đồ 2: Cơ cấu Bản sao Kho sách</span>
                   </h3>
                   <p className="text-[11px] text-textSecondary mt-0.5">
                     Tổng số {summary?.total_copies || 0} bản sao mã vạch được quản lý
                   </p>
                 </div>
 
-                {/* Donut Chart */}
                 <div className="h-56 sm:h-60 w-full relative flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -570,7 +618,6 @@ export const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Status Breakdown Legend */}
               <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-100">
                 {copyDistributionData.map((item) => (
                   <div key={item.name} className="flex items-center space-x-2 p-1.5 rounded-lg bg-gray-50/70 border border-border">
@@ -587,19 +634,195 @@ export const ReportsPage: React.FC = () => {
             </Card>
           </div>
 
-          {/* Row 2: Top 5 Books Bar Chart (6 cols) + Category Distribution (6 cols) */}
+          {/* Row 2: Patron Role Breakdown (4 cols) + Overdue Aging (4 cols) + Fine Recovery (4 cols) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
+            {/* SƠ ĐỒ 3: Cơ cấu Bạn đọc Mượn sách (Sinh viên vs Giảng viên) */}
+            <Card className="lg:col-span-4 p-5 shadow-xs border-border flex flex-col justify-between">
+              <div>
+                <div className="pb-3 border-b border-gray-100">
+                  <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span>Sơ đồ 3: Cơ cấu Bạn đọc Mượn sách</span>
+                  </h3>
+                  <p className="text-[11px] text-textSecondary mt-0.5">
+                    Phân bổ tỷ lệ mượn giữa Sinh viên và Giảng viên
+                  </p>
+                </div>
+
+                <div className="h-44 w-full relative flex items-center justify-center pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={patronRoleDistributionData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={4}
+                        dataKey="value"
+                      >
+                        {patronRoleDistributionData.map((entry, index) => (
+                          <Cell key={`role-cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(val: any, name: any) => [`${val} lượt`, name]}
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#E2E8F0',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-xl font-bold font-mono text-textPrimary">{summary?.active_loans || 0}</span>
+                    <span className="text-[9px] text-textSecondary uppercase tracking-wider">Đang mượn</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-3 border-t border-gray-100 text-xs">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-teal-50/60 border border-teal-100">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#008B8B]" />
+                    <span className="font-medium text-textPrimary">Sinh viên (Học tập)</span>
+                  </div>
+                  <span className="font-mono font-bold text-primary">{summary?.student_loans || summary?.active_loans || 0} cuốn</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/60 border border-amber-100">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                    <span className="font-medium text-textPrimary">Giảng viên (Nghiên cứu)</span>
+                  </div>
+                  <span className="font-mono font-bold text-accent">{summary?.lecturer_loans || 0} cuốn</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* SƠ ĐỒ 4: Phân bổ Mức độ Quá hạn (Overdue Aging Breakdown) */}
+            <Card className="lg:col-span-4 p-5 shadow-xs border-border flex flex-col justify-between">
+              <div>
+                <div className="pb-3 border-b border-gray-100">
+                  <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-red-500" />
+                    <span>Sơ đồ 4: Phân tầng Trễ hạn (Aging)</span>
+                  </h3>
+                  <p className="text-[11px] text-textSecondary mt-0.5">
+                    Phân loại mức độ nghiêm trọng cần ưu tiên thu hồi
+                  </p>
+                </div>
+
+                <div className="h-44 w-full pt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={overdueAgingData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis dataKey="tier" tick={{ fontSize: 10, fill: '#64748B' }} stroke="#CBD5E1" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748B' }} stroke="#CBD5E1" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#FFFFFF',
+                          borderColor: '#E2E8F0',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(val: any, _, props: any) => [
+                          `${val} cuốn (${props.payload.label})`,
+                          'Số lượng trễ',
+                        ]}
+                      />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                        {overdueAgingData.map((entry, index) => (
+                          <Cell key={`aging-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 pt-3 border-t border-gray-100 text-[11px]">
+                {overdueAgingData.map((item) => (
+                  <div key={item.tier} className="p-1.5 rounded-lg bg-gray-50 border border-border flex items-center justify-between">
+                    <span className="text-textSecondary">{item.label}</span>
+                    <span className="font-mono font-bold" style={{ color: item.color }}>{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* SƠ ĐỒ 5: Tỷ lệ Thu hồi Tiền phạt & Công nợ (Fine Recovery) */}
+            <Card className="lg:col-span-4 p-5 shadow-xs border-border flex flex-col justify-between">
+              <div>
+                <div className="pb-3 border-b border-gray-100">
+                  <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-emerald-600" />
+                    <span>Sơ đồ 5: Thu ngân Phạt & Công nợ</span>
+                  </h3>
+                  <p className="text-[11px] text-textSecondary mt-0.5">
+                    Hiệu quả thu hồi phí phạt qua VietQR & Quầy
+                  </p>
+                </div>
+
+                {/* Circular Progress Gauge */}
+                <div className="h-44 w-full flex flex-col items-center justify-center pt-2">
+                  <div className="relative w-32 h-32 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="40"
+                        className="text-slate-100 stroke-current"
+                        strokeWidth="12"
+                        fill="transparent"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="40"
+                        className="text-emerald-500 stroke-current transition-all duration-1000"
+                        strokeWidth="12"
+                        strokeDasharray={251.2}
+                        strokeDashoffset={251.2 - (251.2 * fineMetrics.recoveryRate) / 100}
+                        strokeLinecap="round"
+                        fill="transparent"
+                      />
+                    </svg>
+                    <div className="absolute flex flex-col items-center justify-center">
+                      <span className="text-2xl font-bold font-mono text-emerald-700">{fineMetrics.recoveryRate}%</span>
+                      <span className="text-[9px] text-textSecondary uppercase font-medium">Đã thu hồi</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-3 border-t border-gray-100 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-textSecondary">Đã thu (Sacombank/Quầy):</span>
+                  <span className="font-mono font-bold text-emerald-600">{formatCurrencyVND(fineMetrics.collected)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-textSecondary">Công nợ tồn đọng:</span>
+                  <span className="font-mono font-bold text-red-600">{formatCurrencyVND(fineMetrics.unpaid)}</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Row 3: Top 5 Books Horizontal Bar (6 cols) + Category Inventory (6 cols) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Chart 3: Top 5 Borrowed Books Horizontal Bar Chart */}
+            {/* SƠ ĐỒ 6: Top 5 Đầu sách có lượt mượn nhiều nhất */}
             <Card className="lg:col-span-6 p-5 shadow-xs border-border flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                   <div>
                     <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-primary" />
-                      <span>Top 5 Sách được mượn nhiều nhất</span>
+                      <span>Sơ đồ 6: Top 5 Sách được mượn nhiều nhất</span>
                     </h3>
                     <p className="text-[11px] text-textSecondary mt-0.5">
-                      Giáo trình & tài liệu tham khảo có nhu cầu cao nhất
+                      Giáo trình & tài liệu tham khảo có nhu cầu cao nhất UTH
                     </p>
                   </div>
                   <button
@@ -636,7 +859,7 @@ export const ReportsPage: React.FC = () => {
                           boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                           fontSize: '12px',
                         }}
-                        formatter={(val: any) => [`${val} lượt mượn`, 'Tổng lượt mượn']}
+                        formatter={(val: any) => [`${val} lượt mượn`, 'Tổng lượt']}
                         labelFormatter={(_, payload) => payload?.[0]?.payload?.fullTitle || ''}
                       />
                       <Bar dataKey="borrows" fill="#008B8B" radius={[0, 6, 6, 0]} barSize={22} />
@@ -651,14 +874,14 @@ export const ReportsPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Chart 4: Department Inventory Breakdown */}
+            {/* SƠ ĐỒ 7: Phân bổ Bản sao theo Chuyên ngành UTH */}
             <Card className="lg:col-span-6 p-5 shadow-xs border-border flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                   <div>
                     <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
                       <Layers className="w-4 h-4 text-primary" />
-                      <span>Phân bổ Bản sao theo Chuyên ngành UTH</span>
+                      <span>Sơ đồ 7: Phân bổ Bản sao theo Chuyên ngành UTH</span>
                     </h3>
                     <p className="text-[11px] text-textSecondary mt-0.5">
                       So sánh bản sao sẵn sàng vs đang mượn theo từng khoa
@@ -726,7 +949,6 @@ export const ReportsPage: React.FC = () => {
       ) : activeTab === 'top_borrowed' ? (
         /* 4. TAB: TOP BORROWED BOOKS (Chart + Full Table) */
         <div className="space-y-6">
-          {/* Top 10 Visual Bar Chart */}
           <Card className="p-5 shadow-xs border-border">
             <div className="pb-3 border-b border-gray-100">
               <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
@@ -769,7 +991,6 @@ export const ReportsPage: React.FC = () => {
             </div>
           </Card>
 
-          {/* Detailed Top 20 Table */}
           <Card className="shadow-xs overflow-hidden border-border">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-bold text-sm text-textPrimary">Bảng xếp hạng Top 20 Đầu sách mượn nhiều nhất</h3>
@@ -819,7 +1040,6 @@ export const ReportsPage: React.FC = () => {
       ) : activeTab === 'overdue' ? (
         /* 5. TAB: OVERDUE RECOVERY (Alert Banner + Full Table) */
         <div className="space-y-6">
-          {/* Overdue alert summary banner */}
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-red-900">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">

@@ -36,6 +36,13 @@ def get_dashboard_summary():
     )
     total_unpaid_fines = unpaid_fines_agg['total_debt'] or 0
 
+    collected_fines_agg = Fine.objects.aggregate(total_collected=Sum('paid_amount'))
+    total_collected_fines = collected_fines_agg['total_collected'] or 0
+
+    student_loans = Loan.objects.filter(status=LoanStatus.ACTIVE, user__role='student').count()
+    lecturer_loans = Loan.objects.filter(status=LoanStatus.ACTIVE, user__role='lecturer').count()
+    total_lifetime_borrows = Loan.objects.count()
+
     pending_reservations = Reservation.objects.filter(status=ReservationStatus.PENDING).count()
     ready_reservations = Reservation.objects.filter(status=ReservationStatus.READY).count()
     pending_suggestions = Suggestion.objects.filter(status=SuggestionStatus.PENDING).count()
@@ -53,6 +60,10 @@ def get_dashboard_summary():
         'active_loans': active_loans,
         'overdue_loans': overdue_loans,
         'total_unpaid_fines': total_unpaid_fines,
+        'total_collected_fines': total_collected_fines,
+        'student_loans': student_loans,
+        'lecturer_loans': lecturer_loans,
+        'total_lifetime_borrows': total_lifetime_borrows,
         'pending_reservations': pending_reservations,
         'ready_reservations': ready_reservations,
         'pending_suggestions': pending_suggestions,
