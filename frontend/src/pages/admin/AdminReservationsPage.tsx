@@ -130,6 +130,7 @@ export const AdminReservationsPage: React.FC = () => {
       toast.success('Đã ưu tiên chuyển yêu cầu lên vị trí #1 hàng chờ.');
       fetchReservations(true);
       broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể điều chỉnh vị trí hàng chờ.');

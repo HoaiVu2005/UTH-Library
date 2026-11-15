@@ -1,12 +1,14 @@
 from django.utils import timezone
+from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from apps.accounts.permissions import IsAdminUserRole
+from apps.accounts.models import User
 from apps.core.pagination import StandardPagination
-from apps.core.enums import SuggestionStatus, NotificationType, NotificationChannel
+from apps.core.enums import SuggestionStatus, NotificationType, NotificationChannel, UserRole
 from apps.notifications.models import Notification
 from apps.audit.services import log_action
 from .models import Suggestion
@@ -50,6 +52,26 @@ class MySuggestionsView(APIView):
             detail={'book_title': suggestion.book_title, 'author': suggestion.author},
             request=request
         )
+
+        # Notify all admins & librarians in real-time
+        admins = User.objects.filter(
+            Q(role=UserRole.ADMIN) | Q(is_staff=True),
+            is_active=True
+        )
+        patron_name = request.user.full_name or request.user.username
+        patron_card = f" ({request.user.card_code})" if request.user.card_code else ""
+        content = f"Bạn đọc {patron_name}{patron_card} vừa gửi đề xuất mua sách mới: '{suggestion.book_title}'."
+        
+        for admin_user in admins:
+            Notification.objects.create(
+                user=admin_user,
+                type=NotificationType.SUGGESTION_RESULT,
+                channel=NotificationChannel.IN_APP,
+                content=content,
+                link='/admin/suggestions',
+                is_read=False,
+                dedupe_key=f"sugg_new_{suggestion.id}_{admin_user.id}"
+            )
 
         return Response(SuggestionSerializer(suggestion).data, status=status.HTTP_201_CREATED)
 
@@ -98,6 +120,11 @@ class ApproveSuggestionView(APIView):
             link='/suggestions'
         )
 
+        # Mark pending admin notifications for this suggestion as read
+        Notification.objects.filter(
+            dedupe_key__startswith=f"sugg_new_{suggestion.id}_"
+        ).update(is_read=True)
+
         log_action(
             user=request.user,
             action='SUGGESTION_APPROVE',
@@ -134,6 +161,11 @@ class RejectSuggestionView(APIView):
             content=f"Đề xuất sách '{suggestion.book_title}' của bạn đã bị từ chối. Lý do: {suggestion.review_note}".strip(),
             link='/suggestions'
         )
+
+        # Mark pending admin notifications for this suggestion as read
+        Notification.objects.filter(
+            dedupe_key__startswith=f"sugg_new_{suggestion.id}_"
+        ).update(is_read=True)
 
         log_action(
             user=request.user,

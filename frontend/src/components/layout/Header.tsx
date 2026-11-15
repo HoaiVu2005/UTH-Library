@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Menu, Calendar, User, ChevronDown, LogOut, KeyRound, UserCheck, LogIn, Bell, Shield, Barcode as BarcodeIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { api } from '@/lib/api';
 import { StudentIdCardModal } from '@/components/patron/StudentIdCardModal';
 import { cn } from '@/lib/utils';
+import { useRealtimeSync } from '@/lib/realtime';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -18,18 +19,28 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const res = await api.get('/notifications/me?unread=true');
+      const total = typeof res.data?.meta?.total === 'number' 
+        ? res.data.meta.total 
+        : (Array.isArray(res.data?.data) ? res.data.data.length : 0);
+      setUnreadCount(total);
+    } catch {
+      // keep previous count on network fluctuation
+    }
+  }, [isAuthenticated]);
+
+  // Subscribe Header to cross-tab realtime notification sync
+  useRealtimeSync('notifications', fetchUnreadCount, 4000);
+
   // Fetch unread count for patrons/staff
   useEffect(() => {
-    if (isAuthenticated) {
-      api.get('/notifications/me?unread=true')
-        .then((res) => {
-          const list = res.data?.data || [];
-          setUnreadCount(list.length);
-        })
-        .catch(() => setUnreadCount(0));
-    } else {
-      setUnreadCount(0);
-    }
+    fetchUnreadCount();
 
     const handleUnreadChanged = (e: any) => {
       if (typeof e.detail?.count === 'number') {
@@ -37,22 +48,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       }
     };
 
-    const handleRefresh = () => {
-      api.get('/notifications/me?unread=true')
-        .then((res) => {
-          const list = res.data?.data || [];
-          setUnreadCount(list.length);
-        })
-        .catch(() => {});
-    };
-
     window.addEventListener('uth-unread-count-changed', handleUnreadChanged);
-    window.addEventListener('uth-refresh-notifications', handleRefresh);
+    window.addEventListener('uth-refresh-notifications', fetchUnreadCount);
     return () => {
       window.removeEventListener('uth-unread-count-changed', handleUnreadChanged);
-      window.removeEventListener('uth-refresh-notifications', handleRefresh);
+      window.removeEventListener('uth-refresh-notifications', fetchUnreadCount);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchUnreadCount]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

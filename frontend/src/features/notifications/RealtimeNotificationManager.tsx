@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { api } from '@/lib/api';
 import { toast } from '@/components/ui/Toast';
-import { broadcastRealtimeSync } from '@/lib/realtime';
+import { useRealtimeSync } from '@/lib/realtime';
 
 interface DueAlert {
   loan_id: number;
@@ -84,7 +84,7 @@ export const RealtimeNotificationManager: React.FC = () => {
         });
       }
 
-      // 2. Process latest unread notifications (e.g. Reservation Ready, Fines, etc.)
+      // 2. Process latest unread notifications (e.g. Suggestions, Reservations, Fines, Overdue)
       if (data.latest_notifications && Array.isArray(data.latest_notifications)) {
         data.latest_notifications.forEach((notif) => {
           const sessionKey = `notif_item_${notif.id}`;
@@ -93,9 +93,12 @@ export const RealtimeNotificationManager: React.FC = () => {
           if (!alreadyNotified) {
             sessionStorage.setItem(sessionKey, 'true');
 
-            // Determine toast style from type
-            let toastType: 'info' | 'warning' | 'success' = 'info';
+            // Determine toast style & title from type & content
+            let toastType: 'info' | 'warning' | 'success' | 'error' = 'info';
             let toastTitle = '🔔 Thông báo thư viện';
+            let duration = 7500;
+
+            const lowerContent = (notif.content || '').toLowerCase();
 
             if (notif.type === 'reservation_ready') {
               toastType = 'success';
@@ -103,6 +106,28 @@ export const RealtimeNotificationManager: React.FC = () => {
             } else if (notif.type === 'fine_created') {
               toastType = 'warning';
               toastTitle = '⚠️ Khoản phạt mới phát sinh';
+            } else if (notif.type === 'suggestion_result' || lowerContent.includes('đề xuất')) {
+              if (lowerContent.includes('đã được duyệt') || lowerContent.includes('chấp thuận')) {
+                toastType = 'success';
+                toastTitle = '🎉 Đề xuất sách đã được duyệt!';
+              } else if (lowerContent.includes('từ chối') || lowerContent.includes('không được')) {
+                toastType = 'warning';
+                toastTitle = 'ℹ️ Kết quả xét duyệt đề xuất';
+              } else if (lowerContent.includes('nhập về') || lowerContent.includes('về kho')) {
+                toastType = 'success';
+                toastTitle = '📦 Sách đề xuất đã về kho!';
+              } else {
+                // Incoming new student suggestion for librarians/admins
+                toastType = 'info';
+                toastTitle = '📚 Đề xuất mua sách mới từ bạn đọc';
+                duration = 8500;
+              }
+            } else if (notif.type === 'due_soon') {
+              toastType = 'warning';
+              toastTitle = '⏰ Sắp đến hạn trả sách';
+            } else if (notif.type === 'overdue') {
+              toastType = 'error';
+              toastTitle = '⚠️ Lượt mượn sách quá hạn';
             }
 
             toast.custom({
@@ -110,34 +135,25 @@ export const RealtimeNotificationManager: React.FC = () => {
               title: toastTitle,
               message: notif.content,
               link: notif.link || '/notifications',
-              actionText: 'Xem thông báo',
-              duration: 7000,
+              actionText: notif.link ? 'Xem chi tiết' : 'Xem thông báo',
+              duration,
             });
-          }
-
-          // Trigger live list refresh for specific modules matching this notification
-          const lowerContent = (notif.content || '').toLowerCase();
-          if (notif.type === 'suggestion_result' || lowerContent.includes('đề xuất')) {
-            broadcastRealtimeSync('suggestions');
-          }
-          if (notif.type === 'reservation_ready' || lowerContent.includes('giữ chỗ') || lowerContent.includes('đặt trước')) {
-            broadcastRealtimeSync('reservations');
-          }
-          if (notif.type === 'fine_created' || lowerContent.includes('phạt')) {
-            broadcastRealtimeSync('fines');
-          }
-          if (notif.type === 'due_soon' || notif.type === 'overdue' || lowerContent.includes('mượn') || lowerContent.includes('trả')) {
-            broadcastRealtimeSync('loans');
           }
         });
       }
     } catch (err) {
-      // Silent error during background polling
       console.debug('[RealtimeNotification] Check skipped:', err);
     } finally {
       isCheckingRef.current = false;
     }
   }, [isAuthenticated]);
+
+  // Realtime event-driven check whenever notifications/suggestions/loans/reservations change
+  useRealtimeSync(
+    ['notifications', 'suggestions', 'reservations', 'loans', 'fines'],
+    () => checkRealtimeNotifications(),
+    3500
+  );
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -145,10 +161,10 @@ export const RealtimeNotificationManager: React.FC = () => {
     // Run immediately on login/mount
     checkRealtimeNotifications();
 
-    // Periodic polling every 4 seconds for fast realtime web experience
+    // Periodic polling every 3.5 seconds for quick synchronization
     const interval = setInterval(() => {
       checkRealtimeNotifications();
-    }, 4000);
+    }, 3500);
 
     // Also check on tab focus
     const onFocus = () => {

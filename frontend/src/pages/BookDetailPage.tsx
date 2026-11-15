@@ -137,6 +137,7 @@ export const BookDetailPage: React.FC = () => {
       loadBookDetail(false);
       broadcastRealtimeSync('reservations');
       broadcastRealtimeSync('books');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {

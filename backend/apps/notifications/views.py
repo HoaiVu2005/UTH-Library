@@ -108,10 +108,12 @@ def check_and_create_admin_notifications(user):
     admin_alerts = []
 
     # 1. Pending suggestions submitted by patrons
-    pending_suggestions_count = Suggestion.objects.filter(status=SuggestionStatus.PENDING).count()
-    if pending_suggestions_count > 0:
-        dedupe_key = f"admin_pending_sugg_{user.id}_{today_str}_{pending_suggestions_count}"
-        content = f"Có {pending_suggestions_count} đề xuất mua giáo trình/tài liệu mới từ bạn đọc đang chờ Ban thư viện phê duyệt."
+    pending_suggestions = Suggestion.objects.filter(status=SuggestionStatus.PENDING).select_related('user')
+    for sugg in pending_suggestions:
+        dedupe_key = f"sugg_new_{sugg.id}_{user.id}"
+        patron_name = sugg.user.full_name or sugg.user.username if sugg.user else "Bạn đọc"
+        patron_card = f" ({sugg.user.card_code})" if sugg.user and sugg.user.card_code else ""
+        content = f"Bạn đọc {patron_name}{patron_card} vừa gửi đề xuất mua sách mới: '{sugg.book_title}'."
         notif, created = Notification.objects.get_or_create(
             dedupe_key=dedupe_key,
             defaults={
@@ -123,12 +125,13 @@ def check_and_create_admin_notifications(user):
                 'is_read': False,
             }
         )
-        admin_alerts.append({
-            'type': 'suggestion',
-            'message': content,
-            'link': '/admin/suggestions',
-            'is_new': created,
-        })
+        if created:
+            admin_alerts.append({
+                'type': 'suggestion',
+                'message': content,
+                'link': '/admin/suggestions',
+                'is_new': True,
+            })
 
     # 2. Ready reservations waiting for patron pickup at circulation desk
     ready_res_count = Reservation.objects.filter(status=ReservationStatus.READY).count()
@@ -186,7 +189,7 @@ class RealtimeCheckView(APIView):
 
     def get(self, request):
         alerts = check_and_create_due_notifications_for_user(request.user)
-        check_and_create_admin_notifications(request.user)
+        admin_alerts = check_and_create_admin_notifications(request.user)
 
         unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
         latest_unreads = Notification.objects.filter(user=request.user, is_read=False).order_by('-created_at')[:5]
@@ -195,6 +198,7 @@ class RealtimeCheckView(APIView):
             'data': {
                 'unread_count': unread_count,
                 'due_alerts': alerts,
+                'admin_alerts': admin_alerts,
                 'has_overdue': any(a.get('is_overdue', False) for a in alerts),
                 'has_due_soon': any(not a.get('is_overdue', False) for a in alerts),
                 'latest_notifications': NotificationSerializer(latest_unreads, many=True).data,

@@ -132,6 +132,7 @@ export const SuggestionsReviewPage: React.FC = () => {
       setActionItem(null);
       fetchSuggestions(false);
       broadcastRealtimeSync('suggestions');
+      broadcastRealtimeSync('notifications');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Lỗi khi xử lý đề xuất.');
@@ -147,6 +148,7 @@ export const SuggestionsReviewPage: React.FC = () => {
       toast.success(`Đã đánh dấu sách "${item.book_title}" đã nhập kho!`);
       fetchSuggestions(false);
       broadcastRealtimeSync('suggestions');
+      broadcastRealtimeSync('notifications');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Lỗi khi cập nhật trạng thái nhập kho.');

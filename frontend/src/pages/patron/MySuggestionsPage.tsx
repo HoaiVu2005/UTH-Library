@@ -77,6 +77,7 @@ export const MySuggestionsPage: React.FC = () => {
       fetchSuggestions(false);
       // Broadcast to Admin and other open tabs immediately
       broadcastRealtimeSync('suggestions');
+      broadcastRealtimeSync('notifications');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể gửi đề xuất. Vui lòng thử lại sau.');

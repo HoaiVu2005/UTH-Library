@@ -143,6 +143,7 @@ export const FinesManagementPage: React.FC = () => {
       setCollectTarget(null);
       fetchFines();
       broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {
@@ -170,6 +171,7 @@ export const FinesManagementPage: React.FC = () => {
       setWaiveTarget(null);
       fetchFines();
       broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {

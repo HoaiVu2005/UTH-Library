@@ -335,6 +335,7 @@ export const CirculationDeskPage: React.FC = () => {
       broadcastRealtimeSync('loans');
       broadcastRealtimeSync('books');
       broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
       setPatron((prev) =>
@@ -419,6 +420,7 @@ export const CirculationDeskPage: React.FC = () => {
       broadcastRealtimeSync('books');
       broadcastRealtimeSync('reservations');
       broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
       returnInputRef.current?.focus();

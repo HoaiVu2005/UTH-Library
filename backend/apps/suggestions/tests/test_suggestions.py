@@ -35,8 +35,9 @@ def admin_client(db):
     client.force_authenticate(user=admin)
     return client, admin
 
-def test_patron_create_suggestion(patron_client):
+def test_patron_create_suggestion(patron_client, admin_client):
     client, user = patron_client
+    _, admin = admin_client
     payload = {
         'book_title': 'Thiết kế Vi mạch số với VHDL',
         'author': 'GS. Trần Văn B',
@@ -51,6 +52,12 @@ def test_patron_create_suggestion(patron_client):
     list_res = client.get('/api/v1/suggestions/me')
     assert list_res.status_code == 200
     assert list_res.data['meta']['total'] == 1
+
+    # Verify admin received notification
+    admin_notif = Notification.objects.filter(user=admin, type=NotificationType.SUGGESTION_RESULT).first()
+    assert admin_notif is not None
+    assert 'Thiết kế Vi mạch số với VHDL' in admin_notif.content
+    assert admin_notif.is_read is False
 
 def test_admin_approve_suggestion(patron_client, admin_client):
     p_client, patron = patron_client

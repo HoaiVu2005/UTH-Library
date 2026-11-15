@@ -136,6 +136,7 @@ export const MyReservationsPage: React.FC = () => {
 
       // Trigger realtime refresh for Header and Notifications & Admin
       broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
