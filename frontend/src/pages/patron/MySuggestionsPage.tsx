@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Lightbulb, Send, CheckCircle2, MessageSquare, BookOpen, Clock, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmpty } from '@/components/ui/Table';
 import { formatDateVN } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface SuggestionItem {
   id: number;
@@ -32,21 +33,24 @@ export const MySuggestionsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async (isInitial = false) => {
     try {
-      setIsLoading(true);
+      if (isInitial) setIsLoading(true);
       const res = await api.get('/suggestions/me');
       setSuggestions(res.data?.data || []);
     } catch (err) {
       console.error('Failed to fetch suggestions', err);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchSuggestions();
-  }, []);
+    fetchSuggestions(true);
+  }, [fetchSuggestions]);
+
+  // Realtime synchronization: updates live when admin reviews/approves
+  useRealtimeSync('suggestions', () => fetchSuggestions(false), 4000);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +74,10 @@ export const MySuggestionsPage: React.FC = () => {
       setBookTitle('');
       setAuthor('');
       setReason('');
-      fetchSuggestions();
+      fetchSuggestions(false);
+      // Broadcast to Admin and other open tabs immediately
+      broadcastRealtimeSync('suggestions');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể gửi đề xuất. Vui lòng thử lại sau.');
     } finally {

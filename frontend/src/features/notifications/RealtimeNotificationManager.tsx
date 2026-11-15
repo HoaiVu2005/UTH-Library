@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { api } from '@/lib/api';
 import { toast } from '@/components/ui/Toast';
+import { broadcastRealtimeSync } from '@/lib/realtime';
 
 interface DueAlert {
   loan_id: number;
@@ -113,6 +114,21 @@ export const RealtimeNotificationManager: React.FC = () => {
               duration: 7000,
             });
           }
+
+          // Trigger live list refresh for specific modules matching this notification
+          const lowerContent = (notif.content || '').toLowerCase();
+          if (notif.type === 'suggestion_result' || lowerContent.includes('đề xuất')) {
+            broadcastRealtimeSync('suggestions');
+          }
+          if (notif.type === 'reservation_ready' || lowerContent.includes('giữ chỗ') || lowerContent.includes('đặt trước')) {
+            broadcastRealtimeSync('reservations');
+          }
+          if (notif.type === 'fine_created' || lowerContent.includes('phạt')) {
+            broadcastRealtimeSync('fines');
+          }
+          if (notif.type === 'due_soon' || notif.type === 'overdue' || lowerContent.includes('mượn') || lowerContent.includes('trả')) {
+            broadcastRealtimeSync('loans');
+          }
         });
       }
     } catch (err) {
@@ -129,10 +145,10 @@ export const RealtimeNotificationManager: React.FC = () => {
     // Run immediately on login/mount
     checkRealtimeNotifications();
 
-    // Periodic polling every 8 seconds for fast realtime web experience
+    // Periodic polling every 4 seconds for fast realtime web experience
     const interval = setInterval(() => {
       checkRealtimeNotifications();
-    }, 8000);
+    }, 4000);
 
     // Also check on tab focus
     const onFocus = () => {

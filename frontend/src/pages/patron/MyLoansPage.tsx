@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   BookOpen,
   Clock,
@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { formatDateVN } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface LoanItem {
   id: number;
@@ -52,10 +53,10 @@ export const MyLoansPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [renewingId, setRenewingId] = useState<number | null>(null);
 
-  const fetchLoans = async (showSpinner = false) => {
+  const fetchLoans = useCallback(async (showSpinner = false, isBackground = false) => {
     try {
       if (showSpinner) setIsRefreshing(true);
-      else setIsLoading(true);
+      else if (!isBackground) setIsLoading(true);
 
       const res = await api.get(`/loans/me?status=${activeTab}&page=${page}&page_size=8`);
       const data = res.data?.data || [];
@@ -80,24 +81,31 @@ export const MyLoansPage: React.FC = () => {
       setTotalPages(res.data?.meta?.total_pages || 1);
       setTotalCount(res.data?.meta?.total || mapped.length);
     } catch (err) {
-      console.error('Failed to fetch patron loans', err);
-      toast.error('Không thể tải danh sách sách mượn. Vui lòng thử lại.');
+      if (!isBackground) {
+        console.error('Failed to fetch patron loans', err);
+        toast.error('Không thể tải danh sách sách mượn. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [activeTab, page]);
 
   useEffect(() => {
     fetchLoans();
-  }, [activeTab, page]);
+  }, [fetchLoans]);
+
+  // Realtime synchronization: updates live when checkout or return happens at desk
+  useRealtimeSync('loans', () => fetchLoans(false, true), 5000);
 
   const handleRenew = async (loanId: number) => {
     try {
       setRenewingId(loanId);
       await api.post(`/loans/${loanId}/renew`);
       toast.success('Gia hạn mượn sách thành công thêm 7 ngày!');
-      fetchLoans();
+      fetchLoans(false, true);
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('dashboard');
       // Trigger header unread sync
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {

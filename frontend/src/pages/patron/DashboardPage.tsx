@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BookOpen,
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { StudentIdCardModal } from '@/components/patron/StudentIdCardModal';
 import { format, differenceInDays } from 'date-fns';
 import { formatCurrencyVND } from '@/lib/utils';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface ActiveLoan {
   id: number;
@@ -58,9 +59,9 @@ export const DashboardPage: React.FC = () => {
   const [renewMessage, setRenewMessage] = useState<{ id: number; text: string; isError: boolean } | null>(null);
   const [isCardModalOpen, setIsCardModalOpen] = useState<boolean>(false);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (isInitial = false) => {
     try {
-      setIsLoading(true);
+      if (isInitial) setIsLoading(true);
       const [loansRes, resRes, finesRes] = await Promise.all([
         api.get('/loans/me?status=active'),
         api.get('/reservations/me'),
@@ -101,13 +102,16 @@ export const DashboardPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load patron dashboard data', err);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(true);
+  }, [fetchDashboardData]);
+
+  // Realtime synchronization: updates live when loans, reservations, or fines change
+  useRealtimeSync(['loans', 'reservations', 'fines', 'dashboard'], () => fetchDashboardData(false), 5000);
 
   const handleRenew = async (loanId: number) => {
     try {
@@ -115,7 +119,10 @@ export const DashboardPage: React.FC = () => {
       setRenewMessage(null);
       await api.post(`/loans/${loanId}/renew`);
       setRenewMessage({ id: loanId, text: 'Gia hạn thành công thêm 7 ngày!', isError: false });
-      fetchDashboardData();
+      fetchDashboardData(false);
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Không thể gia hạn sách.';
       setRenewMessage({ id: loanId, text: msg, isError: true });
@@ -598,7 +605,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Floating Circular Sync Button */}
       <button
-        onClick={fetchDashboardData}
+        onClick={() => fetchDashboardData(true)}
         className="fixed bottom-6 right-6 w-11 h-11 bg-white hover:bg-slate-50 border border-border rounded-full shadow-dropdown flex items-center justify-center text-primary transition-all hover:scale-105 z-30 focus-ring"
         title="Đồng bộ dữ liệu"
       >

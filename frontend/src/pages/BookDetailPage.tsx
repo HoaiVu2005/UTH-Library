@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -26,6 +26,7 @@ import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { Barcode } from '@/components/ui/Barcode';
 import { formatCurrencyVND } from '@/lib/utils';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface CopyItem {
   id: number;
@@ -76,8 +77,8 @@ export const BookDetailPage: React.FC = () => {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const loadBookDetail = async () => {
-    setLoading(true);
+  const loadBookDetail = useCallback(async (isInitial = false) => {
+    if (isInitial) setLoading(true);
     setError(null);
     try {
       const [bookRes, relatedRes] = await Promise.all([
@@ -87,17 +88,20 @@ export const BookDetailPage: React.FC = () => {
       setBook(bookRes.data.data);
       setRelatedBooks(relatedRes.data.data);
     } catch (err) {
-      setError(formatApiError(err));
+      if (isInitial) setError(formatApiError(err));
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    loadBookDetail();
+    loadBookDetail(true);
     setActionSuccess(null);
     setActionError(null);
-  }, [id]);
+  }, [loadBookDetail]);
+
+  // Realtime synchronization: updates copy availability live when borrowed or returned
+  useRealtimeSync(['books', 'loans', 'reservations'], () => loadBookDetail(false), 5000);
 
   const handleReserve = async () => {
     if (!isAuthenticated) {
@@ -119,18 +123,22 @@ export const BookDetailPage: React.FC = () => {
         toast.success('Giữ chỗ thành công! Sách được giữ tại quầy trong 3 ngày.', {
           action: {
             label: 'Xem đặt chỗ',
-            onClick: () => navigate('/my-reservations'),
+            onClick: () => navigate('/reservations'),
           },
         });
       } else {
         toast.success('Đặt trước thành công! Bạn đã được xếp vào hàng chờ ưu tiên.', {
           action: {
             label: 'Xem hàng chờ',
-            onClick: () => navigate('/my-reservations'),
+            onClick: () => navigate('/reservations'),
           },
         });
       }
-      loadBookDetail();
+      loadBookDetail(false);
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('books');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {

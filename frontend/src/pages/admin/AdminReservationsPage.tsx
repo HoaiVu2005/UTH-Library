@@ -28,6 +28,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Barcode } from '@/components/ui/Barcode';
 import { toast } from '@/components/ui/Toast';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 import { cn, formatDateVN } from '@/lib/utils';
 
 interface ReservationItem {
@@ -83,9 +84,9 @@ export const AdminReservationsPage: React.FC = () => {
   // Barcode detail modal
   const [barcodeModalItem, setBarcodeModalItem] = useState<ReservationItem | null>(null);
 
-  const fetchReservations = useCallback(async () => {
+  const fetchReservations = useCallback(async (isBackground = false) => {
     try {
-      setIsLoading(true);
+      if (!isBackground) setIsLoading(true);
       let url = `/reservations/all?page=${page}&page_size=${pageSize}`;
       if (statusFilter) url += `&status=${statusFilter}`;
       if (appliedSearch.trim()) url += `&search=${encodeURIComponent(appliedSearch.trim())}`;
@@ -95,7 +96,9 @@ export const AdminReservationsPage: React.FC = () => {
       setTotalRecords(res.data?.meta?.total || 0);
       setTotalPages(res.data?.meta?.total_pages || 1);
     } catch (err) {
-      console.error('Failed to fetch admin reservations', err);
+      if (!isBackground) {
+        console.error('Failed to fetch admin reservations', err);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -104,6 +107,9 @@ export const AdminReservationsPage: React.FC = () => {
   useEffect(() => {
     fetchReservations();
   }, [fetchReservations]);
+
+  // Realtime synchronization: updates live when holds/reservations change
+  useRealtimeSync('reservations', () => fetchReservations(true), 5000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +128,9 @@ export const AdminReservationsPage: React.FC = () => {
       setAdvancingId(resId);
       await api.post(`/reservations/${resId}/advance`);
       toast.success('Đã ưu tiên chuyển yêu cầu lên vị trí #1 hàng chờ.');
-      fetchReservations();
+      fetchReservations(true);
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể điều chỉnh vị trí hàng chờ.');
     } finally {
@@ -164,7 +172,7 @@ export const AdminReservationsPage: React.FC = () => {
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <button
-            onClick={fetchReservations}
+            onClick={() => fetchReservations()}
             disabled={isLoading}
             className="text-xs h-9 px-3.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl bg-white transition-colors inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 font-medium"
             title="Tải lại dữ liệu"

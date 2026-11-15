@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -30,6 +30,7 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from '@/components/ui/Moda
 import { toast } from '@/components/ui/Toast';
 import { format, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 export interface NotificationItem {
   id: number;
@@ -161,10 +162,10 @@ export const NotificationsPage: React.FC = () => {
   const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
 
   // Fetch all notifications for user
-  const fetchNotifications = async (showRefreshSpinner = false) => {
+  const fetchNotifications = useCallback(async (showRefreshSpinner = false, isBackground = false) => {
     try {
       if (showRefreshSpinner) setIsRefreshing(true);
-      else setIsLoading(true);
+      else if (!isBackground) setIsLoading(true);
 
       const res = await api.get('/notifications/me');
       const list: NotificationItem[] = res.data?.data || [];
@@ -176,17 +177,22 @@ export const NotificationsPage: React.FC = () => {
         new CustomEvent('uth-unread-count-changed', { detail: { count: unreadCount } })
       );
     } catch (err) {
-      console.error('Failed to fetch notifications', err);
-      toast.error('Không thể tải danh sách thông báo. Vui lòng thử lại.');
+      if (!isBackground) {
+        console.error('Failed to fetch notifications', err);
+        toast.error('Không thể tải danh sách thông báo. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
+
+  // Realtime synchronization: updates live when new notifications arrive
+  useRealtimeSync('notifications', () => fetchNotifications(false, true), 4000);
 
   // Compute unread count from current list
   const totalUnread = useMemo(
@@ -200,6 +206,7 @@ export const NotificationsPage: React.FC = () => {
       new CustomEvent('uth-unread-count-changed', { detail: { count: Math.max(0, newCount) } })
     );
     window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
+    broadcastRealtimeSync('notifications');
   };
 
   // Open detail modal and auto-mark as read

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BookOpen,
@@ -32,6 +32,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Badge } from '@/components/ui/Badge';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useRealtimeSync } from '@/lib/realtime';
 
 interface SummaryData {
   total_books: number;
@@ -62,26 +63,30 @@ export const AdminDashboardPage: React.FC = () => {
   const [borrowTrends, setBorrowTrends] = useState<Array<{ date: string; borrows: number; returns: number }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [sumRes, actRes, trendRes] = await Promise.all([
-          api.get('/dashboard/summary'),
-          api.get('/dashboard/action-items'),
-          api.get('/reports/borrow-trends?days=7'),
-        ]);
-        setSummary(sumRes.data?.data);
-        setActionItems(actRes.data?.data);
-        setBorrowTrends(trendRes.data?.data || []);
-      } catch (err) {
-        console.error('Failed to load admin dashboard', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+  const fetchData = useCallback(async (isInitial = false) => {
+    try {
+      if (isInitial) setIsLoading(true);
+      const [sumRes, actRes, trendRes] = await Promise.all([
+        api.get('/dashboard/summary'),
+        api.get('/dashboard/action-items'),
+        api.get('/reports/borrow-trends?days=7'),
+      ]);
+      setSummary(sumRes.data?.data);
+      setActionItems(actRes.data?.data);
+      setBorrowTrends(trendRes.data?.data || []);
+    } catch (err) {
+      console.error('Failed to load admin dashboard', err);
+    } finally {
+      if (isInitial) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData(true);
+  }, [fetchData]);
+
+  // Realtime synchronization: updates live when loans, reservations, fines, or suggestions change
+  useRealtimeSync(['loans', 'reservations', 'fines', 'suggestions', 'dashboard'], () => fetchData(false), 5000);
 
   if (isLoading || !summary) {
     return (

@@ -27,6 +27,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface FineRecord {
   id: number;
@@ -71,8 +72,8 @@ export const FinesManagementPage: React.FC = () => {
   const [waiveReason, setWaiveReason] = useState<string>('');
   const [waiveLoading, setWaiveLoading] = useState(false);
 
-  const fetchFines = useCallback(async () => {
-    setLoading(true);
+  const fetchFines = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -89,7 +90,9 @@ export const FinesManagementPage: React.FC = () => {
       setTotalRecords(res.data.meta.total);
       setTotalPages(res.data.meta.total_pages);
     } catch (err) {
-      setError(formatApiError(err));
+      if (!isBackground) {
+        setError(formatApiError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -98,6 +101,9 @@ export const FinesManagementPage: React.FC = () => {
   useEffect(() => {
     fetchFines();
   }, [fetchFines]);
+
+  // Realtime synchronization: updates live when fines are incurred, paid, or waived
+  useRealtimeSync('fines', () => fetchFines(true), 5000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +142,9 @@ export const FinesManagementPage: React.FC = () => {
       toast.success(`Đã thu ${formatCurrencyVND(amountVal)} thành công!`);
       setCollectTarget(null);
       fetchFines();
+      broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -160,6 +169,9 @@ export const FinesManagementPage: React.FC = () => {
       toast.success(`Đã miễn giảm khoản phạt cho bạn đọc ${waiveTarget.patron_name}.`);
       setWaiveTarget(null);
       fetchFines();
+      broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -196,7 +208,7 @@ export const FinesManagementPage: React.FC = () => {
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <button
-            onClick={fetchFines}
+            onClick={() => fetchFines()}
             disabled={loading}
             className="text-xs h-9 px-3.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl bg-white transition-colors inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 font-medium"
             title="Tải lại dữ liệu"
@@ -379,7 +391,7 @@ export const FinesManagementPage: React.FC = () => {
           <p className="text-[11px] text-gray-400">Đang đồng bộ tình trạng công nợ bạn đọc</p>
         </div>
       ) : error ? (
-        <ErrorState message={error} onRetry={fetchFines} />
+        <ErrorState message={error} onRetry={() => fetchFines()} />
       ) : fines.length === 0 ? (
         <EmptyState
           title="Không có khoản phạt nào"

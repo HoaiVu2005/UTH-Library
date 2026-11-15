@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Lightbulb, CheckCircle2, XCircle, PackageCheck, Search, AlertCircle, RotateCcw, X, Layers, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/components/ui/Toast';
 import { cn, formatDateVN } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface SuggestionItem {
   id: number;
@@ -53,9 +54,9 @@ export const SuggestionsReviewPage: React.FC = () => {
   const [reviewNote, setReviewNote] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async (isInitial = false) => {
     try {
-      setIsLoading(true);
+      if (isInitial) setIsLoading(true);
       let url = `/suggestions?page=${page}&page_size=${pageSize}`;
       if (statusFilter) url += `&status=${statusFilter}`;
       if (appliedSearch.trim()) url += `&search=${encodeURIComponent(appliedSearch.trim())}`;
@@ -67,13 +68,16 @@ export const SuggestionsReviewPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch suggestions for admin', err);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
-  };
+  }, [page, pageSize, statusFilter, appliedSearch]);
 
   useEffect(() => {
-    fetchSuggestions();
-  }, [page, pageSize, statusFilter, appliedSearch]);
+    fetchSuggestions(true);
+  }, [fetchSuggestions]);
+
+  // Realtime synchronization: updates live when student submits or actions occur
+  useRealtimeSync('suggestions', () => fetchSuggestions(false), 4000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +130,9 @@ export const SuggestionsReviewPage: React.FC = () => {
           : `Đã từ chối đề xuất "${actionItem.item.book_title}".`
       );
       setActionItem(null);
-      fetchSuggestions();
+      fetchSuggestions(false);
+      broadcastRealtimeSync('suggestions');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Lỗi khi xử lý đề xuất.');
     } finally {
@@ -139,7 +145,9 @@ export const SuggestionsReviewPage: React.FC = () => {
       setIsSubmitting(true);
       await api.post(`/suggestions/${item.id}/receive`);
       toast.success(`Đã đánh dấu sách "${item.book_title}" đã nhập kho!`);
-      fetchSuggestions();
+      fetchSuggestions(false);
+      broadcastRealtimeSync('suggestions');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Lỗi khi cập nhật trạng thái nhập kho.');
     } finally {
@@ -170,7 +178,7 @@ export const SuggestionsReviewPage: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={fetchSuggestions}
+            onClick={() => fetchSuggestions(true)}
             disabled={isLoading}
             className="text-xs h-9 px-3.5 border border-gray-200 text-gray-600 hover:text-gray-900 rounded-xl"
             title="Tải lại dữ liệu"

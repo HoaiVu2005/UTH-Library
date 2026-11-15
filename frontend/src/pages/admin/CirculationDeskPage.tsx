@@ -28,6 +28,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableEmp
 import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerModal';
 import { cn, formatCurrencyVND, formatDateVN } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
+import { broadcastRealtimeSync } from '@/lib/realtime';
 
 interface PatronInfo {
   id: number;
@@ -331,6 +332,11 @@ export const CirculationDeskPage: React.FC = () => {
       setBorrowSuccess(successMsg);
       toast.success(successMsg);
       setCart([]);
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('books');
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
       setPatron((prev) =>
         prev
           ? {
@@ -409,6 +415,12 @@ export const CirculationDeskPage: React.FC = () => {
       setReturnSuccess(msg);
       toast.success(msg);
       setReturnLookup(null);
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('books');
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('fines');
+      broadcastRealtimeSync('dashboard');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
       returnInputRef.current?.focus();
     } catch (err) {
       const errMsg = formatApiError(err);

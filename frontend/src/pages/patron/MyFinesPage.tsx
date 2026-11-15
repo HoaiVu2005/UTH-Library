@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Receipt,
   AlertCircle,
@@ -22,6 +22,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { formatDateVN, formatCurrencyVND } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
+import { useRealtimeSync } from '@/lib/realtime';
 
 interface FineItem {
   id: number;
@@ -49,10 +50,10 @@ export const MyFinesPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showQRGuide, setShowQRGuide] = useState<boolean>(false);
 
-  const fetchFines = async (showSpinner = false) => {
+  const fetchFines = useCallback(async (showSpinner = false, isBackground = false) => {
     try {
       if (showSpinner) setIsRefreshing(true);
-      else setIsLoading(true);
+      else if (!isBackground) setIsLoading(true);
 
       const res = await api.get('/fines/me');
       const data = (res.data?.data || []).map((f: any) => ({
@@ -61,17 +62,22 @@ export const MyFinesPage: React.FC = () => {
       }));
       setFines(data);
     } catch (err) {
-      console.error('Failed to fetch fines', err);
-      toast.error('Không thể tải dữ liệu công nợ. Vui lòng thử lại.');
+      if (!isBackground) {
+        console.error('Failed to fetch fines', err);
+        toast.error('Không thể tải dữ liệu công nợ. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFines();
-  }, []);
+  }, [fetchFines]);
+
+  // Realtime synchronization: updates live when fine is paid or waived by librarian
+  useRealtimeSync('fines', () => fetchFines(false, true), 5000);
 
   const totalDebt = fines
     .filter((f) => f.status === 'unpaid' || f.status === 'partial')

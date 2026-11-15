@@ -95,7 +95,7 @@ class ApproveSuggestionView(APIView):
             type=NotificationType.SUGGESTION_RESULT,
             channel=NotificationChannel.IN_APP,
             content=f"Đề xuất sách '{suggestion.book_title}' của bạn đã được duyệt. {suggestion.review_note}".strip(),
-            link='/patron/suggestions'
+            link='/suggestions'
         )
 
         log_action(
@@ -132,7 +132,7 @@ class RejectSuggestionView(APIView):
             type=NotificationType.SUGGESTION_RESULT,
             channel=NotificationChannel.IN_APP,
             content=f"Đề xuất sách '{suggestion.book_title}' của bạn đã bị từ chối. Lý do: {suggestion.review_note}".strip(),
-            link='/patron/suggestions'
+            link='/suggestions'
         )
 
         log_action(

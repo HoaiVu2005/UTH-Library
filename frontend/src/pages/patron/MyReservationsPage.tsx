@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   BookmarkCheck,
   Clock,
@@ -28,6 +28,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Barcode } from '@/components/ui/Barcode';
 import { formatDateVN } from '@/lib/utils';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 import { cn } from '@/lib/utils';
 
 interface ReservationItem {
@@ -95,25 +96,30 @@ export const MyReservationsPage: React.FC = () => {
   const [cancellingItem, setCancellingItem] = useState<ReservationItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const fetchReservations = async (showSpinner = false) => {
+  const fetchReservations = useCallback(async (showSpinner = false, isBackground = false) => {
     try {
       if (showSpinner) setIsRefreshing(true);
-      else setIsLoading(true);
+      else if (!isBackground) setIsLoading(true);
 
       const res = await api.get('/reservations/me');
       setReservations(res.data?.data || []);
     } catch (err) {
-      console.error('Failed to fetch reservations', err);
-      toast.error('Không thể tải danh sách đặt trước. Vui lòng thử lại.');
+      if (!isBackground) {
+        console.error('Failed to fetch reservations', err);
+        toast.error('Không thể tải danh sách đặt trước. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchReservations();
-  }, []);
+  }, [fetchReservations]);
+
+  // Realtime synchronization: updates live when a hold becomes ready or expires
+  useRealtimeSync('reservations', () => fetchReservations(false, true), 5000);
 
   const handleConfirmCancel = async () => {
     if (!cancellingItem) return;
@@ -126,9 +132,11 @@ export const MyReservationsPage: React.FC = () => {
         toast.success('Đã hủy yêu cầu đặt trước.');
       }
       setCancellingItem(null);
-      fetchReservations();
+      fetchReservations(false, true);
 
-      // Trigger realtime refresh for Header and Notifications
+      // Trigger realtime refresh for Header and Notifications & Admin
+      broadcastRealtimeSync('reservations');
+      broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu đặt trước.');

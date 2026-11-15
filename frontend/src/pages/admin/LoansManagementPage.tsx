@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
+import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
@@ -90,8 +91,8 @@ export const LoansManagementPage: React.FC = () => {
   // Barcode detail modal state
   const [barcodeModalLoan, setBarcodeModalLoan] = useState<LoanRecord | null>(null);
 
-  const fetchLoans = useCallback(async () => {
-    setLoading(true);
+  const fetchLoans = useCallback(async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -130,7 +131,9 @@ export const LoansManagementPage: React.FC = () => {
         setCounts(res.data.meta.counts);
       }
     } catch (err) {
-      setError(formatApiError(err));
+      if (!isBackground) {
+        setError(formatApiError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -139,6 +142,9 @@ export const LoansManagementPage: React.FC = () => {
   useEffect(() => {
     fetchLoans();
   }, [fetchLoans]);
+
+  // Realtime synchronization: updates live when checkout, return, or renew happens
+  useRealtimeSync('loans', () => fetchLoans(true), 5000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,6 +234,10 @@ export const LoansManagementPage: React.FC = () => {
       setSelectedLoan(null);
       setActionType(null);
       fetchLoans();
+      broadcastRealtimeSync('loans');
+      broadcastRealtimeSync('dashboard');
+      broadcastRealtimeSync('fines');
+      window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err) {
       toast.error(formatApiError(err));
     } finally {
@@ -274,7 +284,7 @@ export const LoansManagementPage: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={fetchLoans}
+            onClick={() => fetchLoans()}
             disabled={loading}
             className="text-xs h-9 px-3.5 border border-gray-200 text-gray-600 hover:text-gray-900 rounded-xl"
             title="Tải lại dữ liệu"
