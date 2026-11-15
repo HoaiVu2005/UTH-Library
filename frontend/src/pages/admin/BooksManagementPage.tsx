@@ -88,11 +88,11 @@ export const BooksManagementPage: React.FC = () => {
   const [formAuthorNames, setFormAuthorNames] = useState<string>('');
   const [formIsbn, setFormIsbn] = useState<string>('');
   const [formCategoryId, setFormCategoryId] = useState<number>(0);
-  const [formYear, setFormYear] = useState<string>('2024');
-  const [formPrice, setFormPrice] = useState<string>('150000');
-  const [formPublisher, setFormPublisher] = useState<string>('NXB Giao thông Vận tải');
+  const [formYear, setFormYear] = useState<string>('');
+  const [formPrice, setFormPrice] = useState<string>('');
+  const [formPublisher, setFormPublisher] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
-  const [formInitialCopies, setFormInitialCopies] = useState<number>(3);
+  const [formInitialCopies, setFormInitialCopies] = useState<number>(1);
   const [formShelfLocation, setFormShelfLocation] = useState<string>('');
   const [formCoverImage, setFormCoverImage] = useState<string>('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -266,12 +266,12 @@ export const BooksManagementPage: React.FC = () => {
     setFormTitle('');
     setFormAuthorNames('');
     setFormIsbn('');
-    setFormYear('2024');
-    setFormPrice('150000');
-    setFormPublisher('NXB Giao thông Vận tải');
+    setFormYear('');
+    setFormPrice('');
+    setFormPublisher('');
     setFormDescription('');
-    setFormInitialCopies(3);
-    setFormShelfLocation('Cơ sở 1 (Bình Thạnh) - Kệ GTVT-01 - Tầng 2');
+    setFormInitialCopies(1);
+    setFormShelfLocation('');
     setFormCoverImage('');
     setCoverFile(null);
     setCoverPreview(null);
@@ -384,7 +384,7 @@ export const BooksManagementPage: React.FC = () => {
         category: formCategoryId,
         category_id: formCategoryId,
         year: formYear ? parseInt(formYear, 10) : undefined,
-        price: parseInt(formPrice, 10) || 150000,
+        price: formPrice ? parseInt(formPrice, 10) : undefined,
         publisher: formPublisher.trim() || undefined,
         description: formDescription.trim() || undefined,
         author_names: authorsList,
@@ -506,18 +506,6 @@ export const BooksManagementPage: React.FC = () => {
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             <span>Thêm đầu sách</span>
-          </Button>
-
-          <Button
-            onClick={() => {
-              handleOpenAddModal();
-              setIsCameraScannerOpen(true);
-            }}
-            className="text-xs font-semibold h-9 px-3.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 transition-all shadow-xs shrink-0 flex items-center"
-            title="Quét mã vạch ISBN trên bìa sách bằng Camera để điền thông tin tự động"
-          >
-            <Camera className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
-            <span>📷 Quét nhanh ISBN</span>
           </Button>
 
           <Button
@@ -871,14 +859,13 @@ export const BooksManagementPage: React.FC = () => {
                     {coverPreview ? (
                       <img
                         src={coverPreview}
-                        alt="Xem trước ảnh bìa"
+                        alt="Ảnh bìa sách"
                         className="w-full h-full object-contain bg-slate-100/50"
                       />
                     ) : (
-                      <div className="text-center p-3 text-textSecondary/60">
+                      <div className="text-center p-3 text-textSecondary/50">
                         <ImageIcon className="w-8 h-8 mx-auto mb-1 text-slate-300" />
                         <span className="text-xs block font-medium">Chưa có ảnh bìa</span>
-                        <span className="text-[11px] text-textSecondary/70 block mt-0.5">Tự động nạp khi quét ISBN</span>
                       </div>
                     )}
                   </div>
@@ -887,7 +874,7 @@ export const BooksManagementPage: React.FC = () => {
                   <div className="space-y-1.5">
                     <label className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-white border border-border hover:border-primary/50 text-textPrimary hover:text-primary text-xs font-medium rounded-lg cursor-pointer transition-colors shadow-2xs">
                       <Upload className="w-3.5 h-3.5 text-primary" />
-                      <span>Tải ảnh từ máy tính</span>
+                      <span>Tải ảnh lên</span>
                       <input
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
@@ -904,8 +891,8 @@ export const BooksManagementPage: React.FC = () => {
                           setFormCoverImage(e.target.value);
                           if (!coverFile) setCoverPreview(e.target.value || null);
                         }}
-                        placeholder="Hoặc dán URL ảnh trực tiếp..."
-                        className="w-full pl-7 pr-2.5 py-1.5 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
+                        placeholder="Dán URL ảnh bìa..."
+                        className="w-full pl-7 pr-2.5 py-1.5 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary"
                       />
                     </div>
                   </div>
@@ -914,39 +901,33 @@ export const BooksManagementPage: React.FC = () => {
                 {/* Description */}
                 <div>
                   <label className="block text-xs font-semibold text-textPrimary mb-1">
-                    Tóm tắt nội dung tài liệu
+                    Tóm tắt nội dung
                   </label>
                   <textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     rows={3}
-                    placeholder="Tóm tắt ngắn gọn nội dung tài liệu phục vụ giảng dạy và nghiên cứu..."
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                    placeholder="Tóm tắt nội dung sách (tùy chọn)..."
+                    className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                   />
                 </div>
               </div>
 
               {/* RIGHT COLUMN: Metadata Form (8 cols) */}
               <div className="lg:col-span-8 space-y-3.5">
-                {/* 1. Integrated ISBN Quick-Fill Field */}
-                <div className="p-3 bg-teal-50/50 border border-teal-200/80 rounded-xl space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-teal-900 flex items-center gap-1.5">
-                      <Barcode className="w-3.5 h-3.5 text-brand" />
-                      <span>Mã ISBN / Mã vạch bìa sách</span>
-                      <span className="text-[11px] font-normal text-teal-700/80">(Tự động điền dữ liệu)</span>
-                    </label>
+                {/* 1. Mã ISBN */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[13px] font-medium text-textPrimary">Mã ISBN</label>
                     <button
                       type="button"
                       onClick={() => setIsCameraScannerOpen(true)}
-                      className="text-xs font-medium text-brand hover:text-brand-dark flex items-center gap-1 px-2 py-0.5 rounded hover:bg-teal-100/70 transition-colors cursor-pointer"
+                      className="text-xs text-brand hover:underline font-medium cursor-pointer"
                     >
-                      <Camera className="w-3.5 h-3.5" />
-                      <span>Quét Camera</span>
+                      Quét mã vạch
                     </button>
                   </div>
-
-                  <div className="relative flex items-center">
+                  <div className="flex gap-2">
                     <input
                       type="text"
                       value={formIsbn}
@@ -957,71 +938,33 @@ export const BooksManagementPage: React.FC = () => {
                           handleLookupIsbn();
                         }
                       }}
-                      placeholder="Nhập hoặc quét mã ISBN (VD: 9780132350884)..."
-                      className="w-full pl-3 pr-28 py-2 text-xs rounded-lg border border-teal-200 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                      placeholder="Nhập mã ISBN"
+                      className="flex-1 px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleLookupIsbn()}
                       disabled={isLookingUpIsbn || !formIsbn.trim()}
-                      className="absolute right-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-brand text-white hover:bg-brand-dark disabled:opacity-40 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                      isLoading={isLookingUpIsbn}
+                      className="shrink-0 text-xs px-3.5 h-auto py-2 font-medium border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg"
                     >
-                      {isLookingUpIsbn ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Zap className="w-3 h-3 text-amber-300" />
-                      )}
-                      <span>Tự động điền</span>
-                    </button>
+                      Tự động điền
+                    </Button>
                   </div>
 
-                  {isbnLookupSuccessInfo ? (
-                    <div className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-md px-2.5 py-1 flex items-center justify-between animate-fade-in">
+                  {isbnLookupSuccessInfo && (
+                    <div className="mt-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center justify-between animate-fade-in">
                       <span className="truncate">
-                        ✓ Đã nhận diện: <strong>{isbnLookupSuccessInfo.title}</strong> — <em>{isbnLookupSuccessInfo.author}</em>
+                        Đã tìm thấy: <strong>{isbnLookupSuccessInfo.title}</strong>
                       </span>
                       <button
                         type="button"
                         onClick={() => setIsbnLookupSuccessInfo(null)}
-                        className="text-emerald-700 hover:text-emerald-900 ml-1.5 shrink-0"
+                        className="text-emerald-700 hover:text-emerald-900 ml-2 text-sm font-semibold cursor-pointer"
                       >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-[11px] text-teal-800/70 pt-0.5">
-                      <span className="font-medium text-teal-900/60">Thử nhanh:</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormIsbn('9780132350884');
-                          handleLookupIsbn('9780132350884');
-                        }}
-                        className="hover:underline text-brand font-medium"
-                      >
-                        Clean Code
-                      </button>
-                      <span>•</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormIsbn('9786040100028');
-                          handleLookupIsbn('9786040100028');
-                        }}
-                        className="hover:underline text-brand font-medium"
-                      >
-                        Đường cao tốc UTH
-                      </button>
-                      <span>•</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormIsbn('9780134685991');
-                          handleLookupIsbn('9780134685991');
-                        }}
-                        className="hover:underline text-brand font-medium"
-                      >
-                        Effective Java
+                        &times;
                       </button>
                     </div>
                   )}
@@ -1032,7 +975,7 @@ export const BooksManagementPage: React.FC = () => {
                   label="Tên đầu sách"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="VD: Thiết kế hình học đường ô tô và nút giao thông"
+                  placeholder="Nhập tên đầu sách"
                   required
                 />
 
@@ -1041,8 +984,7 @@ export const BooksManagementPage: React.FC = () => {
                   label="Tác giả / Nhóm tác giả"
                   value={formAuthorNames}
                   onChange={(e) => setFormAuthorNames(e.target.value)}
-                  placeholder="VD: GS.TS. Nguyễn Xuân Trục, PGS.TS. Khuất Việt Hùng (cách nhau bởi dấu phẩy)"
-                  helperText="Hệ thống tự động liên kết hoặc tạo hồ sơ tác giả mới"
+                  placeholder="Nhập tên tác giả hoặc nhóm tác giả"
                   required
                 />
 
@@ -1065,7 +1007,7 @@ export const BooksManagementPage: React.FC = () => {
                     label="Nhà xuất bản"
                     value={formPublisher}
                     onChange={(e) => setFormPublisher(e.target.value)}
-                    placeholder="VD: NXB Giao thông Vận tải"
+                    placeholder="Nhập nhà xuất bản"
                   />
                 </div>
 
@@ -1076,7 +1018,7 @@ export const BooksManagementPage: React.FC = () => {
                     type="number"
                     value={formYear}
                     onChange={(e) => setFormYear(e.target.value)}
-                    placeholder="2024"
+                    placeholder="Năm xuất bản"
                   />
 
                   <Input
@@ -1084,16 +1026,16 @@ export const BooksManagementPage: React.FC = () => {
                     type="number"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
-                    placeholder="150000"
+                    placeholder="Giá bìa"
                   />
                 </div>
 
                 {/* 6. Initial Copies (Only when creating) */}
                 {!editingBook && (
-                  <div className="p-3.5 bg-teal-50/40 border border-teal-100 rounded-xl space-y-2.5">
-                    <div className="flex items-center space-x-2 text-xs font-bold text-primary">
-                      <Layers className="w-3.5 h-3.5 text-primary" />
-                      <span>Khởi tạo bản sao lưu kho ngay (Tùy chọn)</span>
+                  <div className="p-3.5 bg-slate-50 border border-gray-200/80 rounded-xl space-y-2.5">
+                    <div className="flex items-center space-x-2 text-xs font-semibold text-gray-700">
+                      <Layers className="w-3.5 h-3.5 text-brand" />
+                      <span>Khởi tạo bản sao lưu kho</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Input
@@ -1103,13 +1045,13 @@ export const BooksManagementPage: React.FC = () => {
                         max="20"
                         value={formInitialCopies}
                         onChange={(e) => setFormInitialCopies(Number(e.target.value))}
-                        helperText="Tự động sinh mã vạch UTH Code128"
+                        helperText="Hệ thống tự động sinh mã vạch Code128"
                       />
                       <Input
                         label="Vị trí giá sách mặc định"
                         value={formShelfLocation}
                         onChange={(e) => setFormShelfLocation(e.target.value)}
-                        placeholder="VD: Kệ GTVT-01 - Tầng 2"
+                        placeholder="Vị trí kệ sách (tùy chọn)"
                       />
                     </div>
                   </div>
