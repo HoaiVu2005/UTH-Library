@@ -24,7 +24,7 @@ import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { StudentIdCardModal } from '@/components/patron/StudentIdCardModal';
 import { format, differenceInDays } from 'date-fns';
-import { formatCurrencyVND } from '@/lib/utils';
+import { formatCurrencyVND, cn } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface ActiveLoan {
@@ -205,52 +205,57 @@ export const DashboardPage: React.FC = () => {
                 {/* Column 1 */}
                 <div className="space-y-3">
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-24 shrink-0">MSSV:</span>
-                    <span className="text-textSecondary font-mono font-semibold">{user?.card_code || '21110001'}</span>
+                    <span className="font-bold text-textPrimary w-28 shrink-0">MSSV:</span>
+                    <span className="text-textSecondary font-mono font-semibold">{user?.username || user?.card_code || '—'}</span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-24 shrink-0">Họ tên:</span>
-                    <span className="text-textSecondary font-semibold">{user?.full_name || 'Nguyễn Văn A'}</span>
+                    <span className="font-bold text-textPrimary w-28 shrink-0">Họ và tên:</span>
+                    <span className="text-textSecondary font-semibold">{user?.full_name || '—'}</span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-24 shrink-0">Ngày sinh:</span>
+                    <span className="font-bold text-textPrimary w-28 shrink-0">Mã thẻ thư viện:</span>
+                    <span className="text-textSecondary font-mono font-medium">{user?.card_code || '—'}</span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="font-bold text-textPrimary w-28 shrink-0">Khoa / Đơn vị:</span>
+                    <span className="text-textSecondary font-medium">{user?.department || '—'}</span>
+                  </div>
+                  <div className="flex items-baseline">
+                    <span className="font-bold text-textPrimary w-28 shrink-0">Đối tượng:</span>
                     <span className="text-textSecondary font-medium">
-                      {user?.dob ? format(new Date(user.dob), 'dd/MM/yyyy') : '10/09/2005'}
+                      {user?.role === 'student' ? 'Sinh viên' : user?.role === 'lecturer' ? 'Giảng viên' : 'Bạn đọc'}
                     </span>
-                  </div>
-                  <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-24 shrink-0">Nơi sinh:</span>
-                    <span className="text-textSecondary font-medium">{user?.address || 'Gia Lai'}</span>
-                  </div>
-                  <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-24 shrink-0">Ngành:</span>
-                    <span className="text-textSecondary font-medium">{user?.department || 'Khoa Công nghệ thông tin'}</span>
                   </div>
                 </div>
 
                 {/* Column 2 */}
                 <div className="space-y-3">
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-32 shrink-0">Khóa học:</span>
-                    <span className="text-textSecondary font-medium">2023</span>
+                    <span className="font-bold text-textPrimary w-32 shrink-0">Email liên hệ:</span>
+                    <span className="text-textSecondary font-medium truncate" title={user?.email}>{user?.email || '—'}</span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-32 shrink-0">Giới tính:</span>
-                    <span className="text-textSecondary font-medium">Nam</span>
+                    <span className="font-bold text-textPrimary w-32 shrink-0">Số điện thoại:</span>
+                    <span className="text-textSecondary font-medium">{user?.phone || '—'}</span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-32 shrink-0">Bậc đào tạo:</span>
+                    <span className="font-bold text-textPrimary w-32 shrink-0">Hạn sử dụng thẻ:</span>
                     <span className="text-textSecondary font-medium">
-                      {user?.role === 'student' ? 'Sinh viên' : user?.role === 'lecturer' ? 'Giảng viên' : 'Sinh viên'}
+                      {user?.card_expiry ? format(new Date(user.card_expiry), 'dd/MM/yyyy') : 'Vô thời hạn'}
                     </span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-32 shrink-0">Loại hình đào tạo:</span>
-                    <span className="text-textSecondary font-medium">Chính quy</span>
+                    <span className="font-bold text-textPrimary w-32 shrink-0">Trạng thái thẻ:</span>
+                    <span className={cn('font-semibold text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1', user?.is_card_valid ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200')}>
+                      <span className={cn('w-1.5 h-1.5 rounded-full', user?.is_card_valid ? 'bg-emerald-500' : 'bg-red-500')} />
+                      {user?.is_card_valid ? 'Đang hoạt động' : 'Hết hạn sử dụng'}
+                    </span>
                   </div>
                   <div className="flex items-baseline">
-                    <span className="font-bold text-textPrimary w-32 shrink-0">Chuyên ngành:</span>
-                    <span className="text-textSecondary font-medium">Hệ thống thông tin quản lý</span>
+                    <span className="font-bold text-textPrimary w-32 shrink-0">Hạn mức mượn:</span>
+                    <span className="text-textSecondary font-medium">
+                      {user?.role === 'lecturer' ? '10 cuốn (Tối đa 30 ngày)' : '5 cuốn (Tối đa 14 ngày)'}
+                    </span>
                   </div>
                 </div>
               </div>

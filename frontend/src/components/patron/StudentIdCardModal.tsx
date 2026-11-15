@@ -3,17 +3,20 @@ import { Printer, ShieldCheck } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Barcode } from '@/components/ui/Barcode';
+import { format } from 'date-fns';
 
 interface StudentIdCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: {
+    username?: string;
     full_name?: string;
     card_code?: string;
     avatar?: string;
     department?: string;
     role?: string;
     dob?: string;
+    card_expiry?: string;
   } | null;
 }
 
@@ -27,7 +30,6 @@ export const StudentIdCardModal: React.FC<StudentIdCardModalProps> = ({
   const cardCode = user?.card_code || '034205011586';
   const fullName = user?.full_name || 'BÙI VŨ HẢI PHONG';
   const department = user?.department || 'Khoa Công nghệ thông tin';
-  const cohort = '2023'; // Khóa học
 
   const handlePrint = () => {
     window.print();
@@ -77,19 +79,25 @@ export const StudentIdCardModal: React.FC<StudentIdCardModalProps> = ({
 
                 <div className="space-y-1.5 text-[13px] text-slate-700">
                   <p>
-                    <span className="text-slate-500 font-medium">Khóa học: </span>
-                    <strong className="text-slate-800">{cohort}</strong>
+                    <span className="text-slate-500 font-medium">MSSV: </span>
+                    <strong className="font-mono text-slate-800 font-bold">{user?.username || cardCode}</strong>
                   </p>
                   <p>
-                    <span className="text-slate-500 font-medium">Mã số sinh viên: </span>
+                    <span className="text-slate-500 font-medium">Mã thẻ thư viện: </span>
                     <strong className="font-mono text-brand font-bold text-[14px]">{cardCode}</strong>
                   </p>
                   <p>
-                    <span className="text-slate-500 font-medium">Ngành: </span>
+                    <span className="text-slate-500 font-medium">Khoa / Đơn vị: </span>
                     <strong className="text-slate-800">{department}</strong>
                   </p>
+                  <p>
+                    <span className="text-slate-500 font-medium">Hạn sử dụng thẻ: </span>
+                    <strong className="text-slate-800">
+                      {user?.card_expiry ? format(new Date(user.card_expiry), 'dd/MM/yyyy') : 'Vô thời hạn'}
+                    </strong>
+                  </p>
                   <p className="text-[11.5px] text-slate-500 pt-1">
-                    Bậc: <strong className="text-slate-700 font-semibold">Đại học chính quy</strong> • Thư viện UTH
+                    Đối tượng: <strong className="text-slate-700 font-semibold">{user?.role === 'lecturer' ? 'Giảng viên' : 'Sinh viên'}</strong> • Thư viện UTH
                   </p>
                 </div>
               </div>
