@@ -142,6 +142,13 @@ export const LoginPage: React.FC = () => {
           </Button>
         </form>
 
+        {/* Registration Notice */}
+        <div className="mt-4 p-3 bg-teal-50/70 border border-teal-100 rounded-xl text-center">
+          <p className="text-[11px] text-teal-900 leading-relaxed font-medium">
+            💡 <strong>Chưa có thẻ bạn đọc?</strong> Vui lòng liên hệ Quầy Lưu thông Thư viện UTH (Cơ sở 1) để hoàn tất thủ tục mở thẻ và nhận tài khoản đăng nhập.
+          </p>
+        </div>
+
         {/* Demo Fast Fill Section */}
         <div className="mt-6 pt-5 border-t border-border/70">
           <p className="text-[10px] text-textSecondary font-bold uppercase tracking-wider mb-2.5 text-center">
