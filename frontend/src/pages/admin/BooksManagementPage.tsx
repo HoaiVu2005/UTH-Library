@@ -19,6 +19,11 @@ import {
   X,
   Image as ImageIcon,
   Link as LinkIcon,
+  Camera,
+  Sparkles,
+  Zap,
+  Barcode,
+  Loader2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/Input';
@@ -33,6 +38,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { Card, CardContent } from '@/components/ui/Card';
+import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerModal';
 import { formatCurrencyVND, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 
@@ -92,6 +98,15 @@ export const BooksManagementPage: React.FC = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Camera & ISBN Auto-Lookup State
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState<boolean>(false);
+  const [isLookingUpIsbn, setIsLookingUpIsbn] = useState<boolean>(false);
+  const [isbnLookupSuccessInfo, setIsbnLookupSuccessInfo] = useState<{
+    title: string;
+    author: string;
+    source: string;
+  } | null>(null);
 
   // Delete State
   const [deletingBook, setDeletingBook] = useState<BookItem | null>(null);
@@ -260,6 +275,7 @@ export const BooksManagementPage: React.FC = () => {
     setFormCoverImage('');
     setCoverFile(null);
     setCoverPreview(null);
+    setIsbnLookupSuccessInfo(null);
     if (categories.length > 0) setFormCategoryId(categories[0].id);
     setIsModalOpen(true);
   };
@@ -285,7 +301,67 @@ export const BooksManagementPage: React.FC = () => {
     setFormCoverImage(book.cover_image || '');
     setCoverFile(null);
     setCoverPreview(book.cover_image || null);
+    setIsbnLookupSuccessInfo(null);
     setIsModalOpen(true);
+  };
+
+  const handleLookupIsbn = async (isbnToLookup?: string) => {
+    const targetIsbn = (isbnToLookup || formIsbn).trim();
+    if (!targetIsbn) {
+      toast.warning('Vui lòng nhập hoặc quét mã ISBN cần tra cứu.');
+      return;
+    }
+
+    try {
+      setIsLookingUpIsbn(true);
+      const res = await api.get(`/catalog/lookup-isbn?isbn=${encodeURIComponent(targetIsbn)}`);
+      const meta = res.data?.data;
+      if (meta && meta.success) {
+        if (meta.title) setFormTitle(meta.title);
+        if (meta.author_names) setFormAuthorNames(meta.author_names);
+        if (meta.publisher) setFormPublisher(meta.publisher);
+        if (meta.year) setFormYear(String(meta.year));
+        if (meta.price) setFormPrice(String(meta.price));
+        if (meta.description) setFormDescription(meta.description);
+        if (meta.isbn) setFormIsbn(meta.isbn);
+        if (meta.cover_image) {
+          setFormCoverImage(meta.cover_image);
+          setCoverPreview(meta.cover_image);
+          setCoverFile(null);
+        }
+
+        // Match category
+        if (meta.suggested_category_id) {
+          setFormCategoryId(meta.suggested_category_id);
+        } else if (meta.suggested_category_code) {
+          const found = categories.find((c) => c.code === meta.suggested_category_code);
+          if (found) setFormCategoryId(found.id);
+        }
+
+        setIsbnLookupSuccessInfo({
+          title: meta.title,
+          author: meta.author_names,
+          source: meta.source || 'Tra cứu tự động',
+        });
+
+        toast.success(`Đã tự động nhận diện: "${meta.title}"!`);
+      } else {
+        toast.warning(meta?.message || 'Không tìm thấy dữ liệu cho mã ISBN này.');
+      }
+    } catch (err: any) {
+      console.error('Failed to lookup ISBN', err);
+      toast.error('Lỗi khi tra cứu mã ISBN. Vui lòng kiểm tra lại kết nối.');
+    } finally {
+      setIsLookingUpIsbn(false);
+    }
+  };
+
+  const handleCameraScanSuccess = (scannedCode: string) => {
+    if (!isModalOpen) {
+      handleOpenAddModal();
+    }
+    setFormIsbn(scannedCode);
+    handleLookupIsbn(scannedCode);
   };
 
   const handleSaveBook = async (e: React.FormEvent) => {
@@ -428,6 +504,18 @@ export const BooksManagementPage: React.FC = () => {
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             <span>Thêm đầu sách</span>
+          </Button>
+
+          <Button
+            onClick={() => {
+              handleOpenAddModal();
+              setIsCameraScannerOpen(true);
+            }}
+            className="text-xs font-semibold h-9 px-3.5 rounded-xl bg-teal-700 text-white hover:bg-teal-800 transition-all shadow-xs shrink-0 flex items-center"
+            title="Quét mã vạch ISBN trên bìa sách bằng Camera để điền thông tin tự động"
+          >
+            <Camera className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+            <span>📷 Quét nhanh ISBN</span>
           </Button>
 
           <Button
@@ -754,6 +842,148 @@ export const BooksManagementPage: React.FC = () => {
       >
         <form onSubmit={handleSaveBook} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <ModalBody className="overflow-y-auto flex-1 min-h-0 p-6 space-y-4">
+            {/* Smart ISBN Auto-fetch & Camera Barcode Scanner Banner */}
+            <div className="bg-gradient-to-r from-teal-50/90 via-emerald-50/30 to-teal-50/50 border border-teal-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                      <span>⚡ Tra cứu & Tự động điền dữ liệu theo ISBN</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-teal-100 text-teal-800 rounded-full border border-teal-200">
+                        Nhập kho 1-chạm
+                      </span>
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Quét mã vạch bìa sau hoặc nhập số ISBN để hệ thống tự động điền Tên sách, Tác giả, NXB, Năm, Tóm tắt & Ảnh bìa thật
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  className="bg-brand hover:bg-brand-dark text-white rounded-xl text-xs font-semibold h-8.5 px-3 flex items-center gap-1.5 shadow-2xs shrink-0 self-start sm:self-auto"
+                >
+                  <Camera className="w-3.5 h-3.5 text-amber-300" />
+                  <span>📷 Quét Camera bìa sau</span>
+                </Button>
+              </div>
+
+              {/* Input & Lookup Row */}
+              <div className="flex items-center gap-2 pt-1">
+                <div className="relative flex-1">
+                  <Barcode className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={formIsbn}
+                    onChange={(e) => setFormIsbn(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleLookupIsbn();
+                      }
+                    }}
+                    placeholder="Nhập hoặc quét mã ISBN (VD: 9780132350884 hoặc 978-604-0-10002-8)..."
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-teal-200/90 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-mono"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isLookingUpIsbn || !formIsbn.trim()}
+                  isLoading={isLookingUpIsbn}
+                  onClick={() => handleLookupIsbn()}
+                  className="rounded-xl text-xs font-semibold h-9 px-3.5 border-teal-500 text-teal-700 hover:bg-teal-50 shrink-0"
+                >
+                  <Zap className="w-3.5 h-3.5 mr-1 text-teal-600" />
+                  <span>Tra cứu ngay</span>
+                </Button>
+              </div>
+
+              {/* Sample Demo Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-[11px] text-gray-500">
+                <span className="font-medium text-gray-600">Thử nhanh ISBN:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormIsbn('9780132350884');
+                    handleLookupIsbn('9780132350884');
+                  }}
+                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
+                >
+                  Clean Code (9780132350884)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormIsbn('9786040100028');
+                    handleLookupIsbn('9786040100028');
+                  }}
+                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
+                >
+                  Đường cao tốc UTH (9786040100028)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormIsbn('9780134685991');
+                    handleLookupIsbn('9780134685991');
+                  }}
+                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
+                >
+                  Effective Java (9780134685991)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormIsbn('9781119584346');
+                    handleLookupIsbn('9781119584346');
+                  }}
+                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
+                >
+                  Supply Chain (9781119584346)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormIsbn('9786040300015');
+                    handleLookupIsbn('9786040300015');
+                  }}
+                  className="px-2 py-0.5 bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 rounded-md transition-colors font-mono cursor-pointer"
+                >
+                  Cơ điện tử Ô tô (9786040300015)
+                </button>
+              </div>
+
+              {/* Success Banner if metadata was populated */}
+              {isbnLookupSuccessInfo && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center justify-between animate-fade-in">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                      <strong>Đã nhận diện:</strong> {isbnLookupSuccessInfo.title} — <em>{isbnLookupSuccessInfo.author}</em>
+                      <span className="ml-2 text-[11px] text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full font-medium">
+                        Nguồn: {isbnLookupSuccessInfo.source}
+                      </span>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsbnLookupSuccessInfo(null)}
+                    className="text-emerald-700 hover:text-emerald-900 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* LEFT COLUMN: Cover Image & Summary (4 cols) */}
               <div className="lg:col-span-4 space-y-4">
@@ -875,12 +1105,39 @@ export const BooksManagementPage: React.FC = () => {
                     ))}
                   </Select>
 
-                  <Input
-                    label="Mã ISBN"
-                    value={formIsbn}
-                    onChange={(e) => setFormIsbn(e.target.value)}
-                    placeholder="VD: 978-604-0-12345-6"
-                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[13px] font-medium text-textPrimary">Mã ISBN</label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCameraScannerOpen(true)}
+                        className="text-[11px] font-medium text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Camera className="w-3 h-3 text-brand" />
+                        <span>Quét camera</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={formIsbn}
+                        onChange={(e) => setFormIsbn(e.target.value)}
+                        placeholder="VD: 978-604-0-12345-6"
+                        className="w-full px-3 py-2 pr-16 text-xs rounded-lg border border-border bg-white text-textPrimary placeholder:text-textSecondary/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-mono"
+                      />
+                      {formIsbn.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => handleLookupIsbn()}
+                          disabled={isLookingUpIsbn}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-1 text-[10px] font-semibold bg-teal-50 text-teal-700 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          {isLookingUpIsbn ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-2.5 h-2.5" />}
+                          <span>Điền</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Publisher & Year & Price */}
@@ -1051,6 +1308,15 @@ export const BooksManagementPage: React.FC = () => {
         isLoading={isSubmitting}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeletingBook(null)}
+      />
+
+      {/* Camera Barcode / ISBN Scanner Modal */}
+      <CameraBarcodeScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScanSuccess={handleCameraScanSuccess}
+        title="Quét mã vạch ISBN trên bìa sau cuốn sách"
+        description="Hướng Camera vào mã vạch EAN-13 / ISBN trên bìa sau của sách để nhận diện tự động"
       />
     </div>
   );

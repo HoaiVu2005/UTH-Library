@@ -21,11 +21,16 @@ from .views import (
     BookCsvTemplateView,
     BookCsvExportView,
     BookCsvImportView,
+    ISBNLookupView,
 )
 
 urlpatterns = [
     # Search suggest
     path('search/suggest', SuggestBooksView.as_view(), name='search-suggest'),
+
+    # ISBN Lookup & Metadata Auto-fetch
+    path('catalog/lookup-isbn', ISBNLookupView.as_view(), name='catalog-isbn-lookup'),
+    path('books/lookup-isbn', ISBNLookupView.as_view(), name='book-isbn-lookup'),
 
     # Books CSV Import/Export
     path('books/template-csv', BookCsvTemplateView.as_view(), name='book-csv-template'),

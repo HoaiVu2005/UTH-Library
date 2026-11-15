@@ -32,6 +32,7 @@ from .services import (
     import_books_from_csv,
     export_books_to_csv,
 )
+from .isbn_service import lookup_isbn_metadata
 
 class SuggestBooksView(APIView):
     permission_classes = [AllowAny]
@@ -486,4 +487,19 @@ class BookCsvImportView(APIView):
 
         result = import_books_from_csv(csv_text)
         return Response({'data': result}, status=status.HTTP_200_OK)
+
+
+class ISBNLookupView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        isbn = request.query_params.get('isbn', '').strip()
+        if not isbn:
+            return Response(
+                {'success': False, 'detail': 'Vui lòng cung cấp tham số mã ISBN cần tra cứu.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        result = lookup_isbn_metadata(isbn)
+        return Response({'data': result}, status=status.HTTP_200_OK)
+
 
