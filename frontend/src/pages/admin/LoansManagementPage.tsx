@@ -309,7 +309,7 @@ export const LoansManagementPage: React.FC = () => {
           className={cn(
             'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-gray-300',
             activeTab === 'all'
-              ? 'ring-2 ring-brand border-brand bg-teal-50/20'
+              ? 'border-brand bg-teal-50/20'
               : 'border-gray-200/80'
           )}
         >
@@ -327,7 +327,7 @@ export const LoansManagementPage: React.FC = () => {
           className={cn(
             'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-teal-300',
             activeTab === 'active'
-              ? 'ring-2 ring-brand border-brand bg-teal-50/30'
+              ? 'border-brand bg-teal-50/30'
               : 'border-gray-200/80'
           )}
         >
@@ -345,7 +345,7 @@ export const LoansManagementPage: React.FC = () => {
           className={cn(
             'p-3.5 rounded-xl border text-left transition-all duration-150 relative shadow-2xs hover:border-red-300',
             activeTab === 'overdue'
-              ? 'ring-2 ring-red-500 border-red-500 bg-red-50/40'
+              ? 'border-red-500 bg-red-50/30'
               : counts.overdue > 0
                 ? 'bg-red-50/20 border-red-200'
                 : 'bg-white border-gray-200/80'
@@ -368,7 +368,7 @@ export const LoansManagementPage: React.FC = () => {
           className={cn(
             'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-emerald-300',
             activeTab === 'returned'
-              ? 'ring-2 ring-emerald-500 border-emerald-500 bg-emerald-50/30'
+              ? 'border-emerald-500 bg-emerald-50/20'
               : 'border-gray-200/80'
           )}
         >
@@ -386,7 +386,7 @@ export const LoansManagementPage: React.FC = () => {
           className={cn(
             'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-gray-300',
             activeTab === 'lost'
-              ? 'ring-2 ring-gray-600 border-gray-600 bg-gray-50'
+              ? 'border-gray-600 bg-gray-50'
               : 'border-gray-200/80'
           )}
         >
@@ -410,7 +410,7 @@ export const LoansManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 activeTab === 'all'
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 ring-2 ring-slate-400/40 shadow-2xs'
+                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
                   : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
               )}
             >
@@ -424,7 +424,7 @@ export const LoansManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 activeTab === 'active'
-                  ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-brand/40 shadow-2xs'
+                  ? 'bg-teal-50 text-brand border-brand shadow-2xs'
                   : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
               )}
             >
@@ -438,7 +438,7 @@ export const LoansManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 activeTab === 'overdue'
-                  ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-400 shadow-2xs'
+                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
                   : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
               )}
             >
@@ -452,7 +452,7 @@ export const LoansManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 activeTab === 'returned'
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400 shadow-2xs'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
                   : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
               )}
             >
@@ -466,7 +466,7 @@ export const LoansManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 activeTab === 'lost'
-                  ? 'bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400 shadow-2xs'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
                   : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
               )}
             >
@@ -667,19 +667,18 @@ export const LoansManagementPage: React.FC = () => {
                       {/* Due Date: Clean header "Hạn trả" */}
                       <TableCell className="text-center">
                         {l.status === 'returned' ? (
-                          <div className="space-y-0.5 inline-block text-left">
-                            <span className="text-xs text-gray-500 block">
-                              Hạn: {formatDateVN(l.due_at)}
+                          <div className="space-y-0.5 inline-block text-center">
+                            <span className="text-gray-500 text-xs block whitespace-nowrap">
+                              {formatDateVN(l.due_at)}
                             </span>
-                            <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                            <div className="text-[11px] text-emerald-700 font-medium flex items-center justify-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
                               <span>Trả: {formatDateVN(l.returned_at)}</span>
                             </div>
                           </div>
                         ) : l.is_overdue ? (
-                          <div className="space-y-0.5 inline-block text-center">
-                            <span className="font-semibold text-red-600 text-xs flex items-center justify-center gap-1">
-                              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                          <div className="space-y-1 inline-block text-center">
+                            <span className="text-gray-500 text-xs block whitespace-nowrap">
                               {formatDateVN(l.due_at)}
                             </span>
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
@@ -687,8 +686,8 @@ export const LoansManagementPage: React.FC = () => {
                             </span>
                           </div>
                         ) : l.status === 'active' ? (
-                          <div className="space-y-0.5 inline-block text-center">
-                            <span className="font-medium text-gray-700 text-xs block">
+                          <div className="space-y-1 inline-block text-center">
+                            <span className="text-gray-500 text-xs block whitespace-nowrap">
                               {formatDateVN(l.due_at)}
                             </span>
                             <div>
@@ -707,7 +706,7 @@ export const LoansManagementPage: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-gray-500 text-xs block whitespace-nowrap">
                             {formatDateVN(l.due_at)}
                           </span>
                         )}

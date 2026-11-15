@@ -614,7 +614,7 @@ export const ReportsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'overview'
-                ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-primary/40 shadow-2xs font-bold'
+                ? 'bg-teal-50 text-primary border-primary shadow-2xs font-bold'
                 : 'bg-teal-50/60 text-primary border-teal-200/80 hover:bg-teal-100/70'
             )}
           >
@@ -628,7 +628,7 @@ export const ReportsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'top_borrowed'
-                ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-primary/40 shadow-2xs font-bold'
+                ? 'bg-teal-50 text-primary border-primary shadow-2xs font-bold'
                 : 'bg-teal-50/60 text-primary border-teal-200/80 hover:bg-teal-100/70'
             )}
           >
@@ -642,7 +642,7 @@ export const ReportsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'overdue'
-                ? 'bg-red-100 text-red-900 border-red-300 ring-2 ring-red-400 shadow-2xs font-bold'
+                ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs font-bold'
                 : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
             )}
           >
@@ -656,7 +656,7 @@ export const ReportsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'inventory'
-                ? 'bg-blue-100 text-blue-900 border-blue-300 ring-2 ring-blue-400 shadow-2xs font-bold'
+                ? 'bg-blue-50 text-blue-700 border-blue-300 shadow-2xs font-bold'
                 : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
             )}
           >

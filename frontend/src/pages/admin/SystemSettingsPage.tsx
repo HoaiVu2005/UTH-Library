@@ -157,7 +157,7 @@ export const SystemSettingsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'config'
-                ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-brand/40 shadow-2xs'
+                ? 'bg-teal-50 text-brand border-brand shadow-2xs'
                 : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
             )}
           >
@@ -170,7 +170,7 @@ export const SystemSettingsPage: React.FC = () => {
             className={cn(
               'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
               activeTab === 'policy'
-                ? 'bg-emerald-100 text-emerald-900 border-emerald-300 ring-2 ring-emerald-400 shadow-2xs'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
                 : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
             )}
           >

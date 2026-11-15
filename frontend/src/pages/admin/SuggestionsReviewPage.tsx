@@ -205,7 +205,7 @@ export const SuggestionsReviewPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'pending'
-                  ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400 shadow-2xs'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
                   : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
               )}
             >
@@ -223,7 +223,7 @@ export const SuggestionsReviewPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'approved'
-                  ? 'bg-blue-100 text-blue-900 border-blue-300 ring-2 ring-blue-400 shadow-2xs'
+                  ? 'bg-blue-50 text-blue-800 border-blue-300 shadow-2xs'
                   : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
               )}
             >
@@ -241,7 +241,7 @@ export const SuggestionsReviewPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'received'
-                  ? 'bg-emerald-100 text-emerald-900 border-emerald-300 ring-2 ring-emerald-400 shadow-2xs'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
                   : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
               )}
             >
@@ -259,7 +259,7 @@ export const SuggestionsReviewPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'rejected'
-                  ? 'bg-red-100 text-red-900 border-red-300 ring-2 ring-red-400 shadow-2xs'
+                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
                   : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
               )}
             >
@@ -277,7 +277,7 @@ export const SuggestionsReviewPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === ''
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 ring-2 ring-slate-400/40 shadow-2xs'
+                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
                   : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
               )}
             >

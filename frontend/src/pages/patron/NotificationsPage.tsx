@@ -396,7 +396,7 @@ export const NotificationsPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                 activeTab === 'all'
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 ring-2 ring-slate-400/40 shadow-2xs'
+                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
                   : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
               )}
             >
@@ -412,7 +412,7 @@ export const NotificationsPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                 activeTab === 'unread'
-                  ? 'bg-red-100 text-red-900 border-red-300 ring-2 ring-red-400 shadow-2xs'
+                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
                   : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
               )}
             >
@@ -428,7 +428,7 @@ export const NotificationsPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                 activeTab === 'reservation'
-                  ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-brand/40 shadow-2xs'
+                  ? 'bg-teal-50 text-brand border-brand shadow-2xs'
                   : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
               )}
             >
@@ -446,7 +446,7 @@ export const NotificationsPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                 activeTab === 'loan'
-                  ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400 shadow-2xs'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
                   : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
               )}
             >
@@ -464,7 +464,7 @@ export const NotificationsPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                 activeTab === 'suggestion'
-                  ? 'bg-blue-100 text-blue-900 border-blue-300 ring-2 ring-blue-400 shadow-2xs'
+                  ? 'bg-blue-50 text-blue-800 border-blue-300 shadow-2xs'
                   : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
               )}
             >
@@ -483,7 +483,7 @@ export const NotificationsPage: React.FC = () => {
                 className={cn(
                   'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5 shrink-0',
                   activeTab === 'other'
-                    ? 'bg-purple-100 text-purple-900 border-purple-300 ring-2 ring-purple-400 shadow-2xs'
+                    ? 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs'
                     : 'bg-purple-50/60 text-purple-700 border-purple-200/80 hover:bg-purple-100/70'
                 )}
               >

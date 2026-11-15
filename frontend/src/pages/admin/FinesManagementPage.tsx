@@ -248,7 +248,7 @@ export const FinesManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === ''
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 ring-2 ring-slate-400/40 shadow-2xs'
+                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
                   : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
               )}
             >
@@ -264,7 +264,7 @@ export const FinesManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'unpaid'
-                  ? 'bg-red-100 text-red-700 border-red-300 ring-2 ring-red-400 shadow-2xs'
+                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
                   : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
               )}
             >
@@ -280,7 +280,7 @@ export const FinesManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'partial'
-                  ? 'bg-amber-100 text-amber-800 border-amber-300 ring-2 ring-amber-400 shadow-2xs'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
                   : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
               )}
             >
@@ -296,7 +296,7 @@ export const FinesManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'paid'
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 ring-2 ring-emerald-400 shadow-2xs'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
                   : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
               )}
             >
@@ -312,7 +312,7 @@ export const FinesManagementPage: React.FC = () => {
               className={cn(
                 'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
                 statusFilter === 'waived'
-                  ? 'bg-purple-100 text-purple-800 border-purple-300 ring-2 ring-purple-400 shadow-2xs'
+                  ? 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs'
                   : 'bg-purple-50/60 text-purple-700 border-purple-200/80 hover:bg-purple-100/70'
               )}
             >

@@ -462,7 +462,7 @@ export const CirculationDeskPage: React.FC = () => {
             className={cn(
               'rounded-full px-4 py-2 text-xs font-semibold border flex items-center gap-2 transition-all duration-150 shadow-2xs',
               activeTab === 'borrow'
-                ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-brand/40 shadow-xs'
+                ? 'bg-teal-50 text-brand border-brand shadow-xs'
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             )}
           >
@@ -475,7 +475,7 @@ export const CirculationDeskPage: React.FC = () => {
             className={cn(
               'rounded-full px-4 py-2 text-xs font-semibold border flex items-center gap-2 transition-all duration-150 shadow-2xs',
               activeTab === 'return'
-                ? 'bg-teal-100 text-teal-900 border-teal-300 ring-2 ring-brand/40 shadow-xs'
+                ? 'bg-teal-50 text-brand border-brand shadow-xs'
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             )}
           >
@@ -909,7 +909,7 @@ export const CirculationDeskPage: React.FC = () => {
                       onClick={() => setCondition('normal')}
                       className={`p-3.5 rounded-xl border text-xs font-bold transition-all text-center ${
                         condition === 'normal'
-                          ? 'border-brand bg-teal-50 text-brand ring-2 ring-brand/20 shadow-2xs'
+                          ? 'border-brand bg-teal-50 text-brand shadow-2xs'
                           : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -920,7 +920,7 @@ export const CirculationDeskPage: React.FC = () => {
                       onClick={() => setCondition('damaged')}
                       className={`p-3.5 rounded-xl border text-xs font-bold transition-all text-center ${
                         condition === 'damaged'
-                          ? 'border-amber-500 bg-amber-50 text-amber-800 ring-2 ring-amber-500/20 shadow-2xs'
+                          ? 'border-amber-400 bg-amber-50 text-amber-800 shadow-2xs'
                           : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -931,7 +931,7 @@ export const CirculationDeskPage: React.FC = () => {
                       onClick={() => setCondition('lost')}
                       className={`p-3.5 rounded-xl border text-xs font-bold transition-all text-center ${
                         condition === 'lost'
-                          ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500/20 shadow-2xs'
+                          ? 'border-red-400 bg-red-50 text-red-700 shadow-2xs'
                           : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                       }`}
                     >
