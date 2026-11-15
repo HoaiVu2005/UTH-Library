@@ -346,7 +346,9 @@ export const BooksManagementPage: React.FC = () => {
 
         toast.success(`Đã tự động nhận diện: "${meta.title}"!`);
       } else {
-        toast.warning(meta?.message || 'Không tìm thấy dữ liệu cho mã ISBN này.');
+        if (meta?.isbn) setFormIsbn(meta.isbn);
+        setIsbnLookupSuccessInfo(null);
+        toast.warning(meta?.message || 'Chưa tìm thấy dữ liệu tự động cho mã ISBN này. Vui lòng điền thông tin thủ công.');
       }
     } catch (err: any) {
       console.error('Failed to lookup ISBN', err);

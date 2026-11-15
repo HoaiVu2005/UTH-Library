@@ -10,6 +10,18 @@ logger = logging.getLogger(__name__)
 
 # Curated library knowledge base for rapid lookup and offline resilience
 CURATED_ISBN_CATALOG: Dict[str, Dict[str, Any]] = {
+    '9786043367249': {
+        'title': 'Đường vào lập trình Python',
+        'author_names': 'Nguyễn Ngọc Giang, Phan Xuân Vọng, Nguyễn Quốc Anh',
+        'publisher': 'NXB Đại học Quốc gia Hà Nội',
+        'year': 2021,
+        'price': 160000,
+        'description': 'Giáo trình "Đường vào lập trình Python" của nhóm tác giả Nguyễn Ngọc Giang, Phan Xuân Vọng, Nguyễn Quốc Anh (NXB Đại học Quốc gia Hà Nội, 2021). Sách cung cấp kiến thức nền tảng và thực hành lập trình Python từ cú pháp cơ bản, cấu trúc dữ liệu, giải thuật đến lập trình hướng đối tượng và ứng dụng giải quyết bài toán khoa học dữ liệu.',
+        'cover_image': 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=600&auto=format&fit=crop&q=80',
+        'suggested_category_code': 'CNTT',
+        'page_count': 346,
+        'source': 'UTH Knowledge Base',
+    },
     '9780136681557': {
         'title': 'Computer Networking: A Top-Down Approach (8th Edition)',
         'author_names': 'James F. Kurose, Keith W. Ross',
@@ -626,23 +638,15 @@ def lookup_isbn_metadata(raw_isbn: str) -> Dict[str, Any]:
     except Exception as e:
         logger.warning(f"OpenLibrary Search error for ISBN {cleaned}: {e}")
 
-    # 5. Last resort fallback
+    # 5. Last resort fallback: Do NOT invent fake titles or fake authors!
+    # Return found: False so the UI informs the librarian and preserves the ISBN for manual entry.
     pub_str = infer_publisher(cleaned, None)
-    cat_code = 'CNTT'
-    cat = Category.objects.filter(code=cat_code).first()
     return {
-        'success': True,
-        'source': 'Mã ISBN chuẩn quốc tế',
+        'success': False,
+        'found': False,
+        'source': 'Không tìm thấy dữ liệu tự động',
         'already_in_library': False,
         'isbn': format_isbn13(cleaned),
-        'title': f"Tài liệu chuyên khảo ISBN {format_isbn13(cleaned)}",
-        'author_names': 'Tác giả chuyên ngành',
         'publisher': pub_str,
-        'year': 2024,
-        'price': 150000,
-        'description': f"Ấn phẩm sách chuyên khảo chuẩn ISBN: {format_isbn13(cleaned)}, xuất bản bởi {pub_str}.",
-        'cover_image': f"https://covers.openlibrary.org/b/isbn/{cleaned}-L.jpg",
-        'suggested_category_code': cat_code,
-        'suggested_category_id': cat.id if cat else None,
-        'page_count': 250,
+        'message': f'Chưa có dữ liệu tự động cho mã ISBN {format_isbn13(cleaned)} trên hệ thống OpenLibrary. Vui lòng nhập thông tin sách thủ công.',
     }

@@ -53,6 +53,20 @@ class TestISBNLookup:
         assert res['publisher'] == 'The MIT Press'
         assert res['year'] == 2022
 
+    def test_lookup_duong_vao_lap_trinh_python(self):
+        res = lookup_isbn_metadata('9786043367249')
+        assert res['success'] is True
+        assert 'Đường vào lập trình Python' in res['title']
+        assert 'Nguyễn Ngọc Giang' in res['author_names']
+        assert res['publisher'] == 'NXB Đại học Quốc gia Hà Nội'
+        assert res['year'] == 2021
+
+    def test_lookup_unknown_isbn_returns_false_and_no_fake_title(self):
+        res = lookup_isbn_metadata('9786049999999')
+        assert res['success'] is False
+        assert res['found'] is False
+        assert 'title' not in res
+
     def test_lookup_endpoint(self):
         client = APIClient()
         response = client.get('/api/v1/catalog/lookup-isbn?isbn=9780136681557')
