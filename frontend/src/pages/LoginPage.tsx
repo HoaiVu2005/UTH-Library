@@ -3,24 +3,84 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   Eye,
   EyeOff,
-  Lock,
-  User,
   Clock,
-  ShieldCheck,
-  GraduationCap,
-  School,
-  BookOpen,
-  CheckCircle2,
-  Sparkles,
+  ArrowRight,
   ArrowLeft,
-  Library,
+  Megaphone,
+  Calendar,
+  X,
+  Bell,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
-import { Checkbox } from '@/components/ui/Checkbox';
 import { formatApiError } from '@/lib/api';
+
+interface NoticeItem {
+  id: number;
+  title: string;
+  date: string;
+  isNew?: boolean;
+  content: string;
+}
+
+const NOTICES: NoticeItem[] = [
+  {
+    id: 1,
+    title: 'Thông báo về việc xét học bổng khuyến khích học tập UTH học kỳ 1, năm học 2025-2026',
+    date: '12/11/2026',
+    isNew: true,
+    content:
+      'Trường Đại học Giao thông vận tải TP.HCM thông báo kế hoạch xét cấp học bổng khuyến khích học tập cho sinh viên chính quy có kết quả rèn luyện và học tập xuất sắc trong học kỳ 1 năm học 2025-2026. Sinh viên kiểm tra danh sách và phản hồi trước ngày 25/11/2026.',
+  },
+  {
+    id: 2,
+    title: 'THÔNG BÁO ĐÓNG BẢO HIỂM Y TẾ NĂM HỌC 2026 - 2027',
+    date: '03/11/2026',
+    isNew: false,
+    content:
+      'Nhà trường yêu cầu toàn thể sinh viên các khóa thực hiện nghiêm túc quy định tham gia BHYT bắt buộc năm học 2026 - 2027. Thời hạn hoàn tất nộp phí BHYT qua cổng thanh toán điện tử UTH đến hết ngày 30/11/2026.',
+  },
+  {
+    id: 3,
+    title: 'Thông báo V/v Đăng ký tham gia Ngày hội sinh viên năm học 2026 - 2027',
+    date: '02/11/2026',
+    isNew: false,
+    content:
+      'Đoàn Thanh niên - Hội Sinh viên UTH phát động Ngày hội Sinh viên UTH 2026 với chuỗi hoạt động giao lưu học thuật, triển lãm sáng tạo công nghệ và giải thi đấu thể thao sôi nổi tại Cơ sở 1.',
+  },
+  {
+    id: 4,
+    title: 'Thông báo về việc đăng ký các học phần điều kiện',
+    date: '15/10/2026',
+    isNew: false,
+    content:
+      'Phòng Đào tạo thông báo mở cổng đăng ký bổ sung các học phần điều kiện (Giáo dục thể chất, Giáo dục Quốc phòng - An ninh) cho sinh viên năm 2 và năm 3 trên hệ thống quản lý đào tạo.',
+  },
+  {
+    id: 5,
+    title: 'Thông báo V/v đóng học phí HKI năm học 2026 – 2027',
+    date: '10/10/2026',
+    isNew: false,
+    content:
+      'Sinh viên theo dõi thông báo đóng học phí HKI năm học 2026 – 2027 trên cổng thông tin sinh viên và thực hiện đóng học phí đúng hạn quy định để không ảnh hưởng đến tiến độ học tập và mượn sách thư viện.',
+  },
+];
+
+// Stylized document icon with botanical accent from the UTH student portal
+const NoticeDocIcon: React.FC = () => {
+  return (
+    <div className="relative w-11 h-11 shrink-0 flex items-center justify-center">
+      <div className="absolute inset-0 bg-teal-50 rounded-xl border border-teal-100" />
+      <span className="absolute -bottom-1 -right-1 text-xs select-none">🌿</span>
+      <div className="relative z-10 w-6 h-7 bg-white rounded-[3px] border border-teal-300 shadow-[0_1px_2px_rgba(0,0,0,0.06)] flex flex-col p-1 gap-0.8 items-center justify-center">
+        <div className="w-4 h-0.5 bg-teal-600 rounded-full mb-0.5" />
+        <div className="w-3.5 h-0.5 bg-teal-400 rounded-full mb-0.5" />
+        <div className="w-4 h-0.5 bg-teal-200 rounded-full mb-0.5" />
+        <div className="w-2.5 h-0.5 bg-teal-200 rounded-full" />
+      </div>
+    </div>
+  );
+};
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -30,10 +90,11 @@ export const LoginPage: React.FC = () => {
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lockTime, setLockTime] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedNotice, setSelectedNotice] = useState<NoticeItem | null>(null);
+  const [showAllNotices, setShowAllNotices] = useState(false);
 
   // Redirect path after login
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
@@ -44,7 +105,7 @@ export const LoginPage: React.FC = () => {
     setLockTime(null);
 
     if (!identity.trim()) {
-      setErrorMsg('Vui lòng nhập tên đăng nhập hoặc mã thẻ bạn đọc.');
+      setErrorMsg('Vui lòng nhập tài khoản đăng nhập.');
       return;
     }
     if (!password) {
@@ -80,251 +141,307 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-full flex flex-col lg:flex-row bg-white overflow-x-hidden lg:overflow-hidden select-none animate-page-enter">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-x-hidden select-none">
       {/* =========================================
-          LEFT HERO VIEW: Full-Height UTH Campus Visual (52% on desktop)
+          FULL-SCREEN UTH CAMPUS BACKGROUND PHOTOGRAPH
           ========================================= */}
-      <div className="relative w-full lg:w-[50%] xl:w-[52%] min-h-[460px] lg:h-full flex flex-col justify-between p-8 sm:p-12 lg:p-14 text-white overflow-hidden bg-gradient-to-br from-[#003435] via-[#005B5C] to-[#008B8B] shrink-0">
-        {/* Full-bleed UTH Campus Building Photo */}
-        <img
-          src="/uth-campus-login.jpg"
-          alt="Khuôn viên Trường Đại học Giao thông vận tải TP.HCM"
-          className="absolute inset-0 w-full h-full object-cover object-center filter brightness-95 contrast-105"
-        />
+      <img
+        src="/uth-campus-bg.jpg"
+        alt="Khuôn viên Trường Đại học Giao thông vận tải TP.HCM"
+        className="absolute inset-0 w-full h-full object-cover object-center filter brightness-95 contrast-105"
+      />
 
-        {/* Cinematic Multi-layer Gradient Scrim for Contrast & Brand Atmosphere */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#002B2C]/95 via-[#004D4E]/80 to-[#008B8B]/40" />
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[0.5px]" />
+      {/* Atmospheric Overlays for Brand Depth & Card Readability */}
+      <div className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1.5px]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#003435]/65 via-[#004748]/30 to-black/25" />
 
-        {/* Top Header */}
-        <div className="relative z-10 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md p-2 flex items-center justify-center border border-white/30 shadow-md group-hover:scale-105 transition-all">
-              <Library className="w-6 h-6 text-white" />
+      {/* Top Floating Back to Home button */}
+      <Link
+        to="/"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 inline-flex items-center gap-1.5 text-xs font-semibold text-white hover:text-white bg-black/40 hover:bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full transition-all border border-white/20 shadow-md group"
+      >
+        <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+        <span>Về trang chủ Thư viện</span>
+      </Link>
+
+      {/* Main Double Card Container */}
+      <div className="w-full max-w-6xl mx-auto flex flex-col lg:flex-row items-stretch justify-center gap-6 lg:gap-8 relative z-10 animate-page-enter">
+        {/* =========================================
+            LEFT CARD: TIN TỨC & THÔNG BÁO (approx 60%)
+            ========================================= */}
+        <div className="w-full lg:w-[60%] xl:w-[62%] bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-5 sm:p-7 flex flex-col justify-between border border-white/90">
+          <div>
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600 shrink-0">
+                  <Megaphone className="w-5 h-5 text-[#008B8B]" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-[#008B8B] tracking-tight uppercase">
+                    TIN TỨC & THÔNG BÁO
+                  </h2>
+                  <p className="text-xs text-gray-500">Cập nhật mới nhất từ nhà trường</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAllNotices(true)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 border border-teal-600/40 hover:bg-teal-50 px-3.5 py-1.5 rounded-full transition-all group"
+              >
+                <span>Xem tất cả</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight text-white block uppercase leading-none">
-                Thư viện UTH
-              </span>
-              <span className="text-[11px] text-teal-200 font-medium tracking-wide">
-                Digital Library Portal
-              </span>
+
+            {/* Notifications List */}
+            <div className="space-y-3 mt-4">
+              {NOTICES.map((notice) => (
+                <div
+                  key={notice.id}
+                  onClick={() => setSelectedNotice(notice)}
+                  className="group bg-white hover:bg-teal-50/25 border border-gray-100 hover:border-teal-200 rounded-xl p-3 flex items-center gap-3.5 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-md cursor-pointer"
+                >
+                  <NoticeDocIcon />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-xs sm:text-sm font-semibold text-gray-800 group-hover:text-teal-800 line-clamp-2 leading-snug">
+                        {notice.title}
+                      </h3>
+                      {notice.isNew && (
+                        <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0">
+                          MỚI
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-1">
+                      <Calendar className="w-3.5 h-3.5 text-teal-600/70" />
+                      <span>{notice.date}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </Link>
-
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold text-white backdrop-blur-md border border-white/25 transition-all shadow-xs group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Về trang chủ</span>
-          </Link>
-        </div>
-
-        {/* Middle Inspiring Hero Content */}
-        <div className="relative z-10 my-auto py-8 sm:py-12 space-y-4 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-500/25 border border-teal-300/35 text-xs font-semibold text-teal-200 backdrop-blur-md shadow-xs">
-            <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-            <span>Trường Đại học Giao thông vận tải TP.HCM</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight leading-[1.18]">
-            Khám phá Tri thức,<br />
-            <span className="text-teal-200">Kiến tạo Tương lai.</span>
-          </h1>
-
-          <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed font-light max-w-lg">
-            Hệ thống cổng thông tin thư viện số thế hệ mới — Kết nối hơn 50.000 đầu sách, giáo trình chuyên sâu ngành Giao thông, Logistics, CNTT, Kinh tế và dịch vụ mượn trả tự động chuẩn quốc tế.
-          </p>
-
-          {/* Feature Glass Cards */}
-          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-teal-400/20 text-teal-200 shrink-0">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white">Tra cứu thông minh</h4>
-                <p className="text-[11px] text-teal-100/75 mt-0.5 leading-snug">
-                  Tìm theo giáo trình, ISBN & mã vạch
-                </p>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-emerald-400/20 text-emerald-200 shrink-0">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white">Gia hạn 1-chạm</h4>
-                <p className="text-[11px] text-teal-100/75 mt-0.5 leading-snug">
-                  Theo dõi hạn mượn & tự phục vụ 24/7
-                </p>
-              </div>
-            </div>
+          {/* Quick Notice Tip */}
+          <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
+            <span>Thư viện & Cổng đào tạo ĐH Giao thông vận tải TP.HCM</span>
+            <span className="font-medium text-teal-700">Hỗ trợ 24/7</span>
           </div>
         </div>
 
-        {/* Bottom Details */}
-        <div className="relative z-10 pt-4 border-t border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-teal-200/90">
-          <span>Trụ sở chính: Số 2, Võ Oanh, P.25, Q.Bình Thạnh, TP.HCM</span>
-          <span className="font-mono font-medium">Hệ thống Thư viện số UTH</span>
-        </div>
-      </div>
-
-      {/* =========================================
-          RIGHT AUTH VIEW: Full-Height Clean Form (48% on desktop)
-          ========================================= */}
-      <div className="w-full lg:w-[50%] xl:w-[48%] min-h-[580px] lg:h-full flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-white overflow-y-auto">
-        {/* Top bar on Mobile */}
-        <div className="flex items-center justify-between lg:justify-end mb-4 sm:mb-6">
-          <Link to="/" className="lg:hidden flex items-center gap-2 group">
-            <img src="/uth-logo.png" alt="UTH Logo" className="h-9 object-contain" />
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-brand transition-colors group"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Về trang chủ</span>
-          </Link>
-        </div>
-
-        {/* Center Auth Form Container */}
-        <div className="max-w-[420px] w-full mx-auto my-auto py-4 space-y-5">
-          {/* Brand Logo & Heading */}
-          <div className="space-y-2">
-            <Link to="/" className="hidden lg:inline-block mb-2 group">
+        {/* =========================================
+            RIGHT CARD: FORM ĐĂNG NHẬP HỆ THỐNG (approx 40%)
+            ========================================= */}
+        <div className="w-full lg:w-[40%] xl:w-[38%] bg-white/95 backdrop-blur-md rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] p-6 sm:p-8 flex flex-col justify-between border border-white/90">
+          <div>
+            {/* Logo UTH Official */}
+            <div className="text-center mb-3">
               <img
                 src="/uth-logo.png"
                 alt="UTH Logo"
-                className="h-12 object-contain group-hover:scale-102 transition-transform"
+                className="h-14 sm:h-16 mx-auto object-contain"
               />
-            </Link>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-              Đăng nhập Thư viện UTH
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
-              Nhập mã thẻ bạn đọc hoặc tài khoản UTH của bạn để bắt đầu
-            </p>
-          </div>
-
-          {/* Error notification via Alert primitive */}
-          {errorMsg && (
-            <div className="animate-in fade-in duration-150">
-              <Alert variant="danger">
-                <div className="font-semibold">{errorMsg}</div>
-                {lockTime && (
-                  <div className="mt-1 flex items-center text-[11px] text-danger/90">
-                    <Clock className="w-3.5 h-3.5 mr-1 shrink-0" />
-                    Mở khóa lúc: {new Date(lockTime).toLocaleTimeString('vi-VN')}
-                  </div>
-                )}
-              </Alert>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Mã bạn đọc / Tên đăng nhập / Email"
-              placeholder="Ví dụ: SV20260001 hoặc admin"
-              value={identity}
-              onChange={(e) => setIdentity(e.target.value)}
-              leftIcon={<User className="w-4 h-4 text-gray-400" />}
-              autoFocus
-              required
-            />
+            {/* Red Bold Heading */}
+            <h1 className="text-xl sm:text-2xl font-black text-[#C92A2A] tracking-wider text-center uppercase mb-6">
+              ĐĂNG NHẬP HỆ THỐNG
+            </h1>
 
-            <Input
-              label="Mật khẩu"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Nhập mật khẩu của bạn"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              leftIcon={<Lock className="w-4 h-4 text-gray-400" />}
-              rightIcon={
+            {/* Error Message */}
+            {errorMsg && (
+              <div className="mb-4 animate-in fade-in duration-150">
+                <Alert variant="danger">
+                  <div className="font-semibold text-xs">{errorMsg}</div>
+                  {lockTime && (
+                    <div className="text-[11px] mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Khóa đến: {new Date(lockTime).toLocaleTimeString('vi-VN')}
+                    </div>
+                  )}
+                </Alert>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  value={identity}
+                  onChange={(e) => setIdentity(e.target.value)}
+                  placeholder="Tài khoản đăng nhập"
+                  autoFocus
+                  className="w-full px-3.5 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand placeholder:text-gray-400 placeholder:italic transition-all shadow-xs"
+                />
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Mật khẩu"
+                  className="w-full px-3.5 py-2.5 text-sm text-gray-800 bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand placeholder:text-gray-400 placeholder:italic pr-10 transition-all shadow-xs"
+                />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="hover:text-gray-700 text-gray-400 focus:outline-none p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              }
-              required
-            />
+              </div>
 
-            <div className="flex items-center justify-between text-xs pt-1">
-              <Checkbox
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                label="Ghi nhớ đăng nhập"
-              />
-              <Link to="/forgot-password" className="text-brand hover:text-brand-dark hover:underline font-semibold">
-                Quên mật khẩu?
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full mt-2 bg-[#008B8B] hover:bg-[#007272] active:bg-[#005B5C] text-white font-bold py-2.5 px-4 rounded-lg text-sm tracking-wider uppercase shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'ĐĂNG NHẬP'
+                )}
+              </button>
+            </form>
+
+            {/* Forgot password link */}
+            <div className="text-center mt-5">
+              <Link
+                to="/forgot-password"
+                className="text-[#C92A2A] hover:text-red-700 hover:underline text-xs font-bold uppercase tracking-wider transition-colors"
+              >
+                QUÊN MẬT KHẨU?
               </Link>
             </div>
-
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              className="w-full mt-2 h-11 text-sm font-bold shadow-sm rounded-xl"
-              isLoading={isLoading}
-            >
-              Đăng nhập
-            </Button>
-          </form>
-
-          {/* Registration Notice */}
-          <div className="p-3.5 bg-teal-50/70 border border-teal-100 rounded-xl flex items-start gap-2.5">
-            <span className="text-base shrink-0">💡</span>
-            <p className="text-[11px] text-teal-900 leading-relaxed font-medium">
-              <strong>Chưa có thẻ bạn đọc?</strong> Vui lòng liên hệ Quầy Lưu thông Thư viện UTH (Cơ sở 1) để hoàn tất thủ tục mở thẻ và nhận tài khoản đăng nhập.
-            </p>
           </div>
 
-          {/* Demo Fast Fill Section */}
-          <div className="pt-4 border-t border-gray-100">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2.5">
-              Tài khoản mẫu thử nghiệm nhanh:
+          {/* Demo fast-fill buttons for convenient testing */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider text-center mb-2">
+              Tài khoản mẫu thử nghiệm:
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               <button
                 type="button"
-                onClick={() => handleDemoFill('admin', 'AdminPassword123')}
-                className="p-2.5 text-center bg-gray-50 hover:bg-teal-50 hover:border-brand/40 border border-gray-200/80 rounded-xl text-[11px] font-semibold text-gray-700 hover:text-brand transition-all flex flex-col items-center gap-1 shadow-2xs cursor-pointer"
+                onClick={() => handleDemoFill('admin', 'Admin@123')}
+                className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
               >
-                <ShieldCheck className="w-4 h-4 text-brand" />
-                <span>Thủ thư (Admin)</span>
+                Thủ thư (Admin)
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoFill('sv001', 'Password123')}
-                className="p-2.5 text-center bg-gray-50 hover:bg-teal-50 hover:border-brand/40 border border-gray-200/80 rounded-xl text-[11px] font-semibold text-gray-700 hover:text-brand transition-all flex flex-col items-center gap-1 shadow-2xs cursor-pointer"
+                onClick={() => handleDemoFill('052205006506', 'Student@123')}
+                className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
               >
-                <GraduationCap className="w-4 h-4 text-emerald-600" />
-                <span>Sinh viên</span>
+                Sinh viên
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoFill('gv01', 'Password123')}
-                className="p-2.5 text-center bg-gray-50 hover:bg-teal-50 hover:border-brand/40 border border-gray-200/80 rounded-xl text-[11px] font-semibold text-gray-700 hover:text-brand transition-all flex flex-col items-center gap-1 shadow-2xs cursor-pointer"
+                onClick={() => handleDemoFill('gv_hoangnam', 'Lecturer@123')}
+                className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
               >
-                <School className="w-4 h-4 text-blue-600" />
-                <span>Giảng viên</span>
+                Giảng viên
               </button>
             </div>
           </div>
         </div>
-
-        {/* Bottom Copyright */}
-        <div className="text-center sm:text-left text-[11px] text-gray-400 pt-4 border-t border-gray-100 mt-4">
-          © 2026 Thư viện Trường Đại học Giao thông vận tải TP.HCM. All rights reserved.
-        </div>
       </div>
+
+      {/* Modal View Notice Detail */}
+      {selectedNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative border border-gray-100">
+            <button
+              onClick={() => setSelectedNotice(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 text-xs font-medium text-teal-700 mb-2">
+              <Bell className="w-4 h-4" />
+              <span>Thông báo chính thức • {selectedNotice.date}</span>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 leading-snug mb-3">
+              {selectedNotice.title}
+            </h3>
+            <div className="text-sm text-gray-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-gray-100">
+              {selectedNotice.content}
+            </div>
+            <div className="mt-5 flex justify-end">
+              <button
+                onClick={() => setSelectedNotice(null)}
+                className="px-4 py-2 text-xs font-semibold bg-[#008B8B] hover:bg-[#007272] text-white rounded-lg transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal View All Notices */}
+      {showAllNotices && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative border border-gray-100 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-50 flex items-center justify-center text-teal-600">
+                  <Megaphone className="w-4 h-4 text-[#008B8B]" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900">
+                  Tất cả Tin tức & Thông báo UTH
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowAllNotices(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto space-y-3 py-4 flex-1">
+              {NOTICES.map((notice) => (
+                <div
+                  key={notice.id}
+                  onClick={() => {
+                    setShowAllNotices(false);
+                    setSelectedNotice(notice);
+                  }}
+                  className="p-3.5 rounded-xl border border-gray-100 hover:border-teal-200 hover:bg-teal-50/20 cursor-pointer transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-gray-800">{notice.title}</h4>
+                    {notice.isNew && (
+                      <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0">
+                        MỚI
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-teal-600" />
+                    <span>{notice.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="pt-3 border-t border-gray-100 flex justify-end">
+              <button
+                onClick={() => setShowAllNotices(false)}
+                className="px-4 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

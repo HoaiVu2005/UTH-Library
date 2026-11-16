@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
@@ -6,7 +6,7 @@ import { LoginPage } from './LoginPage';
 import { AuthProvider } from '@/features/auth/AuthContext';
 
 describe('LoginPage', () => {
-  it('renders login form inputs and submit button', () => {
+  it('renders login form inputs, notice board, and submit button', () => {
     render(
       <BrowserRouter>
         <AuthProvider>
@@ -15,10 +15,11 @@ describe('LoginPage', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Đăng nhập Thư viện UTH')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/SV20260001/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Nhập mật khẩu/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeInTheDocument();
+    expect(screen.getByText('ĐĂNG NHẬP HỆ THỐNG')).toBeInTheDocument();
+    expect(screen.getByText('TIN TỨC & THÔNG BÁO')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Tài khoản đăng nhập/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Mật khẩu/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ĐĂNG NHẬP/i })).toBeInTheDocument();
   });
 
   it('fills inputs when fast fill demo buttons are clicked', () => {
@@ -33,8 +34,7 @@ describe('LoginPage', () => {
     const adminBtn = screen.getByText('Thủ thư (Admin)');
     fireEvent.click(adminBtn);
 
-    const identityInput = screen.getByPlaceholderText(/SV20260001/i) as HTMLInputElement;
+    const identityInput = screen.getByPlaceholderText(/Tài khoản đăng nhập/i) as HTMLInputElement;
     expect(identityInput.value).toBe('admin');
   });
 });
-
