@@ -86,3 +86,4 @@ def test_sepay_webhook_pay_all_fines():
     fine2.refresh_from_db()
     assert fine1.status == FineStatus.PAID
     assert fine2.status == FineStatus.PAID
+
