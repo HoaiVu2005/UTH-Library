@@ -423,7 +423,7 @@ export const BookDetailPage: React.FC = () => {
                       isLoading={actionLoading}
                       leftIcon={<Bookmark className="w-4 h-4" />}
                     >
-                      Đặt trước (Giữ tại quầy 3 ngày)
+                      Đặt trước
                     </Button>
                     <span className="text-xs text-success font-medium">
                       ✓ Đang có sách sẵn sàng tại quầy, bấm để đặt giữ trong 3 ngày.
@@ -438,7 +438,7 @@ export const BookDetailPage: React.FC = () => {
                       isLoading={actionLoading}
                       leftIcon={<Clock className="w-4 h-4" />}
                     >
-                      Đặt trước (Xếp hàng chờ)
+                      Đặt trước
                     </Button>
                     <span className="text-xs text-textSecondary">
                       Hiện đã hết sách. Bạn sẽ được xếp vào hàng chờ ưu tiên khi có sách trả.
