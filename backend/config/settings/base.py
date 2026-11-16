@@ -160,6 +160,11 @@ EMAIL_HOST_USER = os.getenv('EMAIL_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('EMAIL_FROM', 'Thư viện UTH <library@uth.edu.vn>')
 
+# SePay / Bank Transfer Gateway Settings
+SEPAY_API_KEY = os.getenv('SEPAY_API_KEY', '')
+SEPAY_BANK_ACCOUNT = os.getenv('SEPAY_BANK_ACCOUNT', '040117536833')
+SEPAY_BANK_NAME = os.getenv('SEPAY_BANK_NAME', 'Sacombank')
+
 # Logging configuration
 LOGGING = {
     'version': 1,

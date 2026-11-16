@@ -6,11 +6,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
+from django.conf import settings
 from apps.accounts.models import User
 from apps.accounts.permissions import IsAdminUserRole
 from apps.core.pagination import StandardPagination
-from apps.core.enums import UserRole, FineStatus
-from .models import Fine
+from apps.core.enums import UserRole, FineStatus, NotificationType
+from apps.notifications.models import Notification
+from .models import Fine, FinePayment
 from .serializers import (
     FineSerializer,
     CollectFineSerializer,
@@ -263,17 +265,63 @@ class SimulateBankTransferView(APIView):
                 }, status=status.HTTP_200_OK)
 
 class BankWebhookView(APIView):
-    permission_classes = []  # Public endpoint for banking gateway
+    """
+    Webhook tiếp nhận biến động số dư tự động từ SePay / Cổng thanh toán Ngân hàng Sacombank.
+    URL: /api/v1/fines/bank-webhook/
+    Hỗ trợ đối soát tự động:
+      - Xác thực SePay API Key (nếu cấu hình)
+      - Kiểm tra tiền vào (transferType == 'in')
+      - Kiểm tra chống trùng lặp giao dịch (Idempotency qua SePay ID / Mã giao dịch)
+      - Khớp lệnh khoản phạt theo mã thẻ bạn đọc & mã khoản phạt
+      - Tự động gạch nợ trên PostgreSQL & kích hoạt mở khóa tài khoản (nếu bị khóa)
+      - Bắn thông báo in-app đến tài khoản sinh viên
+    """
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request):
         data = request.data
-        desc = (data.get('description') or data.get('content') or data.get('orderInfo') or '').upper()
-        amount = int(data.get('amount') or data.get('transferAmount') or 0)
-        tx_code = data.get('transaction_code') or data.get('reference') or data.get('id') or 'STB-AUTO'
 
-        # Parse pattern: UTH <card_code> NOP PHAT or UTH <card_code> PHAT <id>
-        match_fine = re.search(r'UTH\s+([A-Z0-9]+)\s+PHAT\s+(\d+)', desc)
-        match_all = re.search(r'UTH\s+([A-Z0-9]+)\s+NOP\s+PHAT', desc)
+        # 1. Xác thực API Key từ SePay (nếu cấu hình)
+        configured_api_key = getattr(settings, 'SEPAY_API_KEY', '')
+        if configured_api_key:
+            auth_header = request.headers.get('Authorization', '')
+            expected = f"Apikey {configured_api_key}".strip()
+            if auth_header != expected and auth_header != configured_api_key:
+                return Response(
+                    {'success': False, 'message': 'Xác thực API Key SePay thất bại.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+        # 2. Chỉ xử lý tiền vào tài khoản (transferType == 'in')
+        transfer_type = (data.get('transferType') or 'in').lower()
+        if transfer_type == 'out':
+            return Response(
+                {'success': True, 'message': 'Bỏ qua giao dịch chuyển tiền ra.'},
+                status=status.HTTP_200_OK
+            )
+
+        # 3. Trích xuất thông tin giao dịch
+        desc = (data.get('content') or data.get('description') or data.get('orderInfo') or '').upper()
+        amount = int(data.get('transferAmount') or data.get('amount') or 0)
+        sepay_id = str(data.get('id') or '')
+        ref_code = str(data.get('referenceCode') or data.get('reference') or '')
+        tx_code = f"SEPAY-{sepay_id}" if sepay_id else (ref_code or f"STB-{int(timezone.now().timestamp())}")
+
+        # 4. Kiểm tra chống trùng lặp (Idempotent): nếu mã GD này đã nộp phạt rồi thì không cộng dồn
+        if FinePayment.objects.filter(note__icontains=tx_code).exists():
+            return Response(
+                {'success': True, 'message': f'Giao dịch {tx_code} đã được xử lý trước đó.'},
+                status=status.HTTP_200_OK
+            )
+
+        # 5. Phân tích nội dung chuyển khoản bằng Regex
+        # - Mẫu 1: UTH <card_code> PHAT <id> (nộp đích danh 1 khoản)
+        # - Mẫu 2: UTH <card_code> NOP PHAT (nộp toàn bộ)
+        # - Mẫu 3: PHAT <id> (fallback linh hoạt)
+        match_fine = re.search(r'UTH\s*([A-Z0-9]+)\s*PHAT\s*(\d+)', desc)
+        match_all = re.search(r'UTH\s*([A-Z0-9]+)\s*NOP\s*PHAT', desc)
+        match_single_fine = re.search(r'PHAT\s*(\d+)', desc)
 
         if match_fine:
             card_code = match_fine.group(1)
@@ -285,29 +333,93 @@ class BankWebhookView(APIView):
                     fine_id=fine.id,
                     amount=pay_amt,
                     collected_by=fine.user,
-                    note=f"Khớp lệnh Webhook Sacombank (Mã GD: {tx_code})",
+                    note=f"Khớp lệnh SePay/Sacombank (Mã GD: {tx_code})",
                     request=request
                 )
-                return Response({'status': 'SUCCESS', 'detail': 'Khớp lệnh thành công'}, status=status.HTTP_200_OK)
+                Notification.objects.create(
+                    user=fine.user,
+                    type=NotificationType.FINE_PAID,
+                    content=f"Khoản phạt #{fine.id} ({pay_amt:,}đ) đã được thanh toán thành công qua chuyển khoản ngân hàng (Mã GD: {tx_code}).",
+                    link="/my-fines"
+                )
+                return Response({
+                    'success': True,
+                    'status': 'SUCCESS',
+                    'detail': f'Khớp lệnh thành công khoản phạt #{fine.id}',
+                    'amount_paid': pay_amt
+                }, status=status.HTTP_200_OK)
 
         elif match_all:
             card_code = match_all.group(1)
             user = User.objects.filter(card_code__iexact=card_code).first()
             if user:
-                unpaid_fines = list(Fine.objects.filter(user=user, status__in=[FineStatus.UNPAID, FineStatus.PARTIAL]).order_by('created_at'))
+                unpaid_fines = list(Fine.objects.filter(
+                    user=user,
+                    status__in=[FineStatus.UNPAID, FineStatus.PARTIAL]
+                ).order_by('created_at'))
+
+                total_paid = 0
+                collected_count = 0
                 for f in unpaid_fines:
                     rem = f.remaining_amount
-                    if rem > 0:
+                    if rem > 0 and (amount == 0 or total_paid < amount):
+                        cur_pay = min(rem, amount - total_paid) if amount > 0 else rem
                         collect_fine(
                             fine_id=f.id,
-                            amount=rem,
+                            amount=cur_pay,
                             collected_by=user,
-                            note=f"Khớp lệnh Webhook Sacombank toàn bộ (Mã GD: {tx_code})",
+                            note=f"Khớp lệnh SePay/Sacombank toàn bộ (Mã GD: {tx_code})",
                             request=request
                         )
-                return Response({'status': 'SUCCESS', 'detail': f'Khớp lệnh nộp phạt toàn bộ cho {user.card_code}'}, status=status.HTTP_200_OK)
+                        total_paid += cur_pay
+                        collected_count += 1
 
-        return Response({'status': 'IGNORED', 'detail': 'Không tìm thấy khoản phạt tương ứng nội dung chuyển khoản.'}, status=status.HTTP_200_OK)
+                if collected_count > 0:
+                    Notification.objects.create(
+                        user=user,
+                        type=NotificationType.FINE_PAID,
+                        content=f"Đã thanh toán thành công {collected_count} khoản phạt ({total_paid:,}đ) qua chuyển khoản ngân hàng.",
+                        link="/my-fines"
+                    )
+
+                return Response({
+                    'success': True,
+                    'status': 'SUCCESS',
+                    'detail': f'Khớp lệnh nộp phạt thành công cho {user.card_code}',
+                    'total_paid': total_paid,
+                    'fines_cleared': collected_count
+                }, status=status.HTTP_200_OK)
+
+        elif match_single_fine:
+            fine_id = int(match_single_fine.group(1))
+            fine = Fine.objects.filter(id=fine_id).first()
+            if fine and fine.status in [FineStatus.UNPAID, FineStatus.PARTIAL]:
+                pay_amt = min(amount if amount > 0 else fine.remaining_amount, fine.remaining_amount)
+                collect_fine(
+                    fine_id=fine.id,
+                    amount=pay_amt,
+                    collected_by=fine.user,
+                    note=f"Khớp lệnh SePay/Sacombank (Mã GD: {tx_code})",
+                    request=request
+                )
+                Notification.objects.create(
+                    user=fine.user,
+                    type=NotificationType.FINE_PAID,
+                    content=f"Khoản phạt #{fine.id} ({pay_amt:,}đ) đã được thanh toán thành công qua chuyển khoản ngân hàng.",
+                    link="/my-fines"
+                )
+                return Response({
+                    'success': True,
+                    'status': 'SUCCESS',
+                    'detail': f'Khớp lệnh thành công khoản phạt #{fine.id}',
+                    'amount_paid': pay_amt
+                }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status': 'IGNORED',
+            'detail': 'Không tìm thấy khoản phạt tương ứng nội dung chuyển khoản.'
+        }, status=status.HTTP_200_OK)
 
 
 

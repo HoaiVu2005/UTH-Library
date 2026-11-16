@@ -57,6 +57,7 @@ class NotificationType(models.TextChoices):
     RESERVATION_READY = 'reservation_ready', 'Sách đặt trước đã sẵn sàng'
     SUGGESTION_RESULT = 'suggestion_result', 'Kết quả duyệt đề xuất'
     FINE_CREATED = 'fine_created', 'Khoản phạt mới'
+    FINE_PAID = 'fine_paid', 'Thanh toán tiền phạt thành công'
     CARD_EXPIRING = 'card_expiring', 'Thẻ bạn đọc sắp hết hạn'
 
 class NotificationChannel(models.TextChoices):
