@@ -3,15 +3,12 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { CirculationDeskPage } from './CirculationDeskPage';
-import { AuthProvider } from '@/features/auth/AuthContext';
 
 describe('CirculationDeskPage', () => {
   it('renders borrow tab and patron scan input with auto-focus', () => {
     render(
-      <BrowserRouter>
-        <AuthProvider>
-          <CirculationDeskPage />
-        </AuthProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <CirculationDeskPage />
       </BrowserRouter>
     );
 

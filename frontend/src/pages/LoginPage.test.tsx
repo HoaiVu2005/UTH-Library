@@ -1,17 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { LoginPage } from './LoginPage';
-import { AuthProvider } from '@/features/auth/AuthContext';
+
+vi.mock('@/features/auth/AuthContext', () => ({
+  useAuth: () => ({ login: vi.fn() }),
+}));
 
 describe('LoginPage', () => {
   it('renders login form inputs, submit button, and forgot password link', () => {
     render(
-      <BrowserRouter>
-        <AuthProvider>
-          <LoginPage />
-        </AuthProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <LoginPage />
       </BrowserRouter>
     );
 
@@ -24,10 +25,8 @@ describe('LoginPage', () => {
 
   it('fills inputs when fast fill demo buttons are clicked', () => {
     render(
-      <BrowserRouter>
-        <AuthProvider>
-          <LoginPage />
-        </AuthProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <LoginPage />
       </BrowserRouter>
     );
 

@@ -269,7 +269,7 @@ python manage.py notify_card_expiring
 cd backend
 pytest -v
 ```
-*(Hiện tại 54/54 test cases bao phủ đầy đủ tất cả quy tắc nghiệp vụ BR01–BR28 đều đạt 100%)*
+*(Hiện tại 67/67 test cases bao phủ các quy tắc nghiệp vụ BR01–BR28 và các API chính.)*
 
 ### Chạy kiểm thử Frontend (Vitest & Build):
 ```bash

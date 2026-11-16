@@ -2,8 +2,14 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 import pytz
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Keep local setup aligned with README: load the repository-level .env first,
+# while still allowing real environment variables to take precedence.
+load_dotenv(BASE_DIR.parent / '.env')
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'insecure-default-uth-key-for-dev-only')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'

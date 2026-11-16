@@ -58,7 +58,7 @@ vi.mock('@/lib/api', () => ({
 describe('AdminDashboardPage', () => {
   it('renders summary stat cards and action items section', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AdminDashboardPage />
       </MemoryRouter>
     );

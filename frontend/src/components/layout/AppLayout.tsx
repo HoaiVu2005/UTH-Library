@@ -4,6 +4,7 @@ import { Header } from './Header';
 import { SidebarDrawer } from './SidebarDrawer';
 import { Footer } from './Footer';
 import { RealtimeNotificationManager } from '@/features/notifications/RealtimeNotificationManager';
+import { AIChatWidget } from '@/components/ui/AIChatWidget';
 
 const PageFallback: React.FC = () => (
   <div className="min-h-[40vh] flex flex-col items-center justify-center space-y-3 py-16 animate-pulse">
@@ -30,6 +31,7 @@ export const AppLayout: React.FC = () => {
       </main>
 
       <Footer />
+      <AIChatWidget />
     </div>
   );
 };

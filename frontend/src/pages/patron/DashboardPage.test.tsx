@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { DashboardPage } from './DashboardPage';
@@ -51,7 +51,7 @@ vi.mock('@/features/auth/AuthContext', async () => {
 describe('DashboardPage', () => {
   it('renders student patron card with UTH information and function cards', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <DashboardPage />
       </MemoryRouter>
     );
@@ -71,6 +71,10 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Đề xuất sách')).toBeInTheDocument();
     expect(screen.getByText('Thông báo')).toBeInTheDocument();
     expect(screen.getByText('Hồ sơ thẻ')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Đang tải dữ liệu...')).not.toBeInTheDocument();
+    });
   });
 });
 

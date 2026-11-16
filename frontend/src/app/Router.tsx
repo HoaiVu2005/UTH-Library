@@ -98,6 +98,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'search', element: <BookSearchPage /> },
       { path: 'books/:id', element: <BookDetailPage /> },
+      { path: 'circulation', element: <Navigate to="/admin/circulation" replace /> },
 
       // Patron Protected Routes (Giao 4)
       {
