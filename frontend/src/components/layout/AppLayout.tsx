@@ -16,18 +16,6 @@ export const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === '/';
-  const isLoginPage = location.pathname === '/login';
-
-  if (isLoginPage) {
-    return (
-      <div className="min-h-screen w-full bg-white text-textPrimary">
-        <RealtimeNotificationManager />
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-pageBg text-textPrimary">

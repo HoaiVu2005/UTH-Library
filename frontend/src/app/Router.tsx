@@ -58,12 +58,15 @@ export const ProtectedRoute: React.FC<{ allowedRoles?: string[] }> = ({ allowedR
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <LoginPage />,
+  },
+  {
     path: '/',
     element: <AppLayout />,
     children: [
       // Public Routes
       { index: true, element: <HomePage /> },
-      { path: 'login', element: <LoginPage /> },
       { path: 'search', element: <BookSearchPage /> },
       { path: 'books/:id', element: <BookDetailPage /> },
 

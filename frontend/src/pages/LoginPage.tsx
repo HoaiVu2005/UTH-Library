@@ -12,7 +12,6 @@ import {
   BookOpen,
   CheckCircle2,
   Sparkles,
-  ArrowRight,
   ArrowLeft,
   Library,
 } from 'lucide-react';
@@ -81,24 +80,26 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white overflow-x-hidden animate-page-enter">
-      {/* LEFT COLUMN: Full-Bleed UTH Campus Hero View (52% on desktop) */}
-      <div className="relative w-full lg:w-[52%] min-h-[420px] lg:min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-14 text-white overflow-hidden bg-gradient-to-br from-[#003435] via-[#005B5C] to-[#008B8B]">
-        {/* Full-bleed Campus Building Photograph */}
+    <div className="min-h-screen lg:h-screen w-full flex flex-col lg:flex-row bg-white overflow-x-hidden lg:overflow-hidden select-none animate-page-enter">
+      {/* =========================================
+          LEFT HERO VIEW: Full-Height UTH Campus Visual (52% on desktop)
+          ========================================= */}
+      <div className="relative w-full lg:w-[50%] xl:w-[52%] min-h-[460px] lg:h-full flex flex-col justify-between p-8 sm:p-12 lg:p-14 text-white overflow-hidden bg-gradient-to-br from-[#003435] via-[#005B5C] to-[#008B8B] shrink-0">
+        {/* Full-bleed UTH Campus Building Photo */}
         <img
           src="/uth-campus-login.jpg"
-          alt="Khuôn viên Trường Đại học Giao thông vận tải TP.HCM (UTH)"
+          alt="Khuôn viên Trường Đại học Giao thông vận tải TP.HCM"
           className="absolute inset-0 w-full h-full object-cover object-center filter brightness-95 contrast-105"
         />
 
-        {/* Multi-layer Gradient Scrim for Contrast & UTH Teal Atmosphere */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#002728]/95 via-[#004748]/80 to-[#006F70]/40" />
-        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+        {/* Cinematic Multi-layer Gradient Scrim for Contrast & Brand Atmosphere */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-[#002B2C]/95 via-[#004D4E]/80 to-[#008B8B]/40" />
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-[0.5px]" />
 
-        {/* Top Header of Left Hero */}
+        {/* Top Header */}
         <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md p-2 flex items-center justify-center border border-white/30 shadow-md">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md p-2 flex items-center justify-center border border-white/30 shadow-md group-hover:scale-105 transition-all">
               <Library className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -109,101 +110,108 @@ export const LoginPage: React.FC = () => {
                 Digital Library Portal
               </span>
             </div>
-          </div>
+          </Link>
 
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold text-white backdrop-blur-md border border-white/25 transition-all shadow-xs group"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-xs font-semibold text-white backdrop-blur-md border border-white/25 transition-all shadow-xs group"
           >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
             <span>Về trang chủ</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
 
         {/* Middle Inspiring Hero Content */}
         <div className="relative z-10 my-auto py-8 sm:py-12 space-y-4 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/30 border border-teal-300/40 text-xs font-semibold text-teal-200 backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-500/25 border border-teal-300/35 text-xs font-semibold text-teal-200 backdrop-blur-md shadow-xs">
             <Sparkles className="w-3.5 h-3.5 text-teal-300" />
             <span>Trường Đại học Giao thông vận tải TP.HCM</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-[1.18]">
-            Không gian Tri thức & Nghiên cứu Hiện đại
+          <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-white tracking-tight leading-[1.18]">
+            Khám phá Tri thức,<br />
+            <span className="text-teal-200">Kiến tạo Tương lai.</span>
           </h1>
 
-          <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed font-light">
-            Cổng tra cứu tài liệu học tập & nghiên cứu khoa học dành cho Sinh viên, Giảng viên. Kết nối hơn 50.000 giáo trình, tài liệu chuyên ngành Giao thông Vận tải, Logistics, CNTT và Kinh tế.
+          <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed font-light max-w-lg">
+            Hệ thống cổng thông tin thư viện số thế hệ mới — Kết nối hơn 50.000 đầu sách, giáo trình chuyên sâu ngành Giao thông, Logistics, CNTT, Kinh tế và dịch vụ mượn trả tự động chuẩn quốc tế.
           </p>
 
-          {/* Quick Feature Badges */}
-          <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-teal-400/25 text-teal-200 shrink-0">
+          {/* Feature Glass Cards */}
+          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
+            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-teal-400/20 text-teal-200 shrink-0">
                 <BookOpen className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="text-xs font-bold text-white">Tra cứu thông minh</h4>
-                <p className="text-[11px] text-teal-100/75 mt-0.5">Tìm theo giáo trình, ISBN & mã vạch</p>
+                <p className="text-[11px] text-teal-100/75 mt-0.5 leading-snug">
+                  Tìm theo giáo trình, ISBN & mã vạch
+                </p>
               </div>
             </div>
 
-            <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-emerald-400/25 text-emerald-200 shrink-0">
+            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-emerald-400/20 text-emerald-200 shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
               <div>
                 <h4 className="text-xs font-bold text-white">Gia hạn 1-chạm</h4>
-                <p className="text-[11px] text-teal-100/75 mt-0.5">Theo dõi hạn mượn & tự phục vụ 24/7</p>
+                <p className="text-[11px] text-teal-100/75 mt-0.5 leading-snug">
+                  Theo dõi hạn mượn & tự phục vụ 24/7
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Details of Left Hero */}
+        {/* Bottom Details */}
         <div className="relative z-10 pt-4 border-t border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-teal-200/90">
           <span>Trụ sở chính: Số 2, Võ Oanh, P.25, Q.Bình Thạnh, TP.HCM</span>
           <span className="font-mono font-medium">Hệ thống Thư viện số UTH</span>
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Full-Height Clean Authentication Form (48% on desktop) */}
-      <div className="w-full lg:w-[48%] min-h-[580px] lg:min-h-screen flex flex-col justify-between p-6 sm:p-12 lg:p-16 bg-white overflow-y-auto">
-        {/* Top Navigation */}
-        <div className="flex items-center justify-between mb-4 sm:mb-8">
+      {/* =========================================
+          RIGHT AUTH VIEW: Full-Height Clean Form (48% on desktop)
+          ========================================= */}
+      <div className="w-full lg:w-[50%] xl:w-[48%] min-h-[580px] lg:h-full flex flex-col justify-between p-6 sm:p-10 lg:p-14 bg-white overflow-y-auto">
+        {/* Top bar on Mobile */}
+        <div className="flex items-center justify-between lg:justify-end mb-4 sm:mb-6">
           <Link to="/" className="lg:hidden flex items-center gap-2 group">
-            <img src="/uth-logo.png" alt="UTH Logo" className="h-8 object-contain" />
+            <img src="/uth-logo.png" alt="UTH Logo" className="h-9 object-contain" />
           </Link>
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-brand transition-colors ml-auto group"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-brand transition-colors group"
           >
             <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Quay lại trang chủ</span>
+            <span>Về trang chủ</span>
           </Link>
         </div>
 
-        {/* Center Login Container */}
-        <div className="max-w-[420px] w-full mx-auto my-auto py-2 sm:py-6">
+        {/* Center Auth Form Container */}
+        <div className="max-w-[420px] w-full mx-auto my-auto py-4 space-y-5">
           {/* Brand Logo & Heading */}
-          <div className="mb-6">
-            <Link to="/" className="hidden lg:inline-block mb-4 group">
+          <div className="space-y-2">
+            <Link to="/" className="hidden lg:inline-block mb-2 group">
               <img
                 src="/uth-logo.png"
                 alt="UTH Logo"
-                className="h-11 object-contain group-hover:scale-102 transition-transform"
+                className="h-12 object-contain group-hover:scale-102 transition-transform"
               />
             </Link>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               Đăng nhập Thư viện UTH
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Nhập tài khoản bạn đọc hoặc email trường để bắt đầu
+            <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">
+              Nhập mã thẻ bạn đọc hoặc tài khoản UTH của bạn để bắt đầu
             </p>
           </div>
 
           {/* Error notification via Alert primitive */}
           {errorMsg && (
-            <div className="mb-4 animate-in fade-in duration-150">
+            <div className="animate-in fade-in duration-150">
               <Alert variant="danger">
                 <div className="font-semibold">{errorMsg}</div>
                 {lockTime && (
@@ -254,25 +262,32 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 label="Ghi nhớ đăng nhập"
               />
-              <Link to="/forgot-password" className="text-brand hover:text-brand-dark hover:underline font-medium">
+              <Link to="/forgot-password" className="text-brand hover:text-brand-dark hover:underline font-semibold">
                 Quên mật khẩu?
               </Link>
             </div>
 
-            <Button type="submit" variant="primary" size="lg" className="w-full mt-2 h-11 text-sm font-bold shadow-sm" isLoading={isLoading}>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full mt-2 h-11 text-sm font-bold shadow-sm rounded-xl"
+              isLoading={isLoading}
+            >
               Đăng nhập
             </Button>
           </form>
 
           {/* Registration Notice */}
-          <div className="mt-4 p-3 bg-teal-50/70 border border-teal-100 rounded-xl">
+          <div className="p-3.5 bg-teal-50/70 border border-teal-100 rounded-xl flex items-start gap-2.5">
+            <span className="text-base shrink-0">💡</span>
             <p className="text-[11px] text-teal-900 leading-relaxed font-medium">
-              💡 <strong>Chưa có thẻ bạn đọc?</strong> Vui lòng liên hệ Quầy Lưu thông Thư viện UTH (Cơ sở 1) để hoàn tất thủ tục mở thẻ và nhận tài khoản đăng nhập.
+              <strong>Chưa có thẻ bạn đọc?</strong> Vui lòng liên hệ Quầy Lưu thông Thư viện UTH (Cơ sở 1) để hoàn tất thủ tục mở thẻ và nhận tài khoản đăng nhập.
             </p>
           </div>
 
           {/* Demo Fast Fill Section */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
+          <div className="pt-4 border-t border-gray-100">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2.5">
               Tài khoản mẫu thử nghiệm nhanh:
             </p>
@@ -305,8 +320,8 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Copyright of Right Side */}
-        <div className="pt-4 text-center sm:text-left text-[11px] text-gray-400 border-t border-gray-100 mt-6">
+        {/* Bottom Copyright */}
+        <div className="text-center sm:text-left text-[11px] text-gray-400 pt-4 border-t border-gray-100 mt-4">
           © 2026 Thư viện Trường Đại học Giao thông vận tải TP.HCM. All rights reserved.
         </div>
       </div>
