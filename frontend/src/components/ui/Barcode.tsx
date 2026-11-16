@@ -38,6 +38,86 @@ export interface BarcodeProps {
   label?: string;
 }
 
+export function encodeCode128(value: string, barWidth: number = 2): { bars: { x: number; width: number }[]; totalWidth: number } {
+  if (!value) return { bars: [], totalWidth: 100 };
+
+  const sanitized = value.trim();
+  let checksum = START_B;
+  let bitstring = CODES[START_B];
+
+  for (let i = 0; i < sanitized.length; i++) {
+    const code = sanitized.charCodeAt(i) - 32;
+    const validCode = code >= 0 && code <= 95 ? code : 0;
+    checksum += (i + 1) * validCode;
+    bitstring += CODES[validCode];
+  }
+
+  bitstring += CODES[checksum % 103];
+  bitstring += STOP;
+
+  // Quiet zones: 10 modules on each side
+  const quietZone = 10;
+  const totalModules = bitstring.length + quietZone * 2;
+  const calculatedWidth = totalModules * barWidth;
+
+  // Build contiguous bar rects
+  const rects: { x: number; width: number }[] = [];
+  let currentBarStart: number | null = null;
+
+  for (let i = 0; i < bitstring.length; i++) {
+    if (bitstring[i] === '1') {
+      if (currentBarStart === null) {
+        currentBarStart = i;
+      }
+    } else {
+      if (currentBarStart !== null) {
+        rects.push({
+          x: (currentBarStart + quietZone) * barWidth,
+          width: (i - currentBarStart) * barWidth,
+        });
+        currentBarStart = null;
+      }
+    }
+  }
+  if (currentBarStart !== null) {
+    rects.push({
+      x: (currentBarStart + quietZone) * barWidth,
+      width: (bitstring.length - currentBarStart) * barWidth,
+    });
+  }
+
+  return { bars: rects, totalWidth: calculatedWidth };
+}
+
+export function generateBarcodeSvg(
+  value: string,
+  options: {
+    height?: number;
+    barWidth?: number;
+    showText?: boolean;
+    label?: string;
+  } = {}
+): string {
+  const { height = 50, barWidth = 1.5, showText = true, label } = options;
+  const { bars, totalWidth } = encodeCode128(value, barWidth);
+  const displayLabel = label ?? value;
+  const svgHeight = height + (showText ? 22 : 0);
+
+  const rectsHtml = bars
+    .map((bar) => `<rect x="${bar.x}" y="2" width="${bar.width}" height="${height}" fill="#0f172a" />`)
+    .join('');
+
+  const textHtml = showText
+    ? `<text x="${totalWidth / 2}" y="${height + 17}" text-anchor="middle" fill="#0f172a" font-size="13" font-weight="700" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" letter-spacing="2.5">${displayLabel}</text>`
+    : '';
+
+  return `<svg viewBox="0 0 ${totalWidth} ${svgHeight}" style="max-width: ${totalWidth}px; width: 100%; height: auto; display: block; margin: 0 auto;" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect width="${totalWidth}" height="${svgHeight}" fill="#ffffff" />
+    ${rectsHtml}
+    ${textHtml}
+  </svg>`;
+}
+
 export const Barcode: React.FC<BarcodeProps> = ({
   value,
   height = 55,
@@ -47,54 +127,7 @@ export const Barcode: React.FC<BarcodeProps> = ({
   label,
 }) => {
   const { bars, totalWidth } = useMemo(() => {
-    if (!value) return { bars: [], totalWidth: 100 };
-
-    const sanitized = value.trim();
-    let checksum = START_B;
-    let bitstring = CODES[START_B];
-
-    for (let i = 0; i < sanitized.length; i++) {
-      const code = sanitized.charCodeAt(i) - 32;
-      const validCode = code >= 0 && code <= 95 ? code : 0;
-      checksum += (i + 1) * validCode;
-      bitstring += CODES[validCode];
-    }
-
-    bitstring += CODES[checksum % 103];
-    bitstring += STOP;
-
-    // Quiet zones: 10 modules on each side
-    const quietZone = 10;
-    const totalModules = bitstring.length + quietZone * 2;
-    const calculatedWidth = totalModules * barWidth;
-
-    // Build contiguous bar rects
-    const rects: { x: number; width: number }[] = [];
-    let currentBarStart: number | null = null;
-
-    for (let i = 0; i < bitstring.length; i++) {
-      if (bitstring[i] === '1') {
-        if (currentBarStart === null) {
-          currentBarStart = i;
-        }
-      } else {
-        if (currentBarStart !== null) {
-          rects.push({
-            x: (currentBarStart + quietZone) * barWidth,
-            width: (i - currentBarStart) * barWidth,
-          });
-          currentBarStart = null;
-        }
-      }
-    }
-    if (currentBarStart !== null) {
-      rects.push({
-        x: (currentBarStart + quietZone) * barWidth,
-        width: (bitstring.length - currentBarStart) * barWidth,
-      });
-    }
-
-    return { bars: rects, totalWidth: calculatedWidth };
+    return encodeCode128(value, barWidth);
   }, [value, barWidth]);
 
   const displayLabel = label ?? value;

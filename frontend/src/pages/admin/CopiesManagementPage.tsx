@@ -30,7 +30,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Barcode } from '@/components/ui/Barcode';
+import { Barcode, generateBarcodeSvg } from '@/components/ui/Barcode';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerModal';
 import { toast } from '@/components/ui/Toast';
@@ -171,19 +171,16 @@ export const CopiesManagementPage: React.FC = () => {
       .map(
         (copy) => `
       <div class="label-card">
-        <div class="header">
+        <div class="header" style="display: flex; align-items: center; justify-content: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 4px;">
           <img src="/uth-logo.png" alt="UTH Logo" style="height: 18px; vertical-align: middle; margin-right: 6px;" />
-          <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: #008B8B;">
+          <span style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: #008B8B; letter-spacing: 0.3px;">
             Thư viện ĐH Giao thông vận tải TP.HCM
           </span>
         </div>
-        <div style="font-family: monospace; font-size: 15px; font-weight: 800; letter-spacing: 1.5px; color: #1e293b; margin: 10px 0 4px; padding: 6px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px;">
-          *${copy.barcode}*
+        <div style="padding: 4px 0 2px; display: flex; justify-content: center; overflow: hidden;">
+          ${generateBarcodeSvg(copy.barcode, { height: 48, barWidth: 1.5, showText: true })}
         </div>
-        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
-          Chuẩn Code128 - UTH Library
-        </div>
-        <div style="border-top: 1px solid #e2e8f0; margin-top: 8px; padding-top: 6px; text-align: left;">
+        <div style="border-top: 1px solid #e2e8f0; margin-top: 4px; padding-top: 6px; text-align: left;">
           <div style="font-size: 11px; font-weight: 700; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             ${group.book_title}
           </div>
