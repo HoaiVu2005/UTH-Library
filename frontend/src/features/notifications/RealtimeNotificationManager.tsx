@@ -132,9 +132,11 @@ export const RealtimeNotificationManager: React.FC = () => {
               toastTitle = 'Lượt mượn sách quá hạn';
             }
 
-            // Clean message: strip redundant emoji or repeated sentences
+            // Clean message: strip redundant emoji, prefixes or repeated sentences
             let cleanMessage = (notif.content || '')
               .replace(/^[✨🎉⚠️⏰🔔📦📚ℹ️]\s*/g, '')
+              .replace(/^(sách đặt trước đã sẵn sàng nhận!?:?|thông báo thư viện:?|thông báo:?)\s*/gi, '')
+              .replace(/^Giữ chỗ thành công!\s*Giữ chỗ thành công!/gi, 'Giữ chỗ thành công!')
               .trim();
 
             toast.custom({

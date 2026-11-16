@@ -4,6 +4,8 @@
 > **Phiên bản:** 1.0.0 (Production-Ready)  
 > **Trạng thái:** Hoàn tất 100% tất cả 5 gói bàn giao [P0 - Bắt buộc].
 
+# $env:Path += ";$env:LOCALAPPDATA\Microsoft\WindowsApps"
+# ngrok http --url=botanist-faucet-starring.ngrok-free.dev 8000
 ---
 
 ## 🚀 HƯỚNG DẪN DÀNH CHO BẠN BÈ / TEAMMATES (Chạy dự án trong 3 phút)
