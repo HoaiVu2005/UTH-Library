@@ -100,6 +100,9 @@ export const BookDetailPage: React.FC = () => {
       if (bookRes.data.data.is_reserved_by_user) {
         setHasJustReserved(true);
         setJustReservedStatus(bookRes.data.data.user_reservation?.status || null);
+      } else {
+        setHasJustReserved(false);
+        setJustReservedStatus(null);
       }
       setRelatedBooks(relatedRes.data.data);
     } catch (err) {
@@ -110,10 +113,19 @@ export const BookDetailPage: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
+    setHasJustReserved(false);
+    setJustReservedStatus(null);
     loadBookDetail(true);
     setActionSuccess(null);
     setActionError(null);
-  }, [loadBookDetail]);
+  }, [id, loadBookDetail]);
+
+  // Re-fetch book detail once authentication is resolved to show reservation status
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadBookDetail(false);
+    }
+  }, [isAuthenticated, loadBookDetail]);
 
   // Realtime synchronization: updates copy availability live when borrowed or returned
   useRealtimeSync(['books', 'loans', 'reservations'], () => loadBookDetail(false), 5000);
@@ -160,10 +172,18 @@ export const BookDetailPage: React.FC = () => {
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
       // If user already reserved, also reflect this in the UI
-      if (err?.response?.data?.error === 'RESERVATION_DUPLICATE') {
+      const errCode = err?.response?.data?.code || err?.response?.data?.error;
+      const errDetail = err?.response?.data?.detail || '';
+      if (
+        errCode === 'RESERVATION_DUPLICATE' ||
+        errDetail.includes('đã có một yêu cầu đặt trước') ||
+        errDetail.includes('giữ chỗ cho đầu sách này')
+      ) {
         setHasJustReserved(true);
+        toast.info('Bạn đã đặt trước đầu sách này rồi.');
+      } else {
+        toast.error(formatApiError(err));
       }
-      toast.error(formatApiError(err));
     } finally {
       setActionLoading(false);
     }
@@ -403,7 +423,7 @@ export const BookDetailPage: React.FC = () => {
                       isLoading={actionLoading}
                       leftIcon={<Bookmark className="w-4 h-4" />}
                     >
-                      Giữ chỗ nhận tại quầy (3 ngày)
+                      Đặt trước (Giữ tại quầy 3 ngày)
                     </Button>
                     <span className="text-xs text-success font-medium">
                       ✓ Đang có sách sẵn sàng tại quầy, bấm để đặt giữ trong 3 ngày.
