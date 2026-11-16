@@ -67,14 +67,14 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-full relative overflow-x-hidden lg:overflow-hidden select-none flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:p-10 xl:pr-20">
+    <div className="min-h-screen lg:h-screen w-full relative overflow-x-hidden lg:overflow-hidden select-none flex flex-col justify-center items-center lg:items-end p-4 sm:p-6 lg:p-8 xl:pr-14">
       {/* ==============================================================
-          FULL-SCREEN UTH CAMPUS BACKGROUND PHOTO (100% Viewport Coverage)
+          FULL-SCREEN UTH CAMPUS BACKGROUND (No Cropping / No Center Zoom)
           ============================================================== */}
       <img
         src="/uth-campus-bg.jpg"
         alt="Khuôn viên Trường Đại học Giao thông vận tải TP.HCM"
-        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
+        className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none"
       />
 
       {/* Top Floating Back to Home Button */}
@@ -89,18 +89,18 @@ export const LoginPage: React.FC = () => {
       {/* =========================================
           LOGIN CARD - Positioned on the Right
           ========================================= */}
-      <div className="relative z-10 w-full max-w-[390px] sm:max-w-[410px] bg-white rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.35)] p-6 sm:p-8 border border-white/95 animate-page-enter">
+      <div className="relative z-10 w-full max-w-[360px] sm:max-w-[380px] bg-white rounded-2xl sm:rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.35)] p-5 sm:p-7 border border-white/95 animate-page-enter">
         {/* Official UTH Logo */}
         <div className="text-center mb-3">
           <img
             src="/uth-logo.png"
             alt="UTH Logo"
-            className="h-16 mx-auto object-contain"
+            className="h-14 mx-auto object-contain"
           />
         </div>
 
         {/* Red Bold Heading */}
-        <h1 className="text-xl sm:text-2xl font-black text-[#D32F2F] tracking-wider text-center uppercase mb-6">
+        <h1 className="text-xl sm:text-2xl font-black text-[#D32F2F] tracking-wider text-center uppercase mb-5">
           ĐĂNG NHẬP HỆ THỐNG
         </h1>
 
@@ -120,7 +120,7 @@ export const LoginPage: React.FC = () => {
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <input
               type="text"
@@ -165,7 +165,7 @@ export const LoginPage: React.FC = () => {
         </form>
 
         {/* Forgot Password Link */}
-        <div className="text-center mt-5">
+        <div className="text-center mt-4">
           <Link
             to="/forgot-password"
             className="text-[#D32F2F] hover:text-red-700 hover:underline text-xs font-semibold uppercase tracking-wider transition-colors"
@@ -175,28 +175,28 @@ export const LoginPage: React.FC = () => {
         </div>
 
         {/* Demo Fast-Fill Pills for Convenient Testing */}
-        <div className="mt-6 pt-4 border-t border-gray-100">
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider text-center mb-2">
+        <div className="mt-5 pt-3.5 border-t border-gray-100">
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider text-center mb-1.5">
             Tài khoản mẫu thử nghiệm:
           </p>
           <div className="flex items-center justify-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => handleDemoFill('admin', 'Admin@123')}
+              onClick={() => handleDemoFill('admin', 'AdminPassword123')}
               className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
             >
               Thủ thư (Admin)
             </button>
             <button
               type="button"
-              onClick={() => handleDemoFill('052205006506', 'Student@123')}
+              onClick={() => handleDemoFill('052205006506', 'Password123')}
               className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
             >
               Sinh viên
             </button>
             <button
               type="button"
-              onClick={() => handleDemoFill('gv_hoangnam', 'Lecturer@123')}
+              onClick={() => handleDemoFill('gv01', 'Password123')}
               className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
             >
               Giảng viên
