@@ -1,7 +1,7 @@
 import secrets
 from django.conf import settings
 from django.http import HttpResponse
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -225,24 +225,83 @@ class CopyAdminListView(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request):
-        queryset = Copy.objects.filter(deleted_at__isnull=True).select_related('book', 'book__category', 'held_for_user').prefetch_related('book__authors').order_by('-created_at')
+        group_by = request.query_params.get('group_by', 'book')
+        barcode_q = request.query_params.get('barcode', '').strip()
+        status_q = request.query_params.get('status', '').strip()
+        book_id = request.query_params.get('book_id', '').strip()
 
-        barcode_q = request.query_params.get('barcode')
+        if group_by == 'copy':
+            queryset = Copy.objects.filter(deleted_at__isnull=True).select_related(
+                'book', 'book__category', 'held_for_user'
+            ).prefetch_related('book__authors').order_by('-created_at')
+
+            if barcode_q:
+                queryset = queryset.filter(barcode__icontains=barcode_q)
+
+            if status_q:
+                queryset = queryset.filter(status=status_q)
+
+            if book_id:
+                queryset = queryset.filter(book_id=book_id)
+
+            paginator = StandardPagination()
+            page_records = paginator.paginate_queryset(queryset, request)
+            serializer = CopySerializer(page_records, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        # Default: group_by == 'book'
+        book_qs = Book.objects.filter(copies__deleted_at__isnull=True)
         if barcode_q:
-            queryset = queryset.filter(barcode__icontains=barcode_q.strip())
-
-        status_q = request.query_params.get('status')
+            book_qs = book_qs.filter(copies__barcode__icontains=barcode_q)
         if status_q:
-            queryset = queryset.filter(status=status_q)
-
-        book_id = request.query_params.get('book_id')
+            book_qs = book_qs.filter(copies__status=status_q)
         if book_id:
-            queryset = queryset.filter(book_id=book_id)
+            book_qs = book_qs.filter(id=book_id)
+
+        book_qs = book_qs.distinct().select_related('category').prefetch_related('authors').order_by('-id')
+
+        # Prefetch active copies
+        copy_filter = Q(deleted_at__isnull=True)
+        book_qs = book_qs.prefetch_related(
+            Prefetch('copies', queryset=Copy.objects.filter(copy_filter).order_by('id'), to_attr='active_copies')
+        )
 
         paginator = StandardPagination()
-        page_records = paginator.paginate_queryset(queryset, request)
-        serializer = CopySerializer(page_records, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        page_records = paginator.paginate_queryset(book_qs, request)
+
+        results = []
+        for b in page_records:
+            copies = getattr(b, 'active_copies', [])
+            total_qty = len(copies)
+            avail_qty = sum(1 for c in copies if c.status == 'available')
+            borrowed_qty = sum(1 for c in copies if c.status == 'borrowed')
+            reserved_qty = sum(1 for c in copies if c.status == 'reserved')
+            damaged_qty = sum(1 for c in copies if c.status in ('damaged', 'lost'))
+            withdrawn_qty = sum(1 for c in copies if c.status == 'withdrawn')
+            shelf_locations = list(dict.fromkeys(c.shelf_location for c in copies if c.shelf_location))
+
+            results.append({
+                'book_id': b.id,
+                'book_title': b.title,
+                'book_isbn': b.isbn,
+                'book_cover_image': b.cover_image or None,
+                'category_code': b.category.code if b.category else 'UTH',
+                'category_name': b.category.name if b.category else 'Chung',
+                'authors_names': [a.name for a in b.authors.all()],
+                'total_quantity': total_qty,
+                'available_quantity': avail_qty,
+                'borrowed_quantity': borrowed_qty,
+                'reserved_quantity': reserved_qty,
+                'damaged_quantity': damaged_qty,
+                'withdrawn_quantity': withdrawn_qty,
+                'shelf_location': shelf_locations[0] if shelf_locations else 'Quầy lưu trữ trung tâm',
+                'shelf_locations': shelf_locations,
+                'reading_room_only': any(c.reading_room_only for c in copies),
+                'can_borrow_home': any(not c.reading_room_only for c in copies),
+                'copies': CopySerializer(copies, many=True).data,
+            })
+
+        return paginator.get_paginated_response(results)
 
 class CopyLookupView(APIView):
     permission_classes = [IsAdminUserRole]
