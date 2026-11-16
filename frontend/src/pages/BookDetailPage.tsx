@@ -13,6 +13,7 @@ import {
   Printer,
   Check,
   ChevronRight,
+  Ban,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -432,16 +433,16 @@ export const BookDetailPage: React.FC = () => {
                 ) : (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="lg"
-                      onClick={handleReserve}
-                      isLoading={actionLoading}
-                      leftIcon={<Clock className="w-4 h-4" />}
+                      disabled
+                      className="bg-rose-50 text-rose-700 border-rose-200 font-semibold cursor-not-allowed hover:bg-rose-50 opacity-100"
+                      leftIcon={<Ban className="w-4 h-4 text-rose-500" />}
                     >
-                      Đặt trước
+                      Đã hết
                     </Button>
                     <span className="text-xs text-textSecondary">
-                      Hiện đã hết sách. Bạn sẽ được xếp vào hàng chờ ưu tiên khi có sách trả.
+                      Hiện tại tất cả bản sao đã được mượn hết. Vui lòng quay lại sau khi có bạn đọc trả sách.
                     </span>
                   </div>
                 )}
