@@ -21,7 +21,16 @@ export const App: React.FC = () => {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ToastProvider>
-            <RouterProvider router={router} />
+            <React.Suspense
+              fallback={
+                <div className="min-h-screen flex flex-col items-center justify-center space-y-3 bg-slate-50">
+                  <div className="w-8 h-8 border-3 border-[#008B8B] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-slate-500 font-medium">Đang tải Thư viện UTH...</span>
+                </div>
+              }
+            >
+              <RouterProvider router={router} />
+            </React.Suspense>
           </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>

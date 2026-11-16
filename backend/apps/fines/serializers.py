@@ -14,6 +14,8 @@ class FineSerializer(serializers.ModelSerializer):
     patron_card_code = serializers.CharField(source='user.card_code', read_only=True)
     remaining_amount = serializers.IntegerField(read_only=True)
     book_title = serializers.CharField(source='loan.book.title', read_only=True, default=None)
+    book_cover_image = serializers.CharField(source='loan.book.cover_image', read_only=True, default=None)
+    category_name = serializers.CharField(source='loan.book.category.name', read_only=True, default=None)
     copy_barcode = serializers.CharField(source='loan.copy.barcode', read_only=True, default=None)
     type_display = serializers.CharField(source='get_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -22,7 +24,7 @@ class FineSerializer(serializers.ModelSerializer):
     class Meta:
         model = Fine
         fields = [
-            'id', 'loan', 'book_title', 'copy_barcode', 'user', 'patron_name',
+            'id', 'loan', 'book_title', 'book_cover_image', 'category_name', 'copy_barcode', 'user', 'patron_name',
             'patron_card_code', 'type', 'type_display', 'amount', 'paid_amount', 'remaining_amount',
             'status', 'status_display', 'damage_level', 'note', 'waive_reason', 'waived_by',
             'created_at', 'payments',

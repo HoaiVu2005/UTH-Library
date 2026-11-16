@@ -71,8 +71,8 @@ export const DashboardPage: React.FC = () => {
       const activeLoans = (loansRes.data?.data || []).map((l: any) => ({
         id: l.id,
         book_title: l.copy?.book?.title || l.book_title || 'Sách mượn',
-        barcode: l.copy?.barcode || '',
-        cover_image: l.copy?.book?.cover_image,
+        barcode: l.copy?.barcode || l.copy_barcode || '',
+        cover_image: l.cover_image || l.copy?.book?.cover_image || l.book_cover,
         borrowed_at: l.borrowed_at,
         due_at: l.due_at,
         days_late: l.days_late || 0,
@@ -463,29 +463,42 @@ export const DashboardPage: React.FC = () => {
                   return (
                     <div
                       key={loan.id}
-                      className="border border-border/80 rounded-lg p-3 flex items-center justify-between hover:bg-teal-50/25 transition-colors bg-white shadow-2xs"
+                      className="border border-border/80 rounded-lg p-2.5 sm:p-3 flex items-center justify-between hover:bg-teal-50/25 transition-colors bg-white shadow-2xs"
                     >
-                      <div className="flex-1 pr-3 min-w-0">
-                        <p className="font-bold text-xs text-textPrimary truncate">{loan.book_title}</p>
-                        <p className="text-[11px] text-textSecondary font-mono mt-0.5">Mã vạch: {loan.barcode}</p>
-                        <div className="flex items-center space-x-2 mt-1.5">
-                          <span className="text-[11px] text-textSecondary flex items-center">
-                            <Clock className="w-3 h-3 mr-1 text-textSecondary" />
-                            Hạn trả: {format(new Date(loan.due_at), 'dd/MM/yyyy')}
-                          </span>
-                          {isLate ? (
-                            <Badge variant="overdue" size="sm" hasDot>Quá hạn {loan.days_late} ngày</Badge>
-                          ) : daysLeft <= 2 ? (
-                            <Badge variant="warning" size="sm" hasDot>Còn {daysLeft} ngày</Badge>
+                      <div className="flex items-center space-x-3 flex-1 pr-3 min-w-0">
+                        <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200/80 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                          {loan.cover_image ? (
+                            <img
+                              src={loan.cover_image}
+                              alt={loan.book_title}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <Badge variant="info" size="sm">Còn {daysLeft} ngày</Badge>
+                            <BookOpen className="w-4 h-4 text-slate-400" />
                           )}
                         </div>
-                        {renewMessage && renewMessage.id === loan.id && (
-                          <p className={`text-[11px] mt-1 font-semibold ${renewMessage.isError ? 'text-danger' : 'text-success'}`}>
-                            {renewMessage.text}
-                          </p>
-                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-xs text-textPrimary truncate">{loan.book_title}</p>
+                          <p className="text-[11px] text-textSecondary font-mono mt-0.5">Mã vạch: {loan.barcode}</p>
+                          <div className="flex items-center space-x-2 mt-1.5">
+                            <span className="text-[11px] text-textSecondary flex items-center">
+                              <Clock className="w-3 h-3 mr-1 text-textSecondary" />
+                              Hạn trả: {format(new Date(loan.due_at), 'dd/MM/yyyy')}
+                            </span>
+                            {isLate ? (
+                              <Badge variant="overdue" size="sm" hasDot>Quá hạn {loan.days_late} ngày</Badge>
+                            ) : daysLeft <= 2 ? (
+                              <Badge variant="warning" size="sm" hasDot>Còn {daysLeft} ngày</Badge>
+                            ) : (
+                              <Badge variant="info" size="sm">Còn {daysLeft} ngày</Badge>
+                            )}
+                          </div>
+                          {renewMessage && renewMessage.id === loan.id && (
+                            <p className={`text-[11px] mt-1 font-semibold ${renewMessage.isError ? 'text-danger' : 'text-success'}`}>
+                              {renewMessage.text}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
                       <div className="shrink-0">

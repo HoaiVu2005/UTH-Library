@@ -7,6 +7,8 @@ class LoanSerializer(serializers.ModelSerializer):
     patron_card_code = serializers.CharField(source='user.card_code', read_only=True)
     patron_role = serializers.CharField(source='user.role', read_only=True)
     book_title = serializers.CharField(source='book.title', read_only=True)
+    cover_image = serializers.CharField(source='book.cover_image', read_only=True, default='')
+    category_name = serializers.CharField(source='book.category.name', read_only=True, default='')
     copy_barcode = serializers.CharField(source='copy.barcode', read_only=True)
     shelf_location = serializers.CharField(source='copy.shelf_location', read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
@@ -16,7 +18,7 @@ class LoanSerializer(serializers.ModelSerializer):
         model = Loan
         fields = [
             'id', 'user', 'patron_name', 'patron_card_code', 'patron_role',
-            'book', 'book_title', 'copy', 'copy_barcode', 'shelf_location',
+            'book', 'book_title', 'cover_image', 'category_name', 'copy', 'copy_barcode', 'shelf_location',
             'borrowed_at', 'due_at', 'returned_at', 'renewal_count',
             'status', 'return_condition', 'lost_at', 'note',
             'is_overdue', 'days_late', 'fine_per_day_snapshot',

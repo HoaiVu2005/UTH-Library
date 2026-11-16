@@ -64,20 +64,20 @@ export const RealtimeNotificationManager: React.FC = () => {
             if (alert.is_overdue) {
               toast.custom({
                 type: 'error',
-                title: '⚠️ Cảnh báo sách quá hạn',
+                title: 'Sách mượn đã quá hạn',
                 message: alert.message,
                 link: '/loans',
                 actionText: 'Xem sách đang mượn',
-                duration: 9000,
+                duration: 7000,
               });
             } else {
               toast.custom({
                 type: 'warning',
-                title: '⏰ Nhắc nhở: Sắp đến hạn trả sách (trước 2 ngày)',
+                title: 'Sắp đến hạn trả sách',
                 message: alert.message,
                 link: '/loans',
                 actionText: 'Gia hạn hoặc trả sách',
-                duration: 8000,
+                duration: 6500,
               });
             }
           }
@@ -95,45 +95,52 @@ export const RealtimeNotificationManager: React.FC = () => {
 
             // Determine toast style & title from type & content
             let toastType: 'info' | 'warning' | 'success' | 'error' = 'info';
-            let toastTitle = '🔔 Thông báo thư viện';
-            let duration = 7500;
+            let toastTitle = 'Thông báo Thư viện UTH';
+            let duration = 6000;
 
             const lowerContent = (notif.content || '').toLowerCase();
 
             if (notif.type === 'reservation_ready') {
               toastType = 'success';
-              toastTitle = '✨ Sách đặt trước đã sẵn sàng nhận!';
+              toastTitle = 'Sách đặt trước đã sẵn sàng';
             } else if (notif.type === 'fine_created') {
               toastType = 'warning';
-              toastTitle = '⚠️ Khoản phạt mới phát sinh';
+              toastTitle = 'Khoản phạt mới phát sinh';
+            } else if (notif.type === 'fine_paid') {
+              toastType = 'success';
+              toastTitle = 'Thanh toán tiền phạt thành công';
             } else if (notif.type === 'suggestion_result' || lowerContent.includes('đề xuất')) {
               if (lowerContent.includes('đã được duyệt') || lowerContent.includes('chấp thuận')) {
                 toastType = 'success';
-                toastTitle = '🎉 Đề xuất sách đã được duyệt!';
+                toastTitle = 'Đề xuất sách đã được duyệt';
               } else if (lowerContent.includes('từ chối') || lowerContent.includes('không được')) {
                 toastType = 'warning';
-                toastTitle = 'ℹ️ Kết quả xét duyệt đề xuất';
+                toastTitle = 'Kết quả xét duyệt đề xuất';
               } else if (lowerContent.includes('nhập về') || lowerContent.includes('về kho')) {
                 toastType = 'success';
-                toastTitle = '📦 Sách đề xuất đã về kho!';
+                toastTitle = 'Sách đề xuất đã về kho';
               } else {
-                // Incoming new student suggestion for librarians/admins
                 toastType = 'info';
-                toastTitle = '📚 Đề xuất mua sách mới từ bạn đọc';
-                duration = 8500;
+                toastTitle = 'Đề xuất mua sách mới';
+                duration = 7000;
               }
             } else if (notif.type === 'due_soon') {
               toastType = 'warning';
-              toastTitle = '⏰ Sắp đến hạn trả sách';
+              toastTitle = 'Sắp đến hạn trả sách';
             } else if (notif.type === 'overdue') {
               toastType = 'error';
-              toastTitle = '⚠️ Lượt mượn sách quá hạn';
+              toastTitle = 'Lượt mượn sách quá hạn';
             }
+
+            // Clean message: strip redundant emoji or repeated sentences
+            let cleanMessage = (notif.content || '')
+              .replace(/^[✨🎉⚠️⏰🔔📦📚ℹ️]\s*/g, '')
+              .trim();
 
             toast.custom({
               type: toastType,
               title: toastTitle,
-              message: notif.content,
+              message: cleanMessage,
               link: notif.link || '/notifications',
               actionText: notif.link ? 'Xem chi tiết' : 'Xem thông báo',
               duration,

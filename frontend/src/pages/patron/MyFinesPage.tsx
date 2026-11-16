@@ -31,6 +31,7 @@ interface FineItem {
   type: string;
   type_display?: string;
   book_title?: string;
+  book_cover_image?: string;
   copy_barcode?: string;
   amount: number;
   paid_amount: number;
@@ -335,24 +336,41 @@ export const MyFinesPage: React.FC = () => {
                   return (
                     <TableRow key={fine.id} className="hover:bg-teal-50/15 transition-colors">
                       {/* Reason & Book Title */}
-                      <TableCell className="max-w-[280px]">
-                        <p className="font-semibold text-gray-800 text-xs">
-                          {typeDisplay}
-                        </p>
-                        {bookTitle ? (
-                          <p className="text-[11.5px] text-gray-600 mt-0.5 line-clamp-1" title={bookTitle}>
-                            Sách: <span className="font-medium text-gray-800">{bookTitle}</span>{' '}
-                            {barcode && (
-                              <span className="font-mono text-gray-400">
-                                ({barcode})
-                              </span>
+                      <TableCell className="max-w-[320px]">
+                        <div className="flex items-start space-x-3">
+                          {bookTitle && (
+                            <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200/80 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                              {fine.book_cover_image || fine.loan?.book?.cover_image ? (
+                                <img
+                                  src={fine.book_cover_image || fine.loan?.book?.cover_image}
+                                  alt={bookTitle}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <BookOpen className="w-4 h-4 text-slate-400" />
+                              )}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-xs">
+                              {typeDisplay}
+                            </p>
+                            {bookTitle ? (
+                              <p className="text-[11.5px] text-gray-600 mt-0.5 line-clamp-1" title={bookTitle}>
+                                Sách: <span className="font-medium text-gray-800">{bookTitle}</span>{' '}
+                                {barcode && (
+                                  <span className="font-mono text-gray-400">
+                                    ({barcode})
+                                  </span>
+                                )}
+                              </p>
+                            ) : (
+                              <p className="text-[10.5px] text-gray-400 mt-0.5 italic">
+                                Phạt vi phạm quy chế lưu thông Thư viện
+                              </p>
                             )}
-                          </p>
-                        ) : (
-                          <p className="text-[10.5px] text-gray-400 mt-0.5 italic">
-                            Phạt vi phạm quy chế lưu thông Thư viện
-                          </p>
-                        )}
+                          </div>
+                        </div>
                       </TableCell>
 
                       {/* Date */}

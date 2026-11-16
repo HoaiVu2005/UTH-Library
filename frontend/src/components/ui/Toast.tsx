@@ -103,7 +103,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addToast = useCallback((toastData: Omit<ToastItem, 'id'>) => {
     const id = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newToast: ToastItem = { ...toastData, id };
-    setToasts((prev) => [newToast, ...prev.slice(0, 4)]); // Keep at most 5 toasts
+    setToasts((prev) => [newToast, ...prev.slice(0, 3)]); // Keep at most 4 toasts to avoid clutter
     return id;
   }, []);
 
@@ -136,7 +136,7 @@ export const ToastContainer: React.FC<{
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-5 right-5 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none p-3 sm:p-0"
+      className="fixed bottom-5 right-5 z-[99999] flex flex-col gap-2 max-w-[380px] w-full pointer-events-none p-3 sm:p-0"
     >
       {toasts.map((item) => (
         <ToastCard key={item.id} item={item} onDismiss={onDismiss} />
@@ -149,7 +149,7 @@ const ToastCard: React.FC<{
   item: ToastItem;
   onDismiss: (id: string) => void;
 }> = ({ item, onDismiss }) => {
-  const duration = item.duration ?? 4000;
+  const duration = item.duration ?? 4500;
 
   useEffect(() => {
     if (duration > 0) {
@@ -160,59 +160,64 @@ const ToastCard: React.FC<{
     }
   }, [item.id, duration, onDismiss]);
 
-  // Colors strictly matched to user's uploaded reference image:
-  // Info: Solid Blue (#1E88E5)
-  // Error: Solid Red (#E53935)
-  // Warning: Solid Amber/Gold (#F59E0B)
-  // Success: Solid Green (#16A34A / #2E7D32)
+  // Clean, modern styling: White cards with subtle border, soft shadow, and crisp status badge
   const config = {
     info: {
-      cardClass: 'bg-[#1E88E5] text-white shadow-lg shadow-blue-900/20',
+      badgeClass: 'bg-teal-50 text-[#008B8B] border border-teal-200/70',
+      progressBar: 'bg-[#008B8B]',
       Icon: Info,
     },
     error: {
-      cardClass: 'bg-[#E53935] text-white shadow-lg shadow-red-900/20',
+      badgeClass: 'bg-rose-50 text-rose-600 border border-rose-200/70',
+      progressBar: 'bg-rose-500',
       Icon: AlertCircle,
     },
     warning: {
-      cardClass: 'bg-[#F59E0B] text-white shadow-lg shadow-amber-900/20',
+      badgeClass: 'bg-amber-50 text-amber-600 border border-amber-200/70',
+      progressBar: 'bg-amber-500',
       Icon: AlertTriangle,
     },
     success: {
-      cardClass: 'bg-[#16A34A] text-white shadow-lg shadow-green-900/20',
+      badgeClass: 'bg-emerald-50 text-emerald-600 border border-emerald-200/70',
+      progressBar: 'bg-emerald-500',
       Icon: CheckCircle2,
     },
   }[item.type];
 
   const Icon = config.Icon;
 
-  // Filter out redundant generic labels per user request: "Chỉ cần hiện đúng thông báo thôi ko cần để 'Lỗi' hay bất kì cái gì"
+  // Clean title: Strip excessive emojis or redundant prefixes
+  const rawTitle = item.title ? item.title.replace(/[✨🎉⚠️⏰🔔📦📚ℹ️]/g, '').trim() : '';
   const isGenericTitle =
-    !item.title ||
+    !rawTitle ||
     ['thành công', 'lỗi', 'cảnh báo', 'lưu ý', 'thông tin', 'error', 'success', 'warning', 'info'].includes(
-      item.title.trim().toLowerCase()
+      rawTitle.toLowerCase()
     );
 
   return (
     <div
-      className={`pointer-events-auto rounded-lg shadow-xl px-4 py-3 flex items-center gap-3 transition-all transform animate-in slide-in-from-bottom-3 slide-in-from-right-3 fade-in duration-200 relative overflow-hidden select-none ${config.cardClass}`}
+      className="pointer-events-auto w-full bg-white rounded-xl shadow-lg shadow-slate-900/6 border border-slate-200/80 p-3.5 flex items-start gap-3 transition-all transform animate-in slide-in-from-bottom-2 slide-in-from-right-2 fade-in duration-200 relative overflow-hidden select-none"
       role="alert"
     >
-      {/* Icon (Matches reference) */}
-      <div className="shrink-0 flex items-center justify-center">
-        <Icon className="w-5 h-5 text-white" />
+      {/* Icon Badge */}
+      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${config.badgeClass}`}>
+        <Icon className="w-4 h-4" />
       </div>
 
-      {/* Message Content (No redundant "Lỗi" or "Thành công" prefix) */}
-      <div className="flex-1 min-w-0 pr-1 text-xs sm:text-[13px] font-medium leading-snug whitespace-pre-line text-white">
-        {!isGenericTitle && (
-          <span className="font-bold mr-1.5 block sm:inline">{item.title}:</span>
+      {/* Content Area - Separates title and message into distinct typographic hierarchy */}
+      <div className="flex-1 min-w-0 pr-1">
+        {!isGenericTitle && rawTitle && (
+          <h5 className="text-[13px] font-semibold text-slate-900 tracking-tight leading-snug">
+            {rawTitle}
+          </h5>
         )}
-        <span>{item.message}</span>
+        <div className={`text-xs text-slate-600 leading-relaxed ${!isGenericTitle && rawTitle ? 'mt-0.5' : ''}`}>
+          {item.message}
+        </div>
 
-        {/* Link / Action (Uses safe SPA navigation without Router Context dependency) */}
+        {/* Action Link */}
         {(item.link || item.onAction) && (
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-2">
             {item.link ? (
               <a
                 href={item.link}
@@ -226,7 +231,7 @@ const ToastCard: React.FC<{
                     window.location.href = item.link;
                   }
                 }}
-                className="text-[11px] font-bold text-white underline underline-offset-2 hover:opacity-90 inline-flex items-center gap-1 cursor-pointer"
+                className="text-[11.5px] font-semibold text-[#008B8B] hover:text-[#006F70] hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <span>{item.actionText || 'Xem chi tiết'}</span>
                 <ExternalLink className="w-3 h-3" />
@@ -238,7 +243,7 @@ const ToastCard: React.FC<{
                   item.onAction?.();
                   onDismiss(item.id);
                 }}
-                className="text-[11px] font-bold text-white underline underline-offset-2 hover:opacity-90 inline-flex items-center gap-1 cursor-pointer"
+                className="text-[11.5px] font-semibold text-[#008B8B] hover:text-[#006F70] hover:underline inline-flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <span>{item.actionText || 'Xử lý ngay'}</span>
               </button>
@@ -247,20 +252,20 @@ const ToastCard: React.FC<{
         )}
       </div>
 
-      {/* Dismiss Button ✕ */}
+      {/* Dismiss Button */}
       <button
         type="button"
         onClick={() => onDismiss(item.id)}
-        className="text-white/80 hover:text-white rounded-md p-1 transition-colors -mr-1 shrink-0 cursor-pointer"
+        className="w-6 h-6 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0 -mr-1 -mt-0.5 cursor-pointer"
         aria-label="Đóng thông báo"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3.5 h-3.5" />
       </button>
 
-      {/* Auto-dismiss progress bar */}
+      {/* Subtle Auto-dismiss progress bar */}
       {duration > 0 && (
         <div
-          className="absolute bottom-0 left-0 h-0.5 w-full bg-white/40"
+          className={`absolute bottom-0 left-0 h-0.5 w-full opacity-60 ${config.progressBar}`}
           style={{
             animation: `shrinkWidth ${duration}ms linear forwards`,
           }}

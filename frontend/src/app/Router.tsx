@@ -3,10 +3,37 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UnauthorizedState } from '@/components/ui/UnauthorizedState';
+import { LoginPage } from '@/pages/LoginPage';
+import { AlertCircle } from 'lucide-react';
+
+const RouteErrorFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
+    <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center space-y-3">
+      <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+        <AlertCircle className="w-6 h-6" />
+      </div>
+      <h3 className="font-bold text-slate-800 text-base">Đã xảy ra sự cố khi tải trang</h3>
+      <p className="text-xs text-slate-500">Vui lòng tải lại hoặc quay về trang chủ Thư viện.</p>
+      <div className="pt-2 flex justify-center gap-2">
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 text-xs font-semibold bg-[#008B8B] text-white rounded-lg hover:bg-[#007272]"
+        >
+          Tải lại trang
+        </button>
+        <a
+          href="/"
+          className="px-4 py-2 text-xs font-semibold bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+        >
+          Về trang chủ
+        </a>
+      </div>
+    </div>
+  </div>
+);
 
 // Public Pages (Lazy Loaded)
 const HomePage = lazy(() => import('@/pages/HomePage').then((m) => ({ default: m.HomePage })));
-const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const BookSearchPage = lazy(() => import('@/pages/BookSearchPage').then((m) => ({ default: m.BookSearchPage })));
 const BookDetailPage = lazy(() => import('@/pages/BookDetailPage').then((m) => ({ default: m.BookDetailPage })));
 
@@ -60,10 +87,12 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: '/',
     element: <AppLayout />,
+    errorElement: <RouteErrorFallback />,
     children: [
       // Public Routes
       { index: true, element: <HomePage /> },
