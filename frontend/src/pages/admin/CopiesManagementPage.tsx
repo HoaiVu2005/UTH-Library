@@ -805,7 +805,7 @@ export const CopiesManagementPage: React.FC = () => {
                   <TableHead>Tài liệu & Tác giả</TableHead>
                   <TableHead className="w-52">Vị trí lưu kho</TableHead>
                   <TableHead className="w-28 text-center">Hình thức</TableHead>
-                  <TableHead className="w-32 text-center">Số lượng</TableHead>
+                  <TableHead className="w-24 text-center">Số lượng</TableHead>
                   <TableHead className="w-36 text-center">Trạng thái</TableHead>
                   <TableHead className="w-32 text-center whitespace-nowrap">Mã vạch</TableHead>
                   <TableHead className="w-20 text-center whitespace-nowrap">Thao tác</TableHead>
@@ -895,21 +895,9 @@ export const CopiesManagementPage: React.FC = () => {
                             )}
                           </TableCell>
 
-                          {/* SỐ LƯỢNG (Quantity column) */}
-                          <TableCell className="text-center">
-                            <div className="inline-flex flex-col items-center">
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs">
-                                <Layers className="w-3.5 h-3.5 text-brand" />
-                                {group.total_quantity} bản sao
-                              </span>
-                              <span className="text-[11px] text-gray-500 mt-1 font-medium">
-                                {group.available_quantity > 0 ? (
-                                  <span className="text-emerald-600 font-semibold">{group.available_quantity} sẵn sàng</span>
-                                ) : (
-                                  <span className="text-rose-500 font-semibold">Đã hết</span>
-                                )}
-                              </span>
-                            </div>
+                          {/* SỐ LƯỢNG */}
+                          <TableCell className="text-center font-semibold text-gray-800 text-xs">
+                            {group.total_quantity}
                           </TableCell>
 
                           {/* Status Badge */}
@@ -1187,10 +1175,8 @@ export const CopiesManagementPage: React.FC = () => {
                         </TableCell>
 
                         {/* SỐ LƯỢNG */}
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700">
-                            1 cuốn
-                          </span>
+                        <TableCell className="text-center font-semibold text-gray-800 text-xs">
+                          1
                         </TableCell>
 
                         {/* Status */}
