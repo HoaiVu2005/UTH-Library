@@ -6,7 +6,7 @@ import { LoginPage } from './LoginPage';
 import { AuthProvider } from '@/features/auth/AuthContext';
 
 describe('LoginPage', () => {
-  it('renders login form inputs, notice board, and submit button', () => {
+  it('renders login form inputs, submit button, and forgot password link', () => {
     render(
       <BrowserRouter>
         <AuthProvider>
@@ -16,10 +16,10 @@ describe('LoginPage', () => {
     );
 
     expect(screen.getByText('ĐĂNG NHẬP HỆ THỐNG')).toBeInTheDocument();
-    expect(screen.getByText('TIN TỨC & THÔNG BÁO')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Tài khoản đăng nhập/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Mật khẩu/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /ĐĂNG NHẬP/i })).toBeInTheDocument();
+    expect(screen.getByText('QUÊN MẬT KHẨU?')).toBeInTheDocument();
   });
 
   it('fills inputs when fast fill demo buttons are clicked', () => {
