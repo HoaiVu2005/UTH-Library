@@ -9,7 +9,8 @@ from apps.assistant.services import (
     get_admin_library_statistics,
     get_patron_context,
     send_overdue_notice_to_student,
-    is_admin_query
+    is_admin_query,
+    is_book_query_intent,
 )
 from apps.accounts.models import User
 
@@ -54,7 +55,7 @@ class AIChatView(APIView):
         patron_context = None
         active_tab = None
 
-        if is_admin or is_admin_query('admin', message):
+        if is_admin:
             admin_stats = get_admin_library_statistics()
             if admin_stats and any(k in message.lower() for k in ["quá hạn", "sinh viên", "danh sách", "chưa trả"]):
                 overdue_students = admin_stats.get('overdue_students', [])
@@ -82,7 +83,12 @@ class AIChatView(APIView):
             patron_context = get_patron_context(current_user)
 
         # 2. Tìm sách liên quan trong kho Thư viện UTH
-        relevant_books = query_relevant_books(message, limit=4)
+        patron_dept = patron_context.get('department', '') if patron_context else ''
+        relevant_books = (
+            query_relevant_books(message, patron_dept=patron_dept, limit=4)
+            if is_book_query_intent(message)
+            else []
+        )
 
         # 3. Gọi Gemini LLM với ngữ cảnh chuẩn xác
         reply_text = call_gemini_api(

@@ -317,7 +317,26 @@ def is_book_query_intent(user_message: str) -> bool:
         return False
     return any(k in msg_lower for k in BOOK_INTENT_KEYWORDS)
 
-def query_relevant_books(query_text: str, limit: int = 4):
+def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
+    """Route messages without letting library context hijack ordinary conversation."""
+    msg_lower = user_message.strip().lower()
+    if is_admin and is_admin_query('admin', user_message):
+        return 'operations'
+
+    library_context_keywords = [
+        'thư viện', 'giáo trình', 'tài liệu', 'đầu sách', 'isbn', 'mượn sách',
+        'sách của tôi', 'tôi đang mượn', 'hạn trả', 'gia hạn', 'quá hạn',
+        'tiền phạt', 'phí phạt', 'đặt trước', 'mã thẻ', 'giờ mở cửa',
+        'cơ sở uth', 'kho sách', 'vị trí kệ',
+    ]
+    if is_book_query_intent(user_message) or any(k in msg_lower for k in library_context_keywords):
+        return 'library'
+    return 'conversation'
+
+def query_relevant_books(query_text: str, patron_dept: str = None, limit: int = 4):
+    if not is_book_query_intent(query_text):
+        return []
+
     q_lower = query_text.lower().strip()
     non_book_indicators = [
         "chưa trả", "bao nhiêu sách", "quá hạn", "tiền phạt",
@@ -329,31 +348,82 @@ def query_relevant_books(query_text: str, limit: int = 4):
         return []
 
     CATEGORY_MAPPING = {
+        # Công nghệ thông tin
         "công nghệ thông tin": "Công nghệ thông tin",
         "cntt": "Công nghệ thông tin",
         "it": "Công nghệ thông tin",
+        "khoa học máy tính": "Công nghệ thông tin",
+        "kỹ thuật phần mềm": "Công nghệ thông tin",
+        "hệ thống thông tin": "Công nghệ thông tin",
         "lập trình": "Công nghệ thông tin",
         "phần mềm": "Công nghệ thông tin",
         "mạng máy tính": "Công nghệ thông tin",
         "dữ liệu": "Công nghệ thông tin",
+        "thuật toán": "Công nghệ thông tin",
+        "cấu trúc dữ liệu": "Công nghệ thông tin",
+        "cơ sở dữ liệu": "Công nghệ thông tin",
+        "database": "Công nghệ thông tin",
+        "deep learning": "Công nghệ thông tin",
+        "machine learning": "Công nghệ thông tin",
+        "trí tuệ nhân tạo": "Công nghệ thông tin",
+        "ai": "Công nghệ thông tin",
+        "web": "Công nghệ thông tin",
+        "git": "Công nghệ thông tin",
+        "githup": "Công nghệ thông tin",
+        # Kỹ thuật Giao thông vận tải
         "giao thông": "Kỹ thuật Giao thông vận tải",
         "cầu đường": "Kỹ thuật Giao thông vận tải",
         "đường bộ": "Kỹ thuật Giao thông vận tải",
+        "đường sắt": "Kỹ thuật Giao thông vận tải",
         "đường cao tốc": "Kỹ thuật Giao thông vận tải",
+        "hàng không": "Kỹ thuật Giao thông vận tải",
+        "sân bay": "Kỹ thuật Giao thông vận tải",
+        "xe buýt": "Kỹ thuật Giao thông vận tải",
         "its": "Kỹ thuật Giao thông vận tải",
+        # Logistics & Chuỗi cung ứng
         "logistics": "Logistics & Chuỗi cung ứng",
         "chuỗi cung ứng": "Logistics & Chuỗi cung ứng",
+        "kho bãi": "Logistics & Chuỗi cung ứng",
+        "kho hàng": "Logistics & Chuỗi cung ứng",
+        "vận tải đa phương thức": "Logistics & Chuỗi cung ứng",
+        "last-mile": "Logistics & Chuỗi cung ứng",
+        "giao hàng": "Logistics & Chuỗi cung ứng",
+        # Kinh tế & Quản trị kinh doanh
         "kinh tế": "Kinh tế & Quản trị kinh doanh",
         "quản trị": "Kinh tế & Quản trị kinh doanh",
+        "kinh doanh": "Kinh tế & Quản trị kinh doanh",
         "marketing": "Kinh tế & Quản trị kinh doanh",
+        "thương mại": "Kinh tế & Quản trị kinh doanh",
+        "ngoại thương": "Kinh tế & Quản trị kinh doanh",
+        "nhân lực": "Kinh tế & Quản trị kinh doanh",
+        # Kỹ thuật Xây dựng công trình
         "xây dựng": "Kỹ thuật Xây dựng công trình",
+        "kết cấu": "Kỹ thuật Xây dựng công trình",
+        "bê tông": "Kỹ thuật Xây dựng công trình",
+        "địa kỹ thuật": "Kỹ thuật Xây dựng công trình",
+        "sức bền": "Kỹ thuật Xây dựng công trình",
+        # Kỹ thuật Cơ khí & Động lực
         "cơ khí": "Kỹ thuật Cơ khí & Động lực",
+        "động cơ": "Kỹ thuật Cơ khí & Động lực",
+        "động lực": "Kỹ thuật Cơ khí & Động lực",
         "ô tô": "Kỹ thuật Cơ khí & Động lực",
+        "chế tạo máy": "Kỹ thuật Cơ khí & Động lực",
+        "cnc": "Kỹ thuật Cơ khí & Động lực",
+        "thủy lực": "Kỹ thuật Cơ khí & Động lực",
+        "khí nén": "Kỹ thuật Cơ khí & Động lực",
+        # Kỹ thuật Điện - Điện tử
         "điện": "Kỹ thuật Điện - Điện tử",
         "điện tử": "Kỹ thuật Điện - Điện tử",
+        "cảm biến": "Kỹ thuật Điện - Điện tử",
+        "sensor": "Kỹ thuật Điện - Điện tử",
+        "iot": "Kỹ thuật Điện - Điện tử",
+        "biến tần": "Kỹ thuật Điện - Điện tử",
+        # Ngoại ngữ & Kỹ năng mềm
         "ngoại ngữ": "Ngoại ngữ & Kỹ năng mềm",
         "tiếng anh": "Ngoại ngữ & Kỹ năng mềm",
         "kỹ năng": "Ngoại ngữ & Kỹ năng mềm",
+        "thuyết trình": "Ngoại ngữ & Kỹ năng mềm",
+        "đàm phán": "Ngoại ngữ & Kỹ năng mềm",
     }
 
     matched_cat = None
@@ -361,6 +431,14 @@ def query_relevant_books(query_text: str, limit: int = 4):
         if kw in q_lower:
             matched_cat = cat_name
             break
+
+    # Nếu hỏi chung chung về "ngành tôi", "môn tôi" và chưa bắt được ngành trong text, dùng ngành của bạn đọc
+    if not matched_cat and patron_dept and any(k in q_lower for k in ["ngành tôi", "môn tôi", "chuyên ngành", "khoa tôi", "ngành của tôi", "tôi nên đọc", "môn học"]):
+        dept_lower = patron_dept.lower()
+        for kw, cat_name in CATEGORY_MAPPING.items():
+            if kw in dept_lower:
+                matched_cat = cat_name
+                break
 
     try:
         qs = Book.objects.filter(deleted_at__isnull=True)
@@ -410,6 +488,7 @@ def call_gemini_api(user_message: str, history: list, relevant_books: list, admi
 
     now_str = get_current_vietnam_time_str()
     role_desc = "Quản trị viên / Thủ thư Thư viện UTH" if is_admin else ("Giảng viên UTH" if (patron_context and patron_context.get('role') == 'lecturer') else "Sinh viên UTH")
+    chat_mode = classify_chat_mode(user_message, is_admin=is_admin)
 
     # 1. Ngữ cảnh Quản trị viên (CHỈ CÓ KHI LÀ ADMIN/THỦ THƯ)
     admin_context = ""
@@ -503,40 +582,82 @@ def call_gemini_api(user_message: str, history: list, relevant_books: list, admi
    - Đặt trước tài liệu (Reservation): Giữ chỗ trong vòng 48 giờ kể từ khi sách sẵn sàng tại quầy lưu thông.
 """
 
+    if chat_mode == 'conversation':
+        grounded_context = ""
+        mode_instruction = """
+[CHẾ ĐỘ HIỆN TẠI: TRÒ CHUYỆN TỰ NHIÊN / KIẾN THỨC CHUNG]
+- Trả lời trực tiếp đúng điều người dùng vừa nói hoặc hỏi; ưu tiên mạch hội thoại hiện tại.
+- Có thể trò chuyện đời thường, ăn uống, sở thích, tâm sự, đùa nhẹ và hỏi tiếp tự nhiên như một người bạn thông minh.
+- Tuyệt đối không tự lái câu chuyện sang thư viện, sách, giáo trình hay UTH nếu người dùng không chủ động hỏi.
+- Không suy diễn một câu xã giao thành yêu cầu tra cứu. Không chèn danh sách tính năng hoặc lời quảng cáo.
+- Khớp độ dài và sắc thái của người dùng: câu ngắn thì đáp gọn; câu nghiêm túc thì đáp rõ và có chiều sâu.
+"""
+    else:
+        grounded_context = f"{uth_library_knowledge}\n{admin_context}\n{user_context}\n{books_context}"
+        mode_instruction = """
+[CHẾ ĐỘ HIỆN TẠI: HỖ TRỢ THƯ VIỆN CÓ DỮ LIỆU]
+- Trả lời dựa trên dữ liệu thư viện và tài khoản được cung cấp; không bịa số liệu.
+- Chỉ giới thiệu thẻ sách khi yêu cầu thực sự là tìm, đọc hoặc đề xuất tài liệu.
+"""
+
     system_instruction = f"""
-Bạn là UTHie, trợ lý ảo thông minh và thân thiện của Thư viện Trường ĐH Giao thông Vận tải TP.HCM (UTH).
+Bạn là UTHie, trợ lý AI thông minh, hiểu biết sâu rộng và thân thiện của Thư viện Trường ĐH Giao thông Vận tải TP.HCM (UTH).
+Bạn vừa là chuyên gia điều phối & hỗ trợ tra cứu tài liệu Thư viện UTH, vừa sở hữu kho tri thức bách khoa toàn thư toàn diện của mô hình ngôn ngữ lớn Google Gemini (bao gồm khoa học kỹ thuật, công nghệ thông tin, kinh tế, đời sống, văn hóa, học thuật và thông tin hệ thống các trường đại học tại Việt Nam và trên thế giới).
 Thời gian hệ thống hiện tại: {now_str}.
 Người dùng đang trò chuyện: {role_desc}.
 
-{uth_library_knowledge}
+{mode_instruction}
 
-{admin_context}
+{grounded_context}
 
-{user_context}
+[QUY TẮC PHẢN HỒI QUAN TRỌNG]:
+1. KIẾN THỨC BÁCH KHOA TOÀN THƯ & CÁC TRƯỜNG ĐẠI HỌC (PHỔ CẬP KIẾN THỨC RỘNG KHÔNG GIỚI HẠN):
+   - Khi người dùng hỏi bất kỳ câu hỏi nào về kiến thức tổng quát, khoa học, lập trình, công nghệ, xã hội, đời sống, hướng nghiệp, học tập, hoặc thông tin các trường đại học khác (ví dụ: Trường ĐH HUTECH, ĐH Bách Khoa, Kinh Tế TP.HCM, Sư Phạm Kỹ Thuật, UEH, Ngoại Thương, Công nghệ Thông tin UIT, v.v.):
+     + Bạn PHẢI trả lời đầy đủ, chi tiết, chính xác, mạch lạc và nhiệt tình nhất bằng tri thức phong phú của mình.
+     + Nêu rõ ràng các cơ sở, địa chỉ, ngành học, đặc điểm... khi được hỏi về trường khác.
+     + TUYỆT ĐỐI KHÔNG được từ chối trả lời hoặc nói những câu rập khuôn như "mình chỉ hỗ trợ thư viện UTH", "mình không có dữ liệu về trường này/lĩnh vực này".
+     + Khi người dùng trò chuyện thông thường, chào hỏi, tâm sự, hỏi bí quyết học tập, kỹ năng mềm, hoặc nhờ giải thích kiến thức bài vở: Hãy phản hồi tự nhiên, gần gũi, ấm áp, đóng vai trò như một người bạn đồng hành tri thức thông minh của sinh viên và giảng viên.
+     + Bạn là một AI thông minh toàn diện, luôn mang lại giá trị cao nhất cho người dùng.
 
-{books_context}
-
-[QUY TẮC PHẢN HỒI]:
-1. KHI NGƯỜI DÙNG TÌM SÁCH HOẶC HỎI VỀ TÀI LIỆU CHUYÊN NGÀNH (VD: Công nghệ thông tin, Lập trình, Logistics, Kinh tế, Giao thông...):
-   - Giới thiệu các đầu sách thực tế đang có trong kho từ mục [DANH SÁCH TÀI LIỆU CÓ SẴN TRONG KHO THƯ VIỆN UTH PHÙ HỢP VỚI YÊU CẦU]. Nêu rõ tên sách, tác giả và số bản sẵn sàng phục vụ.
-   - Hướng dẫn người dùng nhấp trực tiếp vào các thẻ xem nhanh ở bên dưới tin nhắn để xem chi tiết vị trí giá sách và đặt mượn trên hệ thống Cổng Thư viện UTH này, hoặc truy cập trang "Tra cứu sách" (/search).
+2. KHI SINH VIÊN HỎI VỀ NGÀNH HỌC, MÔN HỌC HOẶC TƯ VẤN SÁCH NÊN ĐỌC (VD: "Tôi học Công nghệ thông tin nên đọc sách gì?", "Ngành tôi và môn tôi học thì nên tìm đọc sách gì?"):
+   - Bạn PHẢI đóng vai trò như một Cố vấn Học tập & Thủ thư chuyên môn tận tâm:
+     a) Xác định rõ chuyên ngành của bạn đọc (CNTT, Logistics, Kỹ thuật Giao thông, Kinh tế, Cơ khí, Điện tử, Xây dựng...). Nếu bạn đọc hỏi "ngành tôi/môn tôi", hãy tham chiếu thông tin Khoa/Ngành trong tài khoản của bạn đọc.
+     b) Phân tích định hướng môn học và lộ trình đọc sách: nêu rõ môn học cốt lõi (ví dụ CNTT: Cấu trúc dữ liệu & Giải thuật, Lập trình Web/Hệ thống, Cơ sở dữ liệu, Mạng máy tính, Trí tuệ nhân tạo AI) và lý do vì sao môn học/cuốn sách đó quan trọng cho tương lai nghề nghiệp.
+     c) Giới thiệu các cuốn sách/giáo trình CỤ THỂ ĐANG CÓ TRONG KHO THƯ VIỆN UTH (lấy từ mục [DANH SÁCH TÀI LIỆU CÓ SẴN TRONG KHO THƯ VIỆN UTH PHÙ HỢP VỚI YÊU CẦU]), nêu rõ tên sách, tác giả và số bản sẵn sàng phục vụ.
+     d) Chỉ dẫn rõ ràng: Hướng dẫn bạn đọc nhấp trực tiếp vào các thẻ xem nhanh ở bên dưới tin nhắn để xem vị trí kệ sách tại thư viện UTH và đặt giữ chỗ/mượn ngay trên cổng trực tuyến.
    - TUYỆT ĐỐI KHÔNG xuất bất kỳ đường link website bên ngoài nào như "opacthuvien.ut.edu.vn" hay link cũ của trường. Toàn bộ tính năng tra cứu và mượn trả đã được tích hợp trực tiếp trên Cổng Thư viện số UTH này.
 
-2. NẾU LÀ QUẢN TRỊ VIÊN / THỦ THƯ (ADMIN):
+3. NẾU LÀ QUẢN TRỊ VIÊN / THỦ THƯ (ADMIN):
    - Khi hỏi về "giảng viên mượn", "thầy cô mượn": Nêu chính xác số lượng cuốn và chi tiết từng cuốn giảng viên đang mượn dựa trên [SỐ LIỆU LƯU THÔNG THỰC TẾ]. Tuyệt đối KHÔNG được nói rằng "chỉ có sinh viên mượn".
    - Khi hỏi về "sinh viên mượn quá hạn", "sách trễ hạn": Tóm tắt ngắn gọn số lượng người và số cuốn trễ hạn, hướng dẫn thủ thư xem danh sách thẻ bên dưới để bấm gửi thông báo 1-click. TUYỆT ĐỐI KHÔNG vẽ bảng Markdown thô (| STT |...) và KHÔNG giả lập nút dạng text [Gửi thông báo...].
    - Mọi số liệu thống kê phải lấy chính xác từ dữ liệu thực tế ở trên.
 
-3. NẾU LÀ BẠN ĐỌC (SINH VIÊN HOẶC GIẢNG VIÊN):
+4. NẾU LÀ BẠN ĐỌC (SINH VIÊN HOẶC GIẢNG VIÊN):
    - Cách xưng hô: Gọi Giảng viên là "Thầy/Cô", xưng "em" hoặc "UTHie". Gọi Sinh viên là "bạn", xưng "mình" hoặc "UTHie".
    - Tuyệt đối KHÔNG hiển thị số liệu quản trị nội bộ của thủ thư (như tổng kho bao nhiêu bản, hỏng mất, tổng tiền phạt toàn trường...).
    - Khi bạn đọc hỏi về "sách của tôi", "tôi đang mượn gì", "khi nào tôi phải trả", "tôi có bị phạt không": Đọc chính xác từ mục [THÔNG TIN TÀI KHOẢN BẠN ĐỌC HIỆN TẠI] để giải đáp rõ ràng tên cuốn sách, ngày hết hạn và số ngày còn lại.
-   - Khi hỏi về cơ sở, địa chỉ, thư viện ở đâu, giờ mở cửa: Trả lời chuẩn xác theo [DỮ LIỆU CHUẨN XÁC VỀ HỆ THỐNG THƯ VIỆN UTH] (Cơ sở 1: Số 2 Võ Oanh Bình Thạnh; Cơ sở 2: Số 10 Đường số 12 Thủ Đức; Cơ sở 3: Số 70 Tô Ký Quận 12).
-   - Trả lời tự nhiên, thân thiện, ngắn gọn, súc tích, đi thẳng vào câu trả lời, tránh câu chào mở bài rườm rà.
+   - Khi hỏi về cơ sở, địa chỉ, thư viện UTH ở đâu, giờ mở cửa: Trả lời chuẩn xác theo [DỮ LIỆU CHUẨN XÁC VỀ HỆ THỐNG THƯ VIỆN UTH] (Cơ sở 1: Số 2 Võ Oanh Bình Thạnh; Cơ sở 2: Số 10 Đường số 12 Thủ Đức; Cơ sở 3: Số 70 Tô Ký Quận 12).
+   - Trả lời tự nhiên, thân thiện, súc tích, đi thẳng vào câu trả lời, hữu ích và truyền cảm hứng.
+"""
+
+    # Chế độ trò chuyện dùng prompt riêng, ngắn và không mang theo các neo ngữ cảnh thư viện.
+    if chat_mode == 'conversation':
+        system_instruction = f"""
+Bạn là UTHie, một AI đồng hành thông minh, tự nhiên và thân thiện của cộng đồng UTH.
+Thời gian hiện tại: {now_str}. Người đang trò chuyện: {role_desc}.
+
+{mode_instruction}
+
+Quy tắc hội thoại:
+- Luôn trả lời đúng trọng tâm câu gần nhất và duy trì ngữ cảnh từ các lượt trước.
+- Có kiến thức tổng quát rộng; có thể giải thích, tư vấn, sáng tạo nội dung hoặc trò chuyện đời thường.
+- Không giả vờ biết dữ kiện thời gian thực nếu chưa được cung cấp.
+- Không mở đầu bằng giới thiệu tính năng. Không kết thúc mọi câu bằng lời mời tra cứu sách.
+- Dùng tiếng Việt tự nhiên, tôn trọng; có thể bắt nhịp cách nói thân mật của người dùng nhưng không thô tục hay xúc phạm.
 """
 
     contents = []
-    for h in history[-4:]:
+    for h in history[-10:]:
         role = "user" if h.get("sender") == "user" else "model"
         text = h.get("text", "")
         if text:
@@ -550,8 +671,8 @@ Người dùng đang trò chuyện: {role_desc}.
         },
         "contents": contents,
         "generationConfig": {
-            "temperature": 0.2,
-            "maxOutputTokens": 800,
+            "temperature": 0.75 if chat_mode == 'conversation' else 0.25,
+            "maxOutputTokens": 1000,
         }
     }
 
@@ -564,7 +685,7 @@ Người dùng đang trò chuyện: {role_desc}.
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.loads(resp.read().decode('utf-8'))
             candidates = data.get('candidates', [])
             if candidates:
@@ -576,6 +697,35 @@ Người dùng đang trò chuyện: {role_desc}.
 
 def generate_smart_fallback(user_message: str, relevant_books: list, admin_stats: dict = None, patron_context: dict = None, is_admin: bool = False) -> str:
     msg = user_message.strip().lower()
+    chat_mode = classify_chat_mode(user_message, is_admin=is_admin)
+
+    # Chào hỏi thông thường
+    if any(k == msg or msg.startswith(k + " ") for k in ["alo", "chào", "chao", "hi", "hello", "xin chào", "hey", "halo"]):
+        return "Alo 😄 UTHie đây! Bạn muốn hỏi gì hay tám chuyện một chút?"
+
+    if chat_mode == 'conversation' and any(k in msg for k in ['ăn', 'đói', 'cơm', 'món gì']):
+        if 'cơm tấm' in msg:
+            return "Cơm tấm là lựa chọn quá ổn 😄 Sườn nướng, bì chả hay sườn bì trứng đây? Nếu đang đói thì làm phần sườn bì trứng cho đã nhé."
+        return "Nghe là biết đang đói rồi 😄 Bạn đang thèm món gì? Nói khu vực hoặc khẩu vị, mình gợi ý cùng bạn."
+
+    # Trường hợp hỏi trường khác (HUTECH, Bách Khoa, v.v.)
+    if "hutech" in msg:
+        return """Trường Đại học Công nghệ TP.HCM (HUTECH) hiện có các cơ sở chính tại TP.HCM:
+1. **Cơ sở chính (Trụ sở):** Số 475A Điện Biên Phủ, Phường 25, Quận Bình Thạnh, TP.HCM.
+2. **Cơ sở Ung Văn Khiêm:** Số 31/36 Ung Văn Khiêm, Phường 25, Quận Bình Thạnh, TP.HCM.
+3. **Cơ sở Khu Công nghệ cao (SHTP):** Đường D1 & D2, Khu Công nghệ cao, TP. Thủ Đức, TP.HCM.
+
+Nếu bạn đang tìm kiếm tài liệu nghiên cứu, giáo trình học tập các khối ngành Kỹ thuật, Công nghệ, Kinh tế..., Thư viện UTH luôn sẵn sàng hỗ trợ bạn tra cứu nhé!"""
+
+    if "bách khoa" in msg or "bach khoa" in msg:
+        return """Trường Đại học Bách Khoa - ĐHQG TP.HCM có 2 cơ sở đào tạo chính:
+1. **Cơ sở 1 (Trụ sở Lý Thường Kiệt):** 268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM.
+2. **Cơ sở 2 (Cơ sở Dĩ An):** Khu đô thị Đại học Quốc gia TP.HCM, Phường Đông Hòa, TP. Dĩ An, Tỉnh Bình Dương.
+
+Bạn có thể tham khảo thêm nhiều giáo trình kỹ thuật và cơ khí công trình tại Thư viện UTH nhé!"""
+
+    if "kinh tế" in msg and ("ueh" in msg or "cơ sở" in msg or "địa chỉ" in msg):
+        return """Đại học Kinh tế TP.HCM (UEH) có cơ sở chính (Cơ sở A) tại 59C Nguyễn Đình Chiểu, Phường Võ Thị Sáu, Quận 3, TP.HCM, cùng cơ sở Nam Sông Sài Gòn (Cơ sở N) tại Nguyễn Văn Linh, Huyện Bình Chánh."""
 
     # Trường hợp hỏi cơ sở UTH
     if "cơ sở 3" in msg or "cs3" in msg:
@@ -637,4 +787,7 @@ def generate_smart_fallback(user_message: str, relevant_books: list, admin_stats
         lines.append("\n👉 Bạn có thể nhấp trực tiếp vào các thẻ sách bên dưới để xem vị trí giá sách và đặt mượn trên hệ thống nhé!")
         return "\n".join(lines)
 
-    return f"Đã nhận yêu cầu: \"{user_message}\"."
+    if chat_mode == 'conversation':
+        return f"Mình đang nghe đây. Bạn nói thêm một chút về “{user_message}” nhé — bạn muốn mình góp ý, giải thích hay chỉ ngồi tám cùng bạn?"
+
+    return f"UTHie đã nhận câu hỏi: \"{user_message}\". Bạn mô tả thêm chi tiết để mình tra cứu chính xác nhé."
