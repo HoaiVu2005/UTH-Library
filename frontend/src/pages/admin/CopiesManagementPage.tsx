@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Copy,
@@ -15,6 +15,8 @@ import {
   X,
   FileCheck2,
   Camera,
+  Check,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/Input';
@@ -58,6 +60,16 @@ export interface CopyItem {
   };
 }
 
+export interface BookPickerItem {
+  id: number;
+  title: string;
+  category_code?: string;
+  category_name?: string;
+  isbn?: string;
+  cover_image?: string | null;
+  authors_names?: string[];
+}
+
 export const CopiesManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -80,8 +92,22 @@ export const CopiesManagementPage: React.FC = () => {
   const [quantity, setQuantity] = useState<number>(3);
   const [shelfLocation, setShelfLocation] = useState<string>('Cơ sở 1 (Bình Thạnh) - Kệ GTVT-01 - Tầng 2');
   const [isReadingRoomOnly, setIsReadingRoomOnly] = useState<boolean>(false);
-  const [booksList, setBooksList] = useState<Array<{ id: number; title: string; category_code?: string }>>([]);
+  const [booksList, setBooksList] = useState<BookPickerItem[]>([]);
+  const [bookSearchQuery, setBookSearchQuery] = useState<string>('');
+  const [isBookDropdownOpen, setIsBookDropdownOpen] = useState<boolean>(false);
+  const bookPickerRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Close book dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (bookPickerRef.current && !bookPickerRef.current.contains(e.target as Node)) {
+        setIsBookDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Barcode Modal
   const [barcodeModalCopy, setBarcodeModalCopy] = useState<CopyItem | null>(null);
@@ -115,11 +141,15 @@ export const CopiesManagementPage: React.FC = () => {
 
   const fetchBooksForSelect = async () => {
     try {
-      const res = await api.get('/books?page_size=100');
-      const list = (res.data?.data || []).map((b: any) => ({
+      const res = await api.get('/books?page_size=250');
+      const list: BookPickerItem[] = (res.data?.data || []).map((b: any) => ({
         id: b.id,
         title: b.title,
         category_code: b.category_code || b.category?.code || 'UTH',
+        category_name: b.category_name || b.category?.name || '',
+        isbn: b.isbn || '',
+        cover_image: b.cover_image || null,
+        authors_names: b.authors_names || b.authors?.map((a: any) => a.name) || [],
       }));
       setBooksList(list);
       if (list.length > 0 && !selectedBookId) {
@@ -129,6 +159,23 @@ export const CopiesManagementPage: React.FC = () => {
       console.error('Failed to fetch books for dropdown', err);
     }
   };
+
+  const selectedBook = useMemo(() => {
+    return booksList.find((b) => String(b.id) === String(selectedBookId)) || null;
+  }, [booksList, selectedBookId]);
+
+  const filteredBooks = useMemo(() => {
+    if (!bookSearchQuery.trim()) return booksList;
+    const q = bookSearchQuery.toLowerCase().trim();
+    return booksList.filter(
+      (b) =>
+        b.title.toLowerCase().includes(q) ||
+        (b.category_code && b.category_code.toLowerCase().includes(q)) ||
+        (b.category_name && b.category_name.toLowerCase().includes(q)) ||
+        (b.isbn && b.isbn.toLowerCase().includes(q)) ||
+        (b.authors_names && b.authors_names.some((a) => a.toLowerCase().includes(q)))
+    );
+  }, [booksList, bookSearchQuery]);
 
   useEffect(() => {
     fetchBooksForSelect();
@@ -777,22 +824,165 @@ export const CopiesManagementPage: React.FC = () => {
       >
         <form onSubmit={handleBatchCreate} className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <ModalBody className="overflow-y-auto flex-1 min-h-0 p-5 space-y-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-textPrimary mb-1">
-                Chọn đầu sách cần cấp bản sao *
-              </label>
-              <select
-                value={selectedBookId}
-                onChange={(e) => setSelectedBookId(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-white text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                required
-              >
-                {booksList.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    [{b.category_code}] {b.title}
-                  </option>
-                ))}
-              </select>
+            {/* Searchable Book Picker */}
+            <div ref={bookPickerRef} className="space-y-2 relative">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-textPrimary">
+                  Chọn đầu sách cần cấp bản sao <span className="text-danger">*</span>
+                </label>
+                {selectedBook && (
+                  <span className="text-[11px] text-slate-400">
+                    Đã chọn #{selectedBook.id}
+                  </span>
+                )}
+              </div>
+
+              {/* Search input field */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={bookSearchQuery}
+                  onChange={(e) => {
+                    setBookSearchQuery(e.target.value);
+                    setIsBookDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsBookDropdownOpen(true)}
+                  placeholder="Gõ tìm theo tên sách, chuyên ngành (CNTT, NN...), ISBN..."
+                  className="w-full pl-9 pr-8 py-2.5 text-xs rounded-xl border border-slate-300 bg-white text-textPrimary placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
+                />
+                {bookSearchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBookSearchQuery('');
+                      setIsBookDropdownOpen(true);
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 transition-transform duration-200 pointer-events-none ${
+                      isBookDropdownOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                )}
+              </div>
+
+              {/* Dropdown results list */}
+              {isBookDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl border border-slate-200 shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-slate-100">
+                  <div className="px-3 py-1.5 bg-slate-50 text-[11px] font-semibold text-slate-500 sticky top-0 border-b border-slate-100 flex items-center justify-between z-10">
+                    <span>Kết quả tìm kiếm</span>
+                    <span className="text-slate-400 font-normal">{filteredBooks.length} đầu sách</span>
+                  </div>
+                  {filteredBooks.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">
+                      Không tìm thấy đầu sách nào khớp với từ khóa "{bookSearchQuery}"
+                    </div>
+                  ) : (
+                    filteredBooks.map((b) => {
+                      const isSelected = String(b.id) === String(selectedBookId);
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBookId(String(b.id));
+                            setIsBookDropdownOpen(false);
+                            setBookSearchQuery('');
+                          }}
+                          className={`w-full text-left px-3 py-2.5 flex items-center gap-3 transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-teal-50/80 text-brand'
+                              : 'hover:bg-slate-50 text-slate-800'
+                          }`}
+                        >
+                          {/* Thumbnail */}
+                          <div className="w-8 h-10 rounded bg-slate-100 border border-slate-200/80 shrink-0 overflow-hidden flex items-center justify-center">
+                            {b.cover_image ? (
+                              <img
+                                src={b.cover_image}
+                                alt={b.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <BookOpen className="w-4 h-4 text-slate-400" />
+                            )}
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#008B8B]/10 text-[#008B8B] shrink-0">
+                                [{b.category_code}]
+                              </span>
+                              <span className="text-xs font-semibold text-slate-900 truncate">
+                                {b.title}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 truncate">
+                              {b.isbn && <span>ISBN: {b.isbn}</span>}
+                              {b.authors_names && b.authors_names.length > 0 && (
+                                <span>• {b.authors_names.join(', ')}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-brand shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Selected book preview card */}
+              {selectedBook && (
+                <div className="flex items-center justify-between p-2.5 rounded-xl border border-teal-200 bg-teal-50/40 text-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-12 rounded bg-white border border-teal-200 shrink-0 overflow-hidden flex items-center justify-center">
+                      {selectedBook.cover_image ? (
+                        <img
+                          src={selectedBook.cover_image}
+                          alt={selectedBook.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <BookOpen className="w-4 h-4 text-teal-600" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#008B8B] text-white">
+                          [{selectedBook.category_code}]
+                        </span>
+                        <span className="text-[11px] text-teal-700 font-medium">Đang chọn:</span>
+                      </div>
+                      <h5 className="font-bold text-slate-900 truncate text-xs mt-0.5" title={selectedBook.title}>
+                        {selectedBook.title}
+                      </h5>
+                      {selectedBook.isbn && (
+                        <p className="text-[10.5px] font-mono text-slate-500">ISBN: {selectedBook.isbn}</p>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBookDropdownOpen(true);
+                      setBookSearchQuery('');
+                    }}
+                    className="shrink-0 text-[11px] font-semibold text-brand ml-2 bg-white hover:bg-teal-50 px-2.5 py-1 rounded-md border border-teal-300 transition-colors cursor-pointer"
+                  >
+                    Thay đổi
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
