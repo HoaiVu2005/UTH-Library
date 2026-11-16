@@ -11,6 +11,8 @@ import {
   Sparkles,
   Barcode as BarcodeIcon,
   Printer,
+  Check,
+  ChevronRight,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -60,6 +62,13 @@ interface BookDetail {
   available_copies_count: number;
   can_borrow_home: boolean;
   only_reading_room: boolean;
+  is_reserved_by_user?: boolean;
+  user_reservation?: {
+    id: number;
+    status: string;
+    queue_position?: number;
+    hold_expires_at?: string;
+  } | null;
 }
 
 export const BookDetailPage: React.FC = () => {
@@ -76,6 +85,8 @@ export const BookDetailPage: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [hasJustReserved, setHasJustReserved] = useState(false);
+  const [justReservedStatus, setJustReservedStatus] = useState<string | null>(null);
 
   const loadBookDetail = useCallback(async (isInitial = false) => {
     if (isInitial) setLoading(true);
@@ -86,6 +97,10 @@ export const BookDetailPage: React.FC = () => {
         api.get<{ data: BookCardItem[] }>(`/books/${id}/related`),
       ]);
       setBook(bookRes.data.data);
+      if (bookRes.data.data.is_reserved_by_user) {
+        setHasJustReserved(true);
+        setJustReservedStatus(bookRes.data.data.user_reservation?.status || null);
+      }
       setRelatedBooks(relatedRes.data.data);
     } catch (err) {
       if (isInitial) setError(formatApiError(err));
@@ -119,6 +134,9 @@ export const BookDetailPage: React.FC = () => {
       });
 
       const isReady = res.data?.data?.status === 'ready';
+      setHasJustReserved(true);
+      setJustReservedStatus(isReady ? 'ready' : 'pending');
+
       if (isReady) {
         toast.success('Giữ chỗ thành công! Sách được giữ tại quầy trong 3 ngày.', {
           action: {
@@ -140,7 +158,11 @@ export const BookDetailPage: React.FC = () => {
       broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
-    } catch (err) {
+    } catch (err: any) {
+      // If user already reserved, also reflect this in the UI
+      if (err?.response?.data?.error === 'RESERVATION_DUPLICATE') {
+        setHasJustReserved(true);
+      }
       toast.error(formatApiError(err));
     } finally {
       setActionLoading(false);
@@ -225,6 +247,16 @@ export const BookDetailPage: React.FC = () => {
     printWindow.document.close();
   };
 
+  const isAlreadyReserved = Boolean(
+    hasJustReserved ||
+    book?.is_reserved_by_user ||
+    book?.user_reservation
+  );
+  const currentReservationStatus =
+    justReservedStatus ||
+    book?.user_reservation?.status ||
+    (hasJustReserved ? 'pending' : null);
+
   return (
     <div className="space-y-8 pb-12 animate-page-enter">
       {/* Back button */}
@@ -278,8 +310,8 @@ export const BookDetailPage: React.FC = () => {
                     Sẵn sàng ({book.available_copies_count} cuốn)
                   </Badge>
                 ) : (
-                  <Badge variant="borrowed">
-                    Hết bản mượn về
+                  <Badge variant="danger" hasDot>
+                    Đã hết
                   </Badge>
                 )}
               </div>
@@ -336,6 +368,32 @@ export const BookDetailPage: React.FC = () => {
                   <Alert variant="warning">
                     Tài liệu chuyên khảo / Giáo trình quý hiếm chỉ phục vụ bạn đọc nghiên cứu tại chỗ ở Thư viện.
                   </Alert>
+                ) : isAlreadyReserved ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      disabled
+                      className="bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold cursor-default hover:bg-emerald-50 opacity-100"
+                      leftIcon={<Check className="w-4 h-4 text-emerald-600" />}
+                    >
+                      Đã đặt trước
+                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-700">
+                      <span>
+                        {currentReservationStatus === 'ready'
+                          ? '✓ Sách đã được giữ sẵn sàng cho bạn tại quầy thư viện.'
+                          : '✓ Bạn đã đặt trước đầu sách này (Hàng chờ ưu tiên).'}
+                      </span>
+                      <Link
+                        to="/reservations"
+                        className="font-semibold underline underline-offset-2 text-brand hover:text-teal-700 inline-flex items-center gap-0.5 ml-1"
+                      >
+                        <span>Xem đặt chỗ</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
                 ) : book.can_borrow_home ? (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <Button
@@ -363,7 +421,7 @@ export const BookDetailPage: React.FC = () => {
                       Đặt trước (Xếp hàng chờ)
                     </Button>
                     <span className="text-xs text-textSecondary">
-                      Hiện đã hết bản mượn về. Bạn sẽ được xếp vào hàng chờ ưu tiên khi có sách trả.
+                      Hiện đã hết sách. Bạn sẽ được xếp vào hàng chờ ưu tiên khi có sách trả.
                     </span>
                   </div>
                 )}

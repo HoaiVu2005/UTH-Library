@@ -506,7 +506,7 @@ export const BookSearchPage: React.FC = () => {
                             />
                             {b.available_copies && b.available_copies > 0
                               ? `Còn ${b.available_copies} cuốn`
-                              : 'Hết bản mượn'}
+                              : 'Đã hết'}
                           </span>
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
@@ -566,7 +566,7 @@ export const BookSearchPage: React.FC = () => {
                           />
                           {b.available_copies && b.available_copies > 0
                             ? `Còn ${b.available_copies}`
-                            : 'Hết sách'}
+                            : 'Đã hết'}
                         </span>
                       </div>
                     </div>

@@ -95,7 +95,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, className = '' }) => {
             />
             {book.available_copies > 0
               ? `Còn ${book.available_copies} cuốn`
-              : 'Hết bản mượn'}
+              : 'Đã hết'}
           </span>
         ) : (
           <span className="text-textSecondary text-[11px]">Sách thư viện</span>
@@ -192,7 +192,7 @@ export const BookHorizontalCard: React.FC<BookCardProps> = ({ book, className = 
           />
           {book.available_copies !== undefined && book.available_copies > 0
             ? `Còn ${book.available_copies} cuốn`
-            : 'Hết bản mượn'}
+            : 'Đã hết'}
         </span>
 
         <Link

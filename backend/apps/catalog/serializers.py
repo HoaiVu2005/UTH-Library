@@ -119,6 +119,8 @@ class BookDetailSerializer(serializers.ModelSerializer):
     available_copies_count = serializers.SerializerMethodField()
     can_borrow_home = serializers.SerializerMethodField()
     only_reading_room = serializers.SerializerMethodField()
+    is_reserved_by_user = serializers.SerializerMethodField()
+    user_reservation = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
@@ -127,6 +129,7 @@ class BookDetailSerializer(serializers.ModelSerializer):
             'authors', 'description', 'cover_image', 'language',
             'page_count', 'edition', 'price', 'processing_fee', 'keywords',
             'copies', 'available_copies_count', 'can_borrow_home', 'only_reading_room',
+            'is_reserved_by_user', 'user_reservation',
             'created_at', 'updated_at',
         ]
 
@@ -149,6 +152,29 @@ class BookDetailSerializer(serializers.ModelSerializer):
         if not copies.exists():
             return False
         return copies.filter(reading_room_only=False).count() == 0
+
+    def get_user_reservation(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        from apps.reservations.models import Reservation
+        from apps.core.enums import ReservationStatus
+        res = Reservation.objects.filter(
+            user=request.user,
+            book=obj,
+            status__in=[ReservationStatus.PENDING, ReservationStatus.READY]
+        ).first()
+        if not res:
+            return None
+        return {
+            'id': res.id,
+            'status': res.status,
+            'queue_position': getattr(res, 'queue_position', None),
+            'hold_expires_at': res.hold_expires_at.isoformat() if res.hold_expires_at else None,
+        }
+
+    def get_is_reserved_by_user(self, obj):
+        return self.get_user_reservation(obj) is not None
 
 class BookWriteSerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(write_only=True, required=False)

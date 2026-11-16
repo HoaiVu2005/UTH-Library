@@ -85,7 +85,7 @@ class BookDetailView(APIView):
         book = Book.objects.filter(id=pk, deleted_at__isnull=True).select_related('category').prefetch_related('authors', 'copies').first()
         if not book:
             raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy đầu sách yêu cầu.')
-        serializer = BookDetailSerializer(book)
+        serializer = BookDetailSerializer(book, context={'request': request})
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
