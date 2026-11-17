@@ -271,7 +271,7 @@ export const HomePage: React.FC = () => {
       </section>
 
       {/* Main Content Area */}
-      <div id="featured-categories" className="max-w-container mx-auto px-4 sm:px-6 pt-8 pb-12 space-y-12 scroll-mt-[60px]">
+      <div id="featured-categories" className="w-full px-4 sm:px-6 xl:px-8 2xl:px-10 pt-8 pb-12 space-y-12 scroll-mt-[60px]">
         {/* 8 Chuyên ngành UTH */}
         <section className="space-y-4">
         <div className="flex items-center justify-between">

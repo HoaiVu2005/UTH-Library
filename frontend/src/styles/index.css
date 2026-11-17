@@ -17,7 +17,7 @@
   --accent-light:   #FFF7ED;
 
   /* Neutrals & Surfaces */
-  --bg:             #F3F6F8;
+  --bg:             #F1F6F6;
   --surface:        #FFFFFF;
   --cell:           #F8FAFC;
   --text-primary:   #263238;
@@ -44,8 +44,8 @@
   --info-border:    #BFDBFE;
 
   /* Elevation Shadows */
-  --shadow-card:       0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-card-hover: 0 6px 16px -2px rgba(0, 139, 139, 0.08), 0 3px 8px -2px rgba(0, 0, 0, 0.04);
+  --shadow-card:       0 1px 2px rgba(15, 55, 55, 0.04), 0 8px 24px -18px rgba(0, 82, 82, 0.34);
+  --shadow-card-hover: 0 14px 32px -18px rgba(0, 111, 112, 0.34), 0 3px 8px -4px rgba(15, 55, 55, 0.10);
   --shadow-dropdown:   0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
   --shadow-modal:      0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
@@ -67,6 +67,42 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+}
+
+/* Shared page rhythm: one calm canvas, clearly separated operational surfaces. */
+.page-stage {
+  min-width: 0;
+}
+
+.admin-shell {
+  position: relative;
+}
+
+.admin-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: 220px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 139, 139, 0.075), rgba(241, 246, 246, 0));
+}
+
+/* Older admin modules used purple as a decorative color. Normalize those
+   neutral states to the UTH teal family; semantic warning/error colors remain. */
+.admin-shell .bg-purple-50 { background-color: #e6f4f3 !important; }
+.admin-shell .bg-purple-100 { background-color: #cce7e8 !important; }
+.admin-shell .text-purple-600,
+.admin-shell .text-purple-700,
+.admin-shell .text-purple-800 { color: #006f70 !important; }
+.admin-shell .border-purple-200,
+.admin-shell .border-purple-300 { border-color: #99cfd1 !important; }
+
+/* Give legacy page cards the same surface language without changing semantic
+   alert panels or table cells. */
+.admin-shell .shadow-sm,
+.patron-shell .shadow-sm {
+  box-shadow: var(--shadow-card);
 }
 
 /* Page Transition animation */

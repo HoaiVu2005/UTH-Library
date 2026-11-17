@@ -39,18 +39,25 @@ import {
   Compass,
   Lightbulb,
 } from 'lucide-react';
-import axios from 'axios';
+import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import uthieAvatarImg from '@/assets/uthie-avatar.jpg';
-import { getChatStorageKey } from './aiChatStorage';
+import uthChatBackgroundImg from '@/assets/uth-chat-background.jpg';
+import { getChatStorageKey, prepareSessionsForStorage } from './aiChatStorage';
 import {
   getChatGreeting,
+  getChatCanvasTone,
+  AI_CHAT_REQUEST_CONFIG,
   getConversationWidthClass,
+  getHistorySessionTone,
+  normalizeChatAction,
   getRecentChatHistory,
   getSuggestedBookCardTone,
   shouldShowBookSuggestions,
+  shouldRenderDockedComposer,
   type ChatRole,
+  type ChatAction,
 } from './aiChatPresentation';
 
 interface SuggestedBook {
@@ -161,6 +168,7 @@ interface Message {
   overdue_students?: OverdueStudent[];
   admin_stats?: AdminStats;
   active_tab?: 'overdue' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview';
+  action?: ChatAction;
   timestamp: string;
 }
 
@@ -311,6 +319,7 @@ export const AIChatWidget: React.FC = () => {
     fullName: user?.full_name,
     username: user?.username,
   });
+  const chatCanvasTone = getChatCanvasTone();
   const storageKey = getChatStorageKey(user);
 
   const getInitialSessions = (key: string = storageKey): ChatSession[] => {
@@ -344,7 +353,7 @@ export const AIChatWidget: React.FC = () => {
   useEffect(() => {
     if (activeStorageKeyRef.current !== storageKey) return;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(sessions));
+      localStorage.setItem(storageKey, JSON.stringify(prepareSessionsForStorage(sessions)));
     } catch (e) {
       console.warn('[UTHie Chat] Failed to save sessions:', e);
     }
@@ -512,13 +521,14 @@ export const AIChatWidget: React.FC = () => {
         text: m.text,
       }));
 
-      const response = await axios.post('/api/v1/ai/chat/', {
+      const response = await api.post('/ai/chat/', {
         message: text,
         history: historyPayload,
+        session_id: currentSessionId,
         user_role: user?.role || 'student',
         user_id: user?.id,
         card_code: user?.card_code,
-      });
+      }, AI_CHAT_REQUEST_CONFIG);
 
       const data = response.data;
       const overdueList = data.overdue_students || [];
@@ -540,6 +550,7 @@ export const AIChatWidget: React.FC = () => {
         overdue_students: overdueList,
         admin_stats: data.admin_stats,
         active_tab: data.suggested_tab,
+        action: normalizeChatAction(data.action) || undefined,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -582,7 +593,7 @@ export const AIChatWidget: React.FC = () => {
     setSendingLoans((prev) => [...prev, loanId]);
 
     try {
-      await axios.post('/api/v1/ai/notify-overdue/', { loan_id: loanId });
+      await api.post('/ai/notify-overdue/', { loan_id: loanId });
       setNotifiedLoanIds((prev) => [...prev, loanId]);
     } catch {
       setNotifiedLoanIds((prev) => [...prev, loanId]);
@@ -1461,7 +1472,7 @@ export const AIChatWidget: React.FC = () => {
               <div className="flex-1 flex overflow-hidden">
                 {/* ── CỘT LỊCH SỬ CHAT (SIDEBAR PHONG CÁCH GEMINI) ── */}
                 {isSidebarOpen && (
-                  <div className={`flex flex-col bg-[#F8FAFC] border-r border-slate-200 shrink-0 transition-all duration-300 z-10 ${
+                  <div className={`flex flex-col bg-[#EEF3F5] border-r border-slate-300/80 shrink-0 transition-all duration-300 z-10 ${
                     isFullscreen ? 'w-64 sm:w-72' : 'w-52 sm:w-60'
                   }`}>
                     {/* Header Sidebar: New chat button */}
@@ -1483,7 +1494,7 @@ export const AIChatWidget: React.FC = () => {
                     </div>
 
                     {/* Section label */}
-                    <div className="px-3.5 pt-3 pb-1.5 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    <div className="px-3.5 pt-3 pb-2 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                       <div className="flex items-center gap-1.5">
                         <MessageSquare className="w-3.5 h-3.5 text-teal-600" />
                         <span>Lịch sử trò chuyện</span>
@@ -1494,18 +1505,14 @@ export const AIChatWidget: React.FC = () => {
                     </div>
 
                     {/* Danh sách các phiên trò chuyện */}
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    <div className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-2">
                       {sessions.map((s) => {
                         const isActive = s.id === currentSessionId;
                         return (
                           <div
                             key={s.id}
                             onClick={() => setCurrentSessionId(s.id)}
-                            className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150 ${
-                              isActive
-                                ? 'bg-teal-50 text-teal-950 font-semibold border border-teal-200/90 shadow-2xs'
-                                : 'text-slate-600 hover:bg-slate-200/60 hover:text-slate-900'
-                            }`}
+                            className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-150 ${getHistorySessionTone(isActive)}`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
                               <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
@@ -1547,43 +1554,32 @@ export const AIChatWidget: React.FC = () => {
                   }`}
                 >
                   {/* Danh sách tin nhắn */}
-                  <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gradient-to-b from-[#F8FAFC] to-[#F1F5F9]">
-                    <div className={`${getConversationWidthClass(isFullscreen, isAdmin)} min-h-full space-y-5`}>
+                  <div className="relative flex-1 overflow-hidden bg-[#063F46]">
+                    <div
+                      aria-hidden="true"
+                      className={chatCanvasTone.backgroundLayerClass}
+                      style={{ backgroundImage: `url(${uthChatBackgroundImg})` }}
+                    />
+                    <div aria-hidden="true" className={chatCanvasTone.tintLayerClass} />
+                    <div className="relative z-10 h-full overflow-y-auto p-4 sm:p-6">
+                      <div className={`${getConversationWidthClass(isFullscreen, isAdmin)} min-h-full space-y-5`}>
                       {/* Màn hình bắt đầu tối giản, tập trung vào một hành động */}
                       {messages.length <= 1 && (
                         <div className="min-h-full flex flex-col items-center justify-center text-center animate-in fade-in duration-300 pb-8">
                           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-teal-200/80 shadow-sm ring-4 ring-teal-500/10 mb-5 bg-white">
                             <img src={uthieAvatarImg} alt="UTHie AI" className="w-full h-full object-cover" />
                           </div>
-                          <h2 className="text-xl sm:text-3xl font-semibold text-slate-800 tracking-tight">
-                            {chatGreeting} {isAdmin ? 'Hôm nay cần xử lý nghiệp vụ nào?' : 'Bạn muốn bắt đầu từ đâu?'}
-                          </h2>
-                          <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto mt-2 px-4 leading-relaxed">
-                            {isAdmin
-                              ? 'UTHie Copilot hỗ trợ theo dõi lưu thông, quá hạn, tồn kho và công nợ thư viện.'
-                              : isLecturer
-                                ? 'UTHie hỗ trợ tra cứu tài liệu nghiên cứu, sách đang mượn và chính sách dành cho giảng viên.'
-                                : 'UTHie hỗ trợ tìm giáo trình, tra cứu tài liệu và kiểm tra tình trạng mượn trả.'}
-                          </p>
-                          <div className="w-full max-w-3xl mt-8 flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl p-2 shadow-lg shadow-slate-300/30">
-                            <input
-                              ref={inputRef}
-                              type="text"
-                              value={inputMessage}
-                              onChange={(e) => setInputMessage(e.target.value)}
-                              onKeyDown={handleKeyDown}
-                              placeholder={isAdmin ? 'Nhập nghiệp vụ cần kiểm tra...' : 'Hỏi UTHie bất kỳ điều gì...'}
-                              disabled={loading}
-                              className="flex-1 min-w-0 bg-transparent text-sm sm:text-[15px] text-slate-800 placeholder-slate-400 px-3.5 py-2.5 focus:outline-none"
-                            />
-                            <button
-                              onClick={() => handleSendMessage()}
-                              disabled={!inputMessage.trim() || loading}
-                              aria-label="Gửi câu hỏi"
-                              className="w-11 h-11 rounded-xl bg-teal-700 hover:bg-teal-800 active:scale-95 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white flex items-center justify-center transition-all shadow-sm shrink-0"
-                            >
-                              <Send className="w-5 h-5" />
-                            </button>
+                          <div className={`max-w-2xl rounded-2xl px-5 sm:px-8 py-4 ${chatCanvasTone.welcomeSurfaceClass}`}>
+                            <h2 className="text-xl sm:text-3xl font-semibold text-[#14383D] tracking-tight">
+                              {chatGreeting} {isAdmin ? 'Hôm nay cần xử lý nghiệp vụ nào?' : 'Bạn muốn bắt đầu từ đâu?'}
+                            </h2>
+                            <p className="text-xs sm:text-sm text-[#46666A] max-w-lg mx-auto mt-2 leading-relaxed font-medium">
+                              {isAdmin
+                                ? 'UTHie Copilot hỗ trợ theo dõi lưu thông, quá hạn, tồn kho và công nợ thư viện.'
+                                : isLecturer
+                                  ? 'UTHie hỗ trợ tra cứu tài liệu nghiên cứu, sách đang mượn và chính sách dành cho giảng viên.'
+                                  : 'UTHie hỗ trợ tìm giáo trình, tra cứu tài liệu và kiểm tra tình trạng mượn trả.'}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -1618,8 +1614,8 @@ export const AIChatWidget: React.FC = () => {
                             <div
                               className={`rounded-2xl transition-all duration-200 ${
                                 msg.sender === 'user'
-                                  ? 'w-fit max-w-[85%] sm:max-w-[70%] ml-auto p-3.5 sm:p-4 bg-gradient-to-tr from-[#008B8B] to-[#00A896] text-white rounded-tr-xs shadow-md shadow-teal-900/10'
-                                  : 'w-full max-w-full sm:max-w-[92%] p-4 sm:p-5.5 bg-white text-slate-800 border border-slate-200/90 rounded-tl-xs shadow-xs'
+                                  ? 'w-fit max-w-[85%] sm:max-w-[70%] ml-auto p-3.5 sm:p-4 bg-[#006F70] text-white border border-teal-300/30 rounded-tr-xs shadow-[0_10px_24px_rgba(2,47,54,0.28)]'
+                                  : `w-full max-w-full sm:max-w-[92%] p-4 sm:p-5.5 rounded-tl-xs ${chatCanvasTone.assistantMessageClass}`
                               }`}
                             >
                               {msg.sender === 'ai' ? (
@@ -1632,6 +1628,22 @@ export const AIChatWidget: React.FC = () => {
                                 <div className="whitespace-pre-wrap leading-relaxed font-normal text-[13.5px] sm:text-[14.5px]">
                                   {msg.text}
                                 </div>
+                              )}
+
+                              {msg.sender === 'ai' && msg.action && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigate(msg.action!.path);
+                                    setIsFullscreen(false);
+                                    setIsOpen(false);
+                                  }}
+                                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#006F70] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#005B5C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+                                >
+                                  <DollarSign className="h-4 w-4" />
+                                  <span>{msg.action.label}</span>
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </button>
                               )}
 
                               {/* Thẻ sinh viên mượn quá hạn (chỉ hiện trong chat nếu không phải Fullscreen) */}
@@ -1753,19 +1765,20 @@ export const AIChatWidget: React.FC = () => {
                               className="w-full h-full object-cover animate-pulse"
                             />
                           </div>
-                          <div className="bg-white border border-teal-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-xs flex items-center gap-2.5 text-teal-700">
+                          <div className={`px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2.5 text-teal-800 ${chatCanvasTone.loadingSurfaceClass}`}>
                             <RefreshCw className="w-4 h-4 animate-spin text-teal-600" />
                             <span className="font-medium text-xs sm:text-[13.5px]">UTHie đang tìm kiếm dữ liệu và soạn câu trả lời...</span>
                           </div>
                         </div>
                       )}
                       <div ref={messagesEndRef} />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Ô nhập chuyển xuống đáy sau khi cuộc trò chuyện bắt đầu */}
-                  {messages.length > 1 && (
-                    <div className="p-3 sm:p-4 bg-white border-t border-slate-200/80 shrink-0">
+                  {/* Ô nhập luôn ghim ở đáy, kể cả khi bắt đầu đoạn chat mới */}
+                  {shouldRenderDockedComposer(messages.length) && (
+                    <div className="p-3 sm:p-4 bg-[#DCEFED] border-t border-teal-300/80 shadow-[0_-8px_22px_rgba(2,47,54,0.16)] shrink-0">
                       <div className={`${getConversationWidthClass(isFullscreen, isAdmin)} flex items-center gap-2.5`}>
                         <input
                           ref={inputRef}
@@ -1773,9 +1786,9 @@ export const AIChatWidget: React.FC = () => {
                           value={inputMessage}
                           onChange={(e) => setInputMessage(e.target.value)}
                           onKeyDown={handleKeyDown}
-                          placeholder={isAdmin ? 'Nhập nghiệp vụ cần kiểm tra...' : 'Hỏi tiếp UTHie...'}
+                          placeholder={isAdmin ? 'Nhập nghiệp vụ cần kiểm tra...' : messages.length <= 1 ? 'Hỏi UTHie bất kỳ điều gì...' : 'Hỏi tiếp UTHie...'}
                           disabled={loading}
-                          className="flex-1 text-xs sm:text-[14px] bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 placeholder-slate-400 px-4 py-3 rounded-2xl border border-transparent focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-inner"
+                          className="flex-1 text-xs sm:text-[14px] bg-[#F7FCFB] hover:bg-white focus:bg-white text-[#183B3F] placeholder-[#6B898C] px-4 py-3 rounded-2xl border border-teal-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all shadow-inner"
                         />
                         <button
                           onClick={() => handleSendMessage()}

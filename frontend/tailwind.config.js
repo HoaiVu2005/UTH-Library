@@ -55,7 +55,7 @@ export default {
         },
         navy: '#000099',
         // Canvas & Surfaces
-        pageBg: '#F3F6F8',
+        pageBg: '#F1F6F6',
         surface: '#FFFFFF',
         cell: '#F8FAFC',
         line: '#E2E8F0',
@@ -107,8 +107,8 @@ export default {
       boxShadow: {
         '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.03)',
         'xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)',
-        'card-hover': '0 6px 16px -2px rgba(0, 139, 139, 0.08), 0 3px 8px -2px rgba(0, 0, 0, 0.04)',
+        'card': '0 1px 2px rgba(15, 55, 55, 0.04), 0 8px 24px -18px rgba(0, 82, 82, 0.34)',
+        'card-hover': '0 14px 32px -18px rgba(0, 111, 112, 0.34), 0 3px 8px -4px rgba(15, 55, 55, 0.10)',
         'dropdown': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
       },

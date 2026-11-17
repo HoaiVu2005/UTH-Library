@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Receipt,
   Search,
@@ -31,6 +31,7 @@ import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
 import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
+import { getFineCollectionEntryMode } from './fineCollectionPresentation';
 
 interface FineRecord {
   id: number;
@@ -51,6 +52,9 @@ interface FineRecord {
 }
 
 export const FinesManagementPage: React.FC = () => {
+  const location = useLocation();
+  const collectionEntryMode = getFineCollectionEntryMode(location.search);
+  const cardInputRef = useRef<HTMLInputElement>(null);
   const [fines, setFines] = useState<FineRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +112,12 @@ export const FinesManagementPage: React.FC = () => {
   useEffect(() => {
     fetchFines();
   }, [fetchFines]);
+
+  useEffect(() => {
+    if (!collectionEntryMode.shouldFocusCardInput) return;
+    const focusTimer = window.setTimeout(() => cardInputRef.current?.focus(), 100);
+    return () => window.clearTimeout(focusTimer);
+  }, [collectionEntryMode.shouldFocusCardInput]);
 
   // Realtime synchronization: updates live when fines are incurred, paid, or waived
   useRealtimeSync('fines', () => fetchFines(true), 5000);
@@ -322,12 +332,20 @@ export const FinesManagementPage: React.FC = () => {
           </div>
 
           {/* Search Controls & Pagination Limit */}
+          {collectionEntryMode.shouldFocusCardInput && (
+            <div className="flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-900">
+              <ScanLine className="h-4 w-4 shrink-0 text-brand" />
+              <span>Chế độ thu phạt tại quầy: {collectionEntryMode.helperText}.</span>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
             <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-xl flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <Input
-                  placeholder="Tìm bạn đọc (tên, MSSV/MGV), mã phạt hoặc tên sách..."
+                  ref={cardInputRef}
+                  aria-label="Mã thẻ bạn đọc cần thu phạt"
+                  placeholder={collectionEntryMode.helperText}
                   value={cardCode}
                   onChange={(e) => setCardCode(e.target.value)}
                   className="pl-9 pr-8 w-full text-xs h-9 rounded-xl border-gray-200 focus:border-brand bg-white"

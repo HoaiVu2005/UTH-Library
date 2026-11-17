@@ -126,7 +126,7 @@ export const ProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-page-enter">
+    <div className="space-y-6 w-full pb-12 animate-page-enter">
       {/* Page Header */}
       <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
