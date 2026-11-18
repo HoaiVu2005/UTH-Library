@@ -5,6 +5,7 @@ import { SidebarDrawer } from './SidebarDrawer';
 import { Footer } from './Footer';
 import { RealtimeNotificationManager } from '@/features/notifications/RealtimeNotificationManager';
 import { AIChatWidget } from '@/components/ui/AIChatWidget';
+import { APP_CONTENT_RAIL } from './layoutPresentation';
 
 const PageFallback: React.FC = () => (
   <div className="min-h-[40vh] flex flex-col items-center justify-center space-y-3 py-16 animate-pulse">
@@ -17,6 +18,7 @@ export const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const isHomePage = location.pathname === '/';
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
     <div className="min-h-screen flex flex-col bg-pageBg text-textPrimary">
@@ -24,9 +26,11 @@ export const AppLayout: React.FC = () => {
       <Header onToggleSidebar={() => setSidebarOpen(true)} />
       <SidebarDrawer isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className={`flex-1 w-full ${isHomePage ? '' : 'max-w-container mx-auto p-4 sm:p-6 lg:p-6'}`}>
+      <main className={`flex-1 w-full ${isHomePage ? '' : APP_CONTENT_RAIL} ${isAdminPage ? 'admin-shell' : 'patron-shell'}`}>
         <Suspense fallback={<PageFallback />}>
-          <Outlet />
+          <div key={location.pathname} className="page-stage animate-page-enter">
+            <Outlet />
+          </div>
         </Suspense>
       </main>
 

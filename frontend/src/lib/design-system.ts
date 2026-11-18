@@ -114,6 +114,11 @@ export const DESIGN_TOKENS = {
   },
 } as const;
 
+export const REPORT_CHART_COLORS = {
+  recoveryGauge: DESIGN_TOKENS.colors.primary[500],
+  recoveryText: DESIGN_TOKENS.colors.primary[700],
+} as const;
+
 /**
  * Standard Status definitions for Books, Copies, Loans, Reservations, and Fines.
  */
@@ -282,20 +287,20 @@ export const STATUS_DEFINITIONS: Record<
   waived: {
     label: 'Được miễn',
     variant: 'default',
-    bg: 'bg-purple-50',
-    text: 'text-purple-700',
-    border: 'border-purple-200',
-    dotColor: 'bg-purple-500',
+    bg: 'bg-teal-50',
+    text: 'text-teal-800',
+    border: 'border-teal-200',
+    dotColor: 'bg-teal-500',
   },
 
   // Roles
   student: {
     label: 'Sinh viên',
     variant: 'info',
-    bg: 'bg-blue-50',
-    text: 'text-blue-800',
-    border: 'border-blue-200',
-    dotColor: 'bg-blue-500',
+    bg: 'bg-sky-50',
+    text: 'text-sky-800',
+    border: 'border-sky-200',
+    dotColor: 'bg-sky-500',
   },
   lecturer: {
     label: 'Giảng viên',

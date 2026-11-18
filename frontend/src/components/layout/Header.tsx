@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { StudentIdCardModal } from '@/components/patron/StudentIdCardModal';
 import { cn } from '@/lib/utils';
 import { useRealtimeSync } from '@/lib/realtime';
+import { HEADER_CONTENT_RAIL } from './layoutPresentation';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -74,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
   return (
     <header className="h-[60px] bg-white border-b border-border shadow-xs sticky top-0 z-30 backdrop-blur-md bg-white/95">
-      <div className="max-w-container mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
+      <div className={HEADER_CONTENT_RAIL}>
         {/* Left: Sidebar Toggle + Official UTH Logo */}
         <div className="flex items-center space-x-3 sm:space-x-4">
           <button

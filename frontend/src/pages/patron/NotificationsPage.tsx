@@ -340,7 +340,7 @@ export const NotificationsPage: React.FC = () => {
     : null;
 
   return (
-    <div className="space-y-6 pb-16 animate-page-enter">
+    <div className="w-full space-y-6 pb-16 animate-page-enter">
       {/* Page Header Banner */}
       <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs transition-all">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

@@ -2,7 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
-from apps.assistant.services import (
+from apps.accounts.permissions import IsAdminUserRole
+from apps.assistant.AI import (
     query_relevant_books,
     call_gemini_api,
     generate_smart_fallback,
@@ -11,8 +12,14 @@ from apps.assistant.services import (
     send_overdue_notice_to_student,
     is_admin_query,
     is_book_query_intent,
+    normalize_assistant_voice,
+    compact_simple_reply,
+    build_long_term_memory_context,
+    record_conversation_turn,
+    remember_explicit_user_facts,
+    get_fine_workflow_action,
 )
-from apps.accounts.models import User
+from apps.assistant.models import AssistantConversation, AssistantMemoryEntry
 
 class AIChatView(APIView):
     """
@@ -28,23 +35,13 @@ class AIChatView(APIView):
         message = request.data.get('message', '').strip()
         history = request.data.get('history', [])
         user_role = request.data.get('user_role', 'student')
-        user_id = request.data.get('user_id')
-        card_code = request.data.get('card_code')
+        session_id = str(request.data.get('session_id', 'default'))
 
-        # Xác định đối tượng người dùng thực tế
-        current_user = None
-        if request.user and request.user.is_authenticated:
-            current_user = request.user
-        elif user_id:
-            current_user = User.objects.filter(id=user_id).first()
-        elif card_code:
-            current_user = User.objects.filter(card_code=card_code).first()
+        # Chỉ tin danh tính đã được JWT xác thực. Không dùng user_id/card_code từ
+        # payload để tránh đọc dữ liệu hoặc bộ nhớ của tài khoản khác.
+        current_user = request.user if request.user and request.user.is_authenticated else None
 
-        is_admin = False
-        if current_user:
-            is_admin = (current_user.role == 'admin') or current_user.is_staff
-        elif user_role == 'admin':
-            is_admin = True
+        is_admin = bool(current_user and ((current_user.role == 'admin') or current_user.is_staff))
 
         if not message:
             return Response({'error': 'Vui lòng nhập nội dung tin nhắn.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -82,22 +79,31 @@ class AIChatView(APIView):
             # Bạn đọc (Sinh viên / Giảng viên): Lấy dữ liệu cá nhân hóa thực tế
             patron_context = get_patron_context(current_user)
 
+        workflow = get_fine_workflow_action(
+            message,
+            is_admin=is_admin,
+            patron_context=patron_context,
+        )
+
         # 2. Tìm sách liên quan trong kho Thư viện UTH
         patron_dept = patron_context.get('department', '') if patron_context else ''
         relevant_books = (
             query_relevant_books(message, patron_dept=patron_dept, limit=4)
-            if is_book_query_intent(message)
+            if is_book_query_intent(message) and not workflow
             else []
         )
+        memory_context = build_long_term_memory_context(current_user, message)
 
-        # 3. Gọi Gemini LLM với ngữ cảnh chuẩn xác
-        reply_text = call_gemini_api(
+        # 3. Nghiệp vụ có đích thao tác rõ ràng dùng phản hồi tất định; các câu hỏi
+        # còn lại mới chuyển cho Gemini để tránh mô hình chỉ dẫn sai màn hình.
+        reply_text = workflow['reply'] if workflow else call_gemini_api(
             message,
             history,
             relevant_books,
             admin_stats=admin_stats,
             patron_context=patron_context,
-            is_admin=is_admin
+            is_admin=is_admin,
+            memory_context=memory_context,
         )
 
         # 4. Fallback thông minh nếu LLM gặp sự cố mạng
@@ -107,15 +113,25 @@ class AIChatView(APIView):
                 relevant_books,
                 admin_stats=admin_stats,
                 patron_context=patron_context,
-                is_admin=is_admin
+                is_admin=is_admin,
+                history=history,
             )
+
+        reply_text = normalize_assistant_voice(reply_text, has_history=bool(history))
+        reply_text = compact_simple_reply(reply_text, message, is_admin=is_admin)
+
+        # Lưu sau khi đã có câu trả lời hoàn chỉnh. Người chưa đăng nhập không
+        # được ghi bộ nhớ dài hạn và dữ liệu luôn gắn với tài khoản hiện tại.
+        remember_explicit_user_facts(current_user, message)
+        record_conversation_turn(current_user, session_id, message, reply_text)
 
         return Response({
             'reply': reply_text,
+            'action': workflow['action'] if workflow else None,
             'suggested_books': relevant_books,
             'overdue_students': overdue_students if is_admin else [],
             'admin_stats': admin_stats if is_admin else None,
-            'suggested_tab': active_tab if is_admin else None,
+            'suggested_tab': workflow['suggested_tab'] if workflow else (active_tab if is_admin else None),
             'patron_info': {
                 'name': patron_context['name'],
                 'role': patron_context['role'],
@@ -125,19 +141,54 @@ class AIChatView(APIView):
         })
 
 
+class AIMemoryView(APIView):
+    """Cho người dùng xem và xóa các dữ kiện họ đã yêu cầu AI ghi nhớ."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        memories = AssistantMemoryEntry.objects.filter(
+            user=request.user,
+            is_active=True,
+        ).order_by('-updated_at')
+        return Response({
+            'data': [
+                {
+                    'id': memory.id,
+                    'kind': memory.kind,
+                    'content': memory.content,
+                    'updated_at': memory.updated_at,
+                }
+                for memory in memories
+            ],
+        })
+
+    def delete(self, request):
+        AssistantMemoryEntry.objects.filter(user=request.user).delete()
+        AssistantConversation.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class SendOverdueNotificationView(APIView):
     """
     API 1-click: Thủ thư bấm nút từ khung chat AI để gửi thông báo trực tiếp
     vào tài khoản sinh viên mượn quá hạn.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUserRole]
 
     def post(self, request):
-        loan_id = request.data.get('loan_id')
-        if not loan_id:
+        raw_loan_id = request.data.get('loan_id')
+        if raw_loan_id in (None, ''):
             return Response({'error': 'Thiếu mã lượt mượn (loan_id).'}, status=status.HTTP_400_BAD_REQUEST)
 
-        result = send_overdue_notice_to_student(int(loan_id))
+        try:
+            loan_id = int(raw_loan_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Mã lượt mượn không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+        if loan_id <= 0:
+            return Response({'error': 'Mã lượt mượn không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = send_overdue_notice_to_student(loan_id)
         if result.get('success'):
             return Response(result, status=status.HTTP_200_OK)
-        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result, status=result.pop('status_code', status.HTTP_400_BAD_REQUEST))

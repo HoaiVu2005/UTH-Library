@@ -58,6 +58,7 @@ import {
   exportStructuredCsvReport,
 } from '@/lib/utils';
 import { useRealtimeSync } from '@/lib/realtime';
+import { REPORT_CHART_COLORS } from '@/lib/design-system';
 
 interface SummaryData {
   total_books: number;
@@ -1117,7 +1118,7 @@ export const ReportsPage: React.FC = () => {
               <div>
                 <div className="pb-3 border-b border-gray-100">
                   <h3 className="font-bold text-sm text-textPrimary flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-emerald-600" />
+                    <Receipt className="w-4 h-4 text-primary" />
                     <span>Sơ đồ 5: Thu ngân Phạt & Công nợ</span>
                   </h3>
                   <p className="text-[11px] text-textSecondary mt-0.5">
@@ -1141,7 +1142,8 @@ export const ReportsPage: React.FC = () => {
                         cx="50"
                         cy="50"
                         r="40"
-                        className="text-emerald-500 stroke-current transition-all duration-1000"
+                        className="transition-all duration-1000"
+                        style={{ stroke: REPORT_CHART_COLORS.recoveryGauge }}
                         strokeWidth="12"
                         strokeDasharray={251.2}
                         strokeDashoffset={251.2 - (251.2 * fineMetrics.recoveryRate) / 100}
@@ -1150,7 +1152,12 @@ export const ReportsPage: React.FC = () => {
                       />
                     </svg>
                     <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-2xl font-bold font-mono text-emerald-700">{fineMetrics.recoveryRate}%</span>
+                      <span
+                        className="text-2xl font-bold font-mono"
+                        style={{ color: REPORT_CHART_COLORS.recoveryText }}
+                      >
+                        {fineMetrics.recoveryRate}%
+                      </span>
                       <span className="text-[9px] text-textSecondary uppercase font-medium">Đã thu hồi</span>
                     </div>
                   </div>

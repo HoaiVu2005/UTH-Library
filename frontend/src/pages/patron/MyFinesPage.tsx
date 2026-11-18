@@ -102,7 +102,7 @@ export const MyFinesPage: React.FC = () => {
   const totalPaid = fines.reduce((sum, f) => sum + f.paid_amount, 0);
 
   return (
-    <div className="space-y-5 pb-16 animate-page-enter">
+    <div className="space-y-5 w-full pb-16 animate-page-enter">
       {/* Page Header Banner */}
       <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center space-x-3.5">

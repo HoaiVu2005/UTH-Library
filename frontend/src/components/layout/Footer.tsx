@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Phone, Mail, MapPin, Globe, ChevronUp } from 'lucide-react';
+import { FOOTER_CONTENT_RAIL } from './layoutPresentation';
 
 export const Footer: React.FC = () => {
   const scrollToTop = () => {
@@ -15,7 +16,7 @@ export const Footer: React.FC = () => {
       {/* Thanh viền màu thương hiệu UTH Teal thanh mảnh */}
       <div className="h-0.5 w-full bg-primary" />
 
-      <div className="max-w-container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className={FOOTER_CONTENT_RAIL}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Thông tin UTH & Địa chỉ */}
           <div className="space-y-2.5 max-w-xl">

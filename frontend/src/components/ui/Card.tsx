@@ -14,15 +14,15 @@ export const Card: React.FC<CardProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    elevated: 'bg-white border border-border shadow-card',
-    outlined: 'bg-white border border-border/80 shadow-2xs',
-    flat: 'bg-slate-50 border border-borderSubtle',
+    elevated: 'bg-white border border-white/80 shadow-card',
+    outlined: 'bg-white border border-white/80 shadow-card',
+    flat: 'bg-primary-50/45 border border-primary-100/60',
   }[variant];
 
   return (
     <div
       className={cn(
-        'rounded-xl text-textPrimary overflow-hidden transition-all',
+        'rounded-2xl text-textPrimary overflow-hidden transition-all',
         variantStyles,
         hoverable && 'card-hover',
         className
