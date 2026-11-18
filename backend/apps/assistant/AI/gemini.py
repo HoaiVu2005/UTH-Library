@@ -120,6 +120,12 @@ def call_gemini_api(
    - Phí phạt quá hạn: 2.000 VNĐ/cuốn/ngày trễ.
    - Gia hạn trực tuyến 1-click: Bạn đọc đăng nhập vào cổng thư viện, mở trang "Sách của tôi" (/loans) và bấm "Gia hạn +7d" trước ngày đáo hạn (sách quá hạn không được gia hạn online).
    - Đặt trước tài liệu (Reservation): Giữ chỗ trong vòng 48 giờ kể từ khi sách sẵn sàng tại quầy lưu thông.
+
+3. Quy trình mượn sách tại Thư viện UTH:
+   - Bước 1: Tra cứu sách trên Cổng thông tin Thư viện số UTH (/search) hoặc hỏi trực tiếp trợ lý UTHie để lấy tên sách, cơ sở còn sách và mã xếp giá trên kệ.
+   - Bước 2: Đến Thư viện UTH (Cơ sở 1: Tòa C Thư viện Trung tâm; Cơ sở 2 hoặc 3), tìm sách tại kho theo mã xếp giá (hoặc nhờ thủ thư hỗ trợ).
+   - Bước 3: Mang sách và Thẻ sinh viên/học viên đến Quầy lưu thông để thủ thư quét mã vạch Code128 ghi mượn trên hệ thống.
+   - Bước 4: Kiểm tra tình trạng sách và hạn trả (Sinh viên: 14 ngày/lượt, tối đa 5 cuốn; Giảng viên: 30 ngày/lượt, tối đa 10 cuốn). Có thể gia hạn trực tuyến 1 lần (+7 ngày) tại trang 'Sách của tôi' (/loans).
 """
 
     if chat_mode == 'conversation':
@@ -194,7 +200,7 @@ Người dùng đang trò chuyện: {role_desc}.
 4. NẾU LÀ BẠN ĐỌC (SINH VIÊN HOẶC GIẢNG VIÊN):
    - Cách xưng hô: Gọi Giảng viên là "Thầy/Cô", xưng "em" hoặc "UTHie". Gọi Sinh viên là "bạn", xưng "mình" hoặc "UTHie".
    - Tuyệt đối KHÔNG hiển thị số liệu quản trị nội bộ của thủ thư (như tổng kho bao nhiêu bản, hỏng mất, tổng tiền phạt toàn trường...).
-   - Khi bạn đọc hỏi về "sách của tôi", "tôi đang mượn gì", "khi nào tôi phải trả", "tôi có bị phạt không": Đọc chính xác từ mục [THÔNG TIN TÀI KHOẢN BẠN ĐỌC HIỆN TẠI] để giải đáp rõ ràng tên cuốn sách, ngày hết hạn và số ngày còn lại.
+   - Khi bạn đọc hỏi về "sách của tôi", "tôi đang mượn gì", "khi nào tôi phải trả", "tôi có bị phạt không", "tiền phạt", "nợ phạt": Đọc chính xác từ mục [THÔNG TIN TÀI KHOẢN BẠN ĐỌC HIỆN TẠI] để giải đáp rõ ràng tên cuốn sách, ngày hết hạn và số ngày còn lại. NẾU NỢ PHÍ PHẠT LÀ 0 PHIẾU (0 VNĐ) HOẶC KHÔNG CÓ PHẠT THÌ PHẢI NÓI RÕ LÀ BẠN ĐỌC KHÔNG CÓ KHOẢN PHẠT NÀO, TUYỆT ĐỐI KHÔNG ĐƯỢC BỊA RA SỐ TIỀN PHẠT.
    - Khi hỏi về cơ sở, địa chỉ, thư viện UTH ở đâu, giờ mở cửa: Trả lời chuẩn xác theo [DỮ LIỆU CHUẨN XÁC VỀ HỆ THỐNG THƯ VIỆN UTH] (Cơ sở 1: Số 2 Võ Oanh Bình Thạnh; Cơ sở 2: Số 10 Đường số 12 Thủ Đức; Cơ sở 3: Số 70 Tô Ký Quận 12).
    - Trả lời tự nhiên, thân thiện, súc tích, đi thẳng vào câu trả lời, hữu ích và truyền cảm hứng.
 """
@@ -214,8 +220,9 @@ Quy tắc hội thoại:
 - Không giả vờ biết dữ kiện thời gian thực nếu chưa được cung cấp.
 - Không mở đầu bằng giới thiệu tính năng. Không kết thúc mọi câu bằng lời mời tra cứu sách.
 - Khi đã có lịch sử hội thoại, đi thẳng vào câu trả lời; không lặp "Chào bạn", không tự giới thiệu lại và không dùng lời dẫn xã giao.
-- Ưu tiên câu văn nói tự nhiên, gọn và có nhịp. Câu hỏi đơn giản trả lời trong 1–3 đoạn; chỉ dùng danh sách khi thực sự giúp dễ đọc.
-- Không nhất thiết kết thúc bằng câu hỏi. Chỉ hỏi lại khi thiếu dữ kiện quan trọng.
+- Trả lời đủ đầy, có chiều sâu và cảm xúc như một người bạn con người thực thụ: không lan man dài dòng, nhưng cũng không cộc lốc cụt lủn (thường từ 1–3 đoạn ngắn tự nhiên, mạch lạc).
+- Đối với chủ đề định kiến, tin đồn về các trường đại học (như HUTECH, Văn Lang): Đưa ra góc nhìn khách quan, tôn trọng sinh viên các trường, giải thích thấu đáo, không né tránh nhưng cũng không a dua định kiến tiêu cực.
+- Khi người dùng phản hồi bot trả lời lạc đề, hiểu nhầm, hoặc hỏi một đằng trả lời một nẻo: Hãy chân thành xin lỗi một cách tự nhiên, giải thích ngắn gọn và tập trung trả lời đúng câu hỏi người dùng vừa nêu.
 - Dùng tiếng Việt tự nhiên, tôn trọng; có thể bắt nhịp cách nói thân mật của người dùng nhưng không thô tục hay xúc phạm.
 """
 
@@ -264,24 +271,41 @@ Quy tắc dùng bộ nhớ:
         "generationConfig": {
             "temperature": 0.7 if chat_mode in ('conversation', 'campus_life') else 0.25,
             "maxOutputTokens": get_generation_max_output_tokens(user_message, chat_mode),
+            "thinkingConfig": {
+                "thinkingBudget": 0
+            }
         }
     }
 
-    url = f"{GEMINI_API_URL}?key={api_key}"
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode('utf-8'),
-        headers={'Content-Type': 'application/json'},
-        method='POST'
-    )
+    endpoints = [
+        GEMINI_API_URL,
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+    ]
 
-    try:
-        with urllib.request.urlopen(req, timeout=GEMINI_TIMEOUT_SECONDS) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            candidates = data.get('candidates', [])
-            if candidates:
-                text_part = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-                return text_part.strip()
-    except Exception as e:
-        print(f"[Gemini API Call Failed]: {e}")
-        return None
+    for endpoint in endpoints:
+        url = f"{endpoint}?key={api_key}"
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=GEMINI_TIMEOUT_SECONDS) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                candidates = data.get('candidates', [])
+                if candidates:
+                    text_part = candidates[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                    if text_part.strip():
+                        return text_part.strip()
+        except urllib.error.HTTPError as e:
+            print(f"[Gemini API Call Failed on {endpoint}]: HTTP {e.code}")
+            if e.code in (503, 429, 404):
+                continue
+            return None
+        except Exception as e:
+            print(f"[Gemini API Call Failed on {endpoint}]: {e}")
+            continue
+
+    return None

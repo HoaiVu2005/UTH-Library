@@ -27,7 +27,7 @@ describe('AI chat presentation by role', () => {
   });
 
   it('stops waiting shortly after the backend latency budget expires', () => {
-    expect(AI_CHAT_REQUEST_CONFIG.timeout).toBe(14_000);
+    expect(AI_CHAT_REQUEST_CONFIG.timeout).toBe(20_000);
   });
   it('greets staff by role instead of treating the last word as their name', () => {
     expect(

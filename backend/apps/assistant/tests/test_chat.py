@@ -108,7 +108,7 @@ class AssistantVoiceTests(APITestCase):
                 'Giải thích chi tiết cách hoạt động của thuật toán Dijkstra và cho ví dụ',
                 'conversation',
             ),
-            520,
+            1200,
         )
 
     def test_compacts_a_verbose_casual_reply_to_two_direct_sentences(self):
@@ -189,6 +189,59 @@ class GeminiLatencyBudgetTests(APITestCase):
 
 
 class AIChatViewTests(APITestCase):
+    @patch('apps.assistant.views.call_gemini_api', return_value=None)
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_van_lang_stereotype_question_is_not_misclassified_as_food_because_van_contains_an(
+        self,
+        _query_relevant_books_mock,
+        _call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {
+                'message': (
+                    'Trường Hutech với Văn Lang được gọi là vựa rau vì có nhiều '
+                    'nữ sinh đi cặp đại gia đúng không?'
+                ),
+                'user_role': 'student',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('định kiến', response.data['reply'].lower())
+        self.assertNotIn('đang đói', response.data['reply'].lower())
+
+    @patch('apps.assistant.views.call_gemini_api', return_value=None)
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_correction_after_a_wrong_food_reply_recovers_from_the_user_question(
+        self,
+        _query_relevant_books_mock,
+        _call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {
+                'message': 'Sao tôi hỏi một đằng bạn trả lời một nẻo rồi?',
+                'history': [
+                    {
+                        'sender': 'user',
+                        'text': 'Hutech với Văn Lang có phải vựa rau không?',
+                    },
+                    {
+                        'sender': 'ai',
+                        'text': 'Nghe là biết đang đói rồi. Bạn đang thèm món gì?',
+                    },
+                ],
+                'user_role': 'student',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('định kiến', response.data['reply'].lower())
+        self.assertNotIn('đang đói', response.data['reply'].lower())
+
     @patch('apps.assistant.views.get_admin_library_statistics', return_value={
         'unpaid_fines_count': 2,
         'total_unpaid_amount': 217000,
@@ -264,6 +317,63 @@ class AIChatViewTests(APITestCase):
             'path': '/fines',
         })
         self.assertIsNone(response.data['suggested_tab'])
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong',
+        'role': 'student',
+        'card_code': 'SV_ZERO_FINE',
+        'active_loans_count': 0,
+        'unpaid_fines_count': 0,
+        'unpaid_amount': 0,
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Không có phạt.')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[
+        {'title': 'Kiến trúc Microservices', 'authors': 'Martin Fowler', 'category': 'CNTT', 'available_copies': 8, 'total_copies': 8}
+    ])
+    def test_student_fine_inquiry_and_payment_consistency_without_book_cards(
+        self,
+        query_relevant_books_mock,
+        _call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='zero_fine_student',
+            password='test-password',
+            full_name='Phong',
+            card_code='SV_ZERO_FINE',
+            role='student',
+        )
+        self.client.force_authenticate(student)
+
+        # 1. Tra cứu "mình đang có phạt nợ nào không"
+        resp1 = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'mình đang có phạt nợ nào không', 'user_role': 'student'},
+            format='json',
+        )
+        self.assertEqual(resp1.status_code, 200)
+        self.assertIn('hiện không có khoản phạt nào chưa thanh toán', resp1.data['reply'])
+        self.assertEqual(resp1.data['suggested_books'], [])
+        self.assertEqual(resp1.data['action'], {
+            'label': 'Xem lịch sử tiền phạt',
+            'path': '/fines',
+        })
+
+        # 2. Thao tác "thanh toán phạt"
+        resp2 = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'thanh toán phạt', 'user_role': 'student'},
+            format='json',
+        )
+        self.assertEqual(resp2.status_code, 200)
+        self.assertIn('hiện không có khoản phạt nào chưa thanh toán', resp2.data['reply'])
+        self.assertEqual(resp2.data['suggested_books'], [])
+        self.assertEqual(resp2.data['action'], {
+            'label': 'Xem lịch sử tiền phạt',
+            'path': '/fines',
+        })
+        # Query books should never be called when workflow is active
+        query_relevant_books_mock.assert_not_called()
 
     @patch('apps.assistant.views.call_gemini_api', return_value=None)
     @patch('apps.assistant.views.query_relevant_books', return_value=[])

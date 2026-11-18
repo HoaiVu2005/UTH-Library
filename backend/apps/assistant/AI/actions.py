@@ -18,17 +18,35 @@ def get_fine_workflow_action(
     patron_fine_inquiry_markers = (
         'tôi có bị phạt',
         'tôi bị phạt',
+        'mình có bị phạt',
+        'mình bị phạt',
+        'mình đang có phạt',
+        'có bị phạt',
+        'bị phạt',
+        'phạt nợ',
+        'nợ phạt',
+        'phạt nào không',
+        'có phạt không',
+        'có phạt nào',
+        'kiểm tra phạt',
+        'xem phạt',
+        'tra cứu phạt',
+        'tiền phạt',
+        'khoản phạt',
+        'phiếu phạt',
+        'phí phạt',
+        'công nợ',
+        'nợ bao nhiêu',
+        'có nợ',
+        'nợ tiền',
         'phạt của tôi',
         'tiền phạt của tôi',
         'công nợ của tôi',
-        'tôi nợ bao nhiêu',
-        'tôi có nợ',
+        'em có bị phạt',
+        'phạt của em',
     )
     is_collection_request = any(marker in message for marker in fine_collection_markers)
-    is_patron_inquiry = bool(
-        patron_context
-        and any(marker in message for marker in patron_fine_inquiry_markers)
-    )
+    is_patron_inquiry = any(marker in message for marker in patron_fine_inquiry_markers)
     if not is_collection_request and not is_patron_inquiry:
         return None
 
@@ -46,7 +64,16 @@ def get_fine_workflow_action(
         }
 
     if not patron_context:
-        return None
+        return {
+            'reply': (
+                'Vui lòng đăng nhập vào tài khoản bạn đọc để tra cứu và thanh toán các khoản phạt cá nhân của bạn.'
+            ),
+            'action': {
+                'label': 'Đăng nhập ngay',
+                'path': '/login',
+            },
+            'suggested_tab': None,
+        }
 
     fine_count = int(patron_context.get('unpaid_fines_count') or 0)
     unpaid_amount = int(patron_context.get('unpaid_amount') or 0)

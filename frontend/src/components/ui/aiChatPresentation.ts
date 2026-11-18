@@ -6,7 +6,7 @@ export type ChatAction = {
 };
 
 export const AI_CHAT_REQUEST_CONFIG = {
-  timeout: 14_000,
+  timeout: 20_000,
 } as const;
 
 type GreetingUser = {

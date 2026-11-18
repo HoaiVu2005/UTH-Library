@@ -43,14 +43,18 @@ def get_conversation_tone(history: list, user_message: str) -> str:
 
 
 def is_simple_conversation_query(user_message: str, chat_mode: str) -> bool:
-    if chat_mode != 'conversation' or len(user_message.strip()) > 120:
+    if chat_mode != 'conversation' or len(user_message.strip()) > 80:
         return False
+    msg = user_message.lower()
     detailed_markers = [
         'giải thích', 'phân tích', 'chi tiết', 'hướng dẫn', 'so sánh', 'tại sao',
         'như thế nào', 'lập kế hoạch', 'viết code', 'đánh giá', 'tóm tắt tài liệu',
+        'nói chuyện', 'tâm sự', 'kể', 'nghĩ sao', 'vựa rau', 'đại gia', 'định kiến',
+        '1 đằng', 'một đằng', '1 nẻo', 'một nẻo', 'lạc đề', 'sai rồi', 'thế nào',
+        'quan điểm', 'chia sẻ', 'cảm nghĩ', 'vui vẻ', 'tám', 'chém gió', 'nghĩ gì',
+        'hả', 'ủa', 'gì cơ', 'sao vậy', 'sao thế',
     ]
-    message = user_message.lower()
-    return not any(marker in message for marker in detailed_markers)
+    return not any(marker in msg for marker in detailed_markers)
 
 
 def get_generation_max_output_tokens(user_message: str, chat_mode: str) -> int:

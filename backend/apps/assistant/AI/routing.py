@@ -2,7 +2,7 @@
 
 BOOK_INTENT_KEYWORDS = [
     "sách", "tìm", "kiếm", "tài liệu", "giáo trình", "đọc", "mượn", "tham khảo", "đầu sách",
-    "cuốn", "tác giả", "chuyên ngành", "khoa học", "kỹ thuật", "lập trình", "toán",
+    "cuốn", "tác giả", "chuyên ngành", "khoa học", "kỹ thuật", "lập trình", "toán học", "môn toán",
     "kinh tế", "cầu đường", "logistics", "cntt", "it", "isbn", "kệ"
 ]
 
@@ -27,7 +27,8 @@ def is_book_query_intent(user_message: str) -> bool:
         "chưa trả", "bao nhiêu sách", "thống kê", "quá hạn", "tiền phạt", "sinh viên",
         "giảng viên", "cơ sở", "ở đâu", "tầng mấy", "giờ mở", "giờ làm", "mở cửa",
         "địa chỉ", "liên hệ", "quy định", "quy chế", "chính sách", "gia hạn",
-        "thời hạn", "sách của tôi", "tôi đang mượn", "tôi mượn", "hạn trả", "phí phạt"
+        "thời hạn", "sách của tôi", "tôi đang mượn", "tôi mượn", "hạn trả", "phí phạt",
+        "thanh toán", "nộp phạt", "thu phạt", "phiếu phạt", "khoản phạt", "phạt nợ", "nợ phạt", "bị phạt"
     ]
     if any(k in msg_lower for k in non_book_indicators):
         return False
@@ -53,9 +54,14 @@ def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
     library_context_keywords = [
         'thư viện', 'giáo trình', 'tài liệu', 'đầu sách', 'isbn', 'mượn sách',
         'sách của tôi', 'tôi đang mượn', 'hạn trả', 'gia hạn', 'quá hạn',
-        'tiền phạt', 'phí phạt', 'đặt trước', 'mã thẻ', 'giờ mở cửa',
-        'cơ sở uth', 'kho sách', 'vị trí kệ',
+        'tiền phạt', 'phí phạt', 'phiếu phạt', 'khoản phạt', 'công nợ', 'nợ phạt', 'phạt nợ',
+        'bị phạt', 'thanh toán phạt', 'nộp phạt', 'thu phạt', 'đặt trước', 'mã thẻ', 'giờ mở cửa',
+        'cơ sở uth', 'kho sách', 'vị trí kệ', 'mấy cơ sở', 'các cơ sở',
     ]
-    if is_book_query_intent(user_message) or any(k in msg_lower for k in library_context_keywords):
+    has_campus_query = (
+        any(k in msg_lower for k in ['cơ sở', 'chi nhánh', 'trụ sở', 'địa chỉ', 'ở đâu'])
+        and any(k in msg_lower for k in ['uth', 'trường', 'đại học', 'thư viện', 'mấy cơ sở', 'các cơ sở', 'cs1', 'cs2', 'cs3'])
+    )
+    if is_book_query_intent(user_message) or any(k in msg_lower for k in library_context_keywords) or has_campus_query:
         return 'library'
     return 'conversation'

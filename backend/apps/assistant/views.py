@@ -78,20 +78,20 @@ class AIChatView(APIView):
             # Bạn đọc (Sinh viên / Giảng viên): Lấy dữ liệu cá nhân hóa thực tế
             patron_context = get_patron_context(current_user)
 
-        # 2. Tìm sách liên quan trong kho Thư viện UTH
-        patron_dept = patron_context.get('department', '') if patron_context else ''
-        relevant_books = (
-            query_relevant_books(message, patron_dept=patron_dept, limit=4)
-            if is_book_query_intent(message)
-            else []
-        )
-        memory_context = build_long_term_memory_context(current_user, message)
-
         workflow = get_fine_workflow_action(
             message,
             is_admin=is_admin,
             patron_context=patron_context,
         )
+
+        # 2. Tìm sách liên quan trong kho Thư viện UTH
+        patron_dept = patron_context.get('department', '') if patron_context else ''
+        relevant_books = (
+            query_relevant_books(message, patron_dept=patron_dept, limit=4)
+            if is_book_query_intent(message) and not workflow
+            else []
+        )
+        memory_context = build_long_term_memory_context(current_user, message)
 
         # 3. Nghiệp vụ có đích thao tác rõ ràng dùng phản hồi tất định; các câu hỏi
         # còn lại mới chuyển cho Gemini để tránh mô hình chỉ dẫn sai màn hình.
