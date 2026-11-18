@@ -9,5 +9,6 @@ missing-import = "ignore"
 [tool.pyright]
 include = ["backend"]
 extraPaths = ["backend"]
-typeCheckingMode = "off"
-reportMissingImports = "none"
+venvPath = "backend"
+venv = ".venv"
+typeCheckingMode = "basic"

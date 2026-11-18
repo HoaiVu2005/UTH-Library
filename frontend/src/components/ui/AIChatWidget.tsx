@@ -15,6 +15,7 @@ import {
   Bell,
   Check,
   AlertTriangle,
+  AlertCircle,
   RotateCcw,
   Search,
   Copy as CopyIcon,
@@ -48,6 +49,7 @@ import { getChatStorageKey, prepareSessionsForStorage } from './aiChatStorage';
 import {
   getChatGreeting,
   getChatCanvasTone,
+  getAdminMetricLabel,
   AI_CHAT_REQUEST_CONFIG,
   getConversationWidthClass,
   getHistorySessionTone,
@@ -753,38 +755,22 @@ export const AIChatWidget: React.FC = () => {
     );
   };
 
+  const renderAdminDataUnavailable = () => (
+    <div className="flex-1 p-4 flex items-center justify-center">
+      <div className="max-w-sm rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-xs">
+        <AlertCircle className="mx-auto h-8 w-8 text-slate-400" />
+        <p className="mt-3 text-sm font-bold text-slate-800">Chưa có dữ liệu thống kê</p>
+        <p className="mt-1 text-xs text-slate-500">
+          Hãy hỏi UTHie về tình hình thư viện để tải số liệu mới nhất từ hệ thống.
+        </p>
+      </div>
+    </div>
+  );
+
   // ─── Render Tab Giảng Viên Mượn Sách ───────────────────────────────────────
   const renderLecturersPanel = () => {
-    const list = latestAdminStats?.lecturer_borrowers || [
-      {
-        loan_id: 101,
-        user_id: 55,
-        name: 'ThS. Giảng Viên UTH 01',
-        card_code: 'GV2026001',
-        department: 'Khoa Kỹ thuật Giao thông',
-        book_title: 'Nghệ thuật Đàm phán và Giải quyết Xung đột trong Môi trường Đa văn hóa',
-        barcode: 'UTH-NN-000011',
-        borrowed_at: '16/11/2026',
-        due_at: '23/12/2026',
-        is_overdue: false,
-        overdue_days: 0,
-        renew_count: 1,
-      },
-      {
-        loan_id: 102,
-        user_id: 55,
-        name: 'ThS. Giảng Viên UTH 01',
-        card_code: 'GV2026001',
-        department: 'Khoa Kỹ thuật Giao thông',
-        book_title: 'Hệ thống Giao thông Thông minh (ITS) trong Đô thị Hiện đại',
-        barcode: 'UTH-GTVT-000006',
-        borrowed_at: '04/11/2026',
-        due_at: '05/12/2026',
-        is_overdue: false,
-        overdue_days: 0,
-        renew_count: 0,
-      },
-    ];
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const list = latestAdminStats?.lecturer_borrowers ?? [];
 
     return (
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -859,19 +845,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Tồn Kho Bản Sao ────────────────────────────────────────────
   const renderInventoryPanel = () => {
-    const stats = latestAdminStats || {
-      total_copies: 288,
-      available_copies: 271,
-      borrowed_copies: 6,
-      reserved_copies: 4,
-      damaged_copies: 4,
-      lost_copies: 1,
-      active_loans_count: 6,
-      overdue_loans_count: 3,
-      unpaid_fines_count: 2,
-      total_unpaid_amount: 217000,
-      pending_reservations: 0,
-    };
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const stats = latestAdminStats;
 
     const total = stats.total_copies || 1;
     const availPct = ((stats.available_copies / total) * 100).toFixed(1);
@@ -974,13 +949,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Sách Gần Hết Bản Sao ──────────────────────────────────────
   const renderLowStockPanel = () => {
-    const list = latestAdminStats?.low_stock_books || [
-      { id: 283, title: 'Githup', available_copies: 0, total_copies: 3, category: 'Công nghệ thông tin' },
-      { id: 201, title: 'Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại', available_copies: 0, total_copies: 2, category: 'Kỹ thuật Xây dựng Công trình Giao thông' },
-      { id: 202, title: 'Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức', available_copies: 0, total_copies: 3, category: 'Kỹ thuật Xây dựng Công trình Giao thông' },
-      { id: 236, title: 'Kỹ năng Thuyết trình Chuyên nghiệp và Hùng biện trước Công chúng', available_copies: 1, total_copies: 2, category: 'Kỹ năng Mềm & Phát triển Bản thân' },
-      { id: 235, title: 'Kỹ năng Quản trị Thời gian và Làm việc Nhóm trong Dự án Kỹ thuật', available_copies: 1, total_copies: 3, category: 'Kỹ năng Mềm & Phát triển Bản thân' },
-    ];
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const list = latestAdminStats?.low_stock_books ?? [];
 
     return (
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -1037,11 +1007,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Phiếu Phạt Chưa Thu ────────────────────────────────────────
   const renderFinesPanel = () => {
-    const stats = latestAdminStats || {
-      unpaid_fines_count: 2,
-      total_unpaid_amount: 217000,
-      unpaid_fines_list: [],
-    };
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const stats = latestAdminStats;
 
     const finesList = stats.unpaid_fines_list || [];
 
@@ -1132,12 +1099,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Top Sách Mượn Nhiều Nhất ────────────────────────────────────
   const renderTopBooksPanel = () => {
-    const list = latestAdminStats?.top_borrowed_books || [
-      { id: 202, title: 'Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức', category: 'Kỹ thuật Giao thông', total_loans: 3 },
-      { id: 201, title: 'Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại', category: 'Kỹ thuật Giao thông', total_loans: 2 },
-      { id: 283, title: 'Githup', category: 'Công nghệ thông tin', total_loans: 1 },
-      { id: 203, title: 'Hệ thống Giao thông Thông minh (ITS) trong Đô thị Hiện đại', category: 'Giao thông Đô thị', total_loans: 1 },
-    ];
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const list = latestAdminStats?.top_borrowed_books ?? [];
 
     return (
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -1197,12 +1160,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Hư Hỏng & Báo Mất ──────────────────────────────────────────
   const renderDamagedPanel = () => {
-    const list = latestAdminStats?.issue_copies_list || [
-      { id: 101, barcode: 'UTH-GTVT-000010', book_title: 'Kỹ thuật Cầu Hầm và Công trình Ngầm', status: 'Hư hỏng', status_code: 'damaged' },
-      { id: 102, barcode: 'UTH-CNTT-000045', book_title: 'An toàn Thông tin và Mạng Máy tính Nâng cao', status: 'Hư hỏng', status_code: 'damaged' },
-      { id: 103, barcode: 'UTH-KT-000088', book_title: 'Kinh tế Vận tải và Logistics Toàn cầu', status: 'Hư hỏng', status_code: 'damaged' },
-      { id: 104, barcode: 'UTH-GTVT-000099', book_title: 'Quy hoạch Tuyến Đường sắt Đô thị', status: 'Báo mất', status_code: 'lost' },
-    ];
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const list = latestAdminStats?.issue_copies_list ?? [];
 
     return (
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -1243,21 +1202,8 @@ export const AIChatWidget: React.FC = () => {
 
   // ─── Render Tab Tổng Quan Lưu Thông ─────────────────────────────────────────
   const renderOverviewPanel = () => {
-    const stats = latestAdminStats || {
-      active_loans_count: 6,
-      overdue_loans_count: 3,
-      total_copies: 288,
-      available_copies: 271,
-      borrowed_copies: 6,
-      reserved_copies: 4,
-      damaged_copies: 4,
-      lost_copies: 1,
-      unpaid_fines_count: 2,
-      total_unpaid_amount: 217000,
-      pending_reservations: 0,
-      locked_users_count: 1,
-      pending_suggestions_count: 0,
-    };
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const stats = latestAdminStats;
 
     return (
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
@@ -1843,7 +1789,7 @@ export const AIChatWidget: React.FC = () => {
                               sideTab === 'lecturers' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {latestAdminStats?.lecturer_active_loans_count ?? (latestAdminStats?.lecturer_borrowers?.length || 2)}
+                            {getAdminMetricLabel(latestAdminStats?.lecturer_active_loans_count ?? latestAdminStats?.lecturer_borrowers?.length)}
                           </span>
                         </button>
 
@@ -1862,7 +1808,7 @@ export const AIChatWidget: React.FC = () => {
                               sideTab === 'inventory' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {latestAdminStats?.total_copies || 288}
+                            {getAdminMetricLabel(latestAdminStats?.total_copies)}
                           </span>
                         </button>
 
@@ -1881,7 +1827,7 @@ export const AIChatWidget: React.FC = () => {
                               sideTab === 'low_stock' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {latestAdminStats?.low_stock_books?.length || 5}
+                            {getAdminMetricLabel(latestAdminStats?.low_stock_books?.length)}
                           </span>
                         </button>
 
@@ -1900,7 +1846,7 @@ export const AIChatWidget: React.FC = () => {
                               sideTab === 'fines' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                             }`}
                           >
-                            {latestAdminStats?.unpaid_fines_count || 2}
+                            {getAdminMetricLabel(latestAdminStats?.unpaid_fines_count)}
                           </span>
                         </button>
 

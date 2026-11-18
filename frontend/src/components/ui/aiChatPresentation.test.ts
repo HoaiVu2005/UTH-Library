@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_CHAT_REQUEST_CONFIG,
   getChatGreeting,
+  getAdminMetricLabel,
   getChatCanvasTone,
   getConversationWidthClass,
   getHistorySessionTone,
@@ -15,6 +16,12 @@ import {
 } from './aiChatPresentation';
 
 describe('AI chat presentation by role', () => {
+  it('shows an honest unavailable marker instead of fabricated admin metrics', () => {
+    expect(getAdminMetricLabel(undefined)).toBe('—');
+    expect(getAdminMetricLabel(null)).toBe('—');
+    expect(getAdminMetricLabel(0)).toBe('0');
+    expect(getAdminMetricLabel(288)).toBe('288');
+  });
   it('accepts a safe internal workflow action for the fine-management screen', () => {
     expect(normalizeChatAction({
       label: 'Mở Quản lý tiền phạt',

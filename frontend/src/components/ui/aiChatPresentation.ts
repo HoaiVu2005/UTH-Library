@@ -59,6 +59,10 @@ export function getChatGreeting(user: GreetingUser): string {
   return `Chào ${displayName}!`;
 }
 
+export function getAdminMetricLabel(value: number | null | undefined): string {
+  return value == null ? '—' : value.toLocaleString('vi-VN');
+}
+
 export function getWelcomeActions(_role: ChatRole): [] {
   return [];
 }

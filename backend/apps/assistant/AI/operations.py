@@ -177,7 +177,28 @@ def send_overdue_notice_to_student(loan_id: int):
     """
     try:
         loan = Loan.objects.select_related('book', 'user', 'copy').get(id=loan_id)
-        now = timezone.now()
+    except Loan.DoesNotExist:
+        return {
+            "success": False,
+            "error": "Không tìm thấy lượt mượn.",
+            "status_code": 404,
+        }
+
+    now = timezone.now()
+    if loan.status != LoanStatus.ACTIVE:
+        return {
+            "success": False,
+            "error": "Chỉ có thể nhắc các lượt mượn đang hoạt động.",
+            "status_code": 400,
+        }
+    if loan.due_at >= now:
+        return {
+            "success": False,
+            "error": "Lượt mượn này chưa quá hạn.",
+            "status_code": 400,
+        }
+
+    try:
         diff_days = max(1, (now - loan.due_at).days)
         today_str = timezone.localdate().strftime('%Y%m%d_%H%M%S')
         dedupe_key = f"manual_ai_overdue_{loan.id}_{today_str}"

@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
+from apps.accounts.permissions import IsAdminUserRole
 from apps.assistant.AI import (
     query_relevant_books,
     call_gemini_api,
@@ -173,14 +174,21 @@ class SendOverdueNotificationView(APIView):
     API 1-click: Thủ thư bấm nút từ khung chat AI để gửi thông báo trực tiếp
     vào tài khoản sinh viên mượn quá hạn.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUserRole]
 
     def post(self, request):
-        loan_id = request.data.get('loan_id')
-        if not loan_id:
+        raw_loan_id = request.data.get('loan_id')
+        if raw_loan_id in (None, ''):
             return Response({'error': 'Thiếu mã lượt mượn (loan_id).'}, status=status.HTTP_400_BAD_REQUEST)
 
-        result = send_overdue_notice_to_student(int(loan_id))
+        try:
+            loan_id = int(raw_loan_id)
+        except (TypeError, ValueError):
+            return Response({'error': 'Mã lượt mượn không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+        if loan_id <= 0:
+            return Response({'error': 'Mã lượt mượn không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = send_overdue_notice_to_student(loan_id)
         if result.get('success'):
             return Response(result, status=status.HTTP_200_OK)
-        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+        return Response(result, status=result.pop('status_code', status.HTTP_400_BAD_REQUEST))

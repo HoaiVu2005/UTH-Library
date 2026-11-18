@@ -1,11 +1,17 @@
 import json
 import importlib
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
+from apps.catalog.models import Book, Category, Copy
+from apps.circulation.models import Loan
+from apps.core.enums import CopyStatus, LoanStatus
+from apps.notifications.models import Notification
 from apps.assistant.AI import (
     call_gemini_api,
     classify_chat_mode,
@@ -211,6 +217,7 @@ class AIChatViewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('định kiến', response.data['reply'].lower())
         self.assertNotIn('đang đói', response.data['reply'].lower())
+
 
     @patch('apps.assistant.views.call_gemini_api', return_value=None)
     @patch('apps.assistant.views.query_relevant_books', return_value=[])
@@ -533,3 +540,86 @@ class AIChatViewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['suggested_books'], [{'id': 1}])
         query_relevant_books_mock.assert_called_once()
+
+
+class SendOverdueNotificationViewTests(APITestCase):
+    def setUp(self):
+        self.student = User.objects.create_user(
+            username='overdue-student', password='Password123',
+            full_name='Sinh viên quá hạn', card_code='SV_OVERDUE_01', role='student',
+        )
+        self.admin = User.objects.create_user(
+            username='overdue-admin', password='Password123',
+            full_name='Thủ thư kiểm thử', card_code='ADMIN_OVERDUE_01',
+            role='admin', is_staff=True,
+        )
+        category = Category.objects.create(code='AIT', name='AI Test')
+        self.book = Book.objects.create(title='Sách kiểm thử quá hạn', category=category)
+
+    def create_loan(self, *, status=LoanStatus.ACTIVE, due_at=None):
+        copy = Copy.objects.create(
+            book=self.book,
+            barcode=f'AI-NOTIFY-{Copy.objects.count() + 1}',
+            status=CopyStatus.BORROWED if status == LoanStatus.ACTIVE else CopyStatus.AVAILABLE,
+        )
+        return Loan.objects.create(
+            user=self.student,
+            copy=copy,
+            book=self.book,
+            due_at=due_at or timezone.now() - timedelta(days=2),
+            status=status,
+            returned_at=timezone.now() if status == LoanStatus.RETURNED else None,
+        )
+
+    def post_notice(self, loan_id):
+        return self.client.post(
+            reverse('ai-notify-overdue'), {'loan_id': loan_id}, format='json',
+        )
+
+    def test_anonymous_user_cannot_send_overdue_notification(self):
+        loan = self.create_loan()
+        response = self.post_notice(loan.id)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_student_cannot_send_overdue_notification(self):
+        loan = self.create_loan()
+        self.client.force_authenticate(self.student)
+        response = self.post_notice(loan.id)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_admin_receives_bad_request_for_non_numeric_loan_id(self):
+        self.client.force_authenticate(self.admin)
+        response = self.post_notice('not-a-number')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_admin_receives_not_found_for_unknown_loan(self):
+        self.client.force_authenticate(self.admin)
+        response = self.post_notice(999999)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_admin_cannot_notify_an_active_loan_that_is_not_overdue(self):
+        loan = self.create_loan(due_at=timezone.now() + timedelta(days=2))
+        self.client.force_authenticate(self.admin)
+        response = self.post_notice(loan.id)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_admin_cannot_notify_a_returned_loan(self):
+        loan = self.create_loan(status=LoanStatus.RETURNED)
+        self.client.force_authenticate(self.admin)
+        response = self.post_notice(loan.id)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Notification.objects.count(), 0)
+
+    def test_admin_can_notify_an_active_overdue_loan(self):
+        loan = self.create_loan()
+        self.client.force_authenticate(self.admin)
+        response = self.post_notice(loan.id)
+        self.assertEqual(response.status_code, 200)
+        notification = Notification.objects.get()
+        self.assertEqual(notification.user, self.student)
+        self.assertEqual(notification.type, 'overdue')

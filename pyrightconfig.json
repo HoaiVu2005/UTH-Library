@@ -5,7 +5,8 @@
   "extraPaths": [
     "backend"
   ],
-  "typeCheckingMode": "off",
-  "reportMissingImports": "none",
+  "venvPath": "backend",
+  "venv": ".venv",
+  "typeCheckingMode": "basic",
   "reportMissingTypeStubs": false
 }
