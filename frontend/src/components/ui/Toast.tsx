@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X, ExternalLink } from 'lucide-react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { Check, X, AlertTriangle, Info, ExternalLink } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -146,7 +146,7 @@ export const ToastContainer: React.FC<{
   return (
     <div
       aria-live="polite"
-      className="fixed bottom-6 right-6 z-[99999] flex flex-col gap-3 max-w-[460px] sm:max-w-[480px] w-full pointer-events-none p-3 sm:p-0"
+      className="fixed bottom-5 right-5 z-[999999] flex flex-col gap-2.5 max-w-[360px] sm:max-w-[380px] w-full pointer-events-none p-3 sm:p-0"
     >
       {toasts.map((item) => (
         <ToastCard key={item.id} item={item} onDismiss={onDismiss} />
@@ -160,45 +160,69 @@ const ToastCard: React.FC<{
   onDismiss: (id: string) => void;
 }> = ({ item, onDismiss }) => {
   const duration = item.duration ?? 4500;
+  const [isPaused, setIsPaused] = useState(false);
+  const remainingRef = useRef(duration);
+  const startRef = useRef(Date.now());
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startTimer = useCallback(() => {
+    startRef.current = Date.now();
+    timerRef.current = setTimeout(() => {
+      onDismiss(item.id);
+    }, remainingRef.current);
+  }, [item.id, onDismiss]);
 
   useEffect(() => {
     if (duration > 0) {
-      const timer = setTimeout(() => {
-        onDismiss(item.id);
-      }, duration);
-      return () => clearTimeout(timer);
+      startTimer();
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
     }
-  }, [item.id, duration, onDismiss]);
+  }, [duration, startTimer]);
 
-  // Original solid colors preserved as requested:
-  // Info: Solid Blue (#1E88E5)
-  // Error: Solid Red (#E53935)
-  // Warning: Solid Amber (#F59E0B)
-  // Success: Solid Green (#16A34A)
+  const handleMouseEnter = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      const elapsed = Date.now() - startRef.current;
+      remainingRef.current = Math.max(0, remainingRef.current - elapsed);
+    }
+    setIsPaused(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsPaused(false);
+    if (remainingRef.current > 0) {
+      startTimer();
+    } else {
+      onDismiss(item.id);
+    }
+  };
+
+  // React-toastify colored theme color palette & crisp white circular icons
   const config = {
     info: {
-      cardBg: 'bg-[#1E88E5]',
-      shadow: 'shadow-xl shadow-blue-950/20',
+      cardBg: 'bg-[#3498db]',
+      iconColor: 'text-[#3498db]',
       Icon: Info,
     },
     error: {
-      cardBg: 'bg-[#E53935]',
-      shadow: 'shadow-xl shadow-red-950/20',
-      Icon: AlertCircle,
+      cardBg: 'bg-[#e74c3c]',
+      iconColor: 'text-[#e74c3c]',
+      Icon: X,
     },
     warning: {
-      cardBg: 'bg-[#F59E0B]',
-      shadow: 'shadow-xl shadow-amber-950/20',
+      cardBg: 'bg-[#f1c40f]',
+      iconColor: 'text-[#f1c40f]',
       Icon: AlertTriangle,
     },
     success: {
-      cardBg: 'bg-[#16A34A]',
-      shadow: 'shadow-xl shadow-green-950/20',
-      Icon: CheckCircle2,
+      cardBg: 'bg-[#07bc0c]',
+      iconColor: 'text-[#07bc0c]',
+      Icon: Check,
     },
   }[item.type];
-
-  const Icon = config.Icon;
 
   // Clean title: Filter generic words
   const rawTitle = item.title ? item.title.replace(/[✨🎉⚠️⏰🔔📦📚ℹ️]/g, '').trim() : '';
@@ -220,28 +244,30 @@ const ToastCard: React.FC<{
 
   return (
     <div
-      className={`pointer-events-auto w-full text-white rounded-2xl ${config.cardBg} ${config.shadow} px-5 py-4 min-h-[82px] flex items-start gap-4 transition-all transform animate-in slide-in-from-bottom-3 slide-in-from-right-3 fade-in duration-200 relative overflow-hidden select-none border border-white/20`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`pointer-events-auto w-full text-white rounded-md ${config.cardBg} shadow-lg shadow-black/15 px-4 py-3 min-h-[58px] flex items-center gap-3 transition-all transform animate-in slide-in-from-right-full fade-in duration-250 relative overflow-hidden select-none`}
       role="alert"
     >
-      {/* Icon in translucent badge */}
-      <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 shadow-inner mt-0.5">
-        <Icon className="w-5 h-5 text-white" />
+      {/* Crisp White Circle Badge with Colored Symbol */}
+      <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shrink-0 shadow-xs self-start mt-0.5 sm:self-center sm:mt-0">
+        <config.Icon className={`w-3.5 h-3.5 stroke-[3] ${config.iconColor}`} />
       </div>
 
-      {/* Content Area - Spacious & well-formatted */}
+      {/* Content Area */}
       <div className="flex-1 min-w-0 pr-1 py-0.5">
         {!isGenericTitle && rawTitle && (
-          <h5 className="text-[14px] font-bold text-white tracking-tight leading-snug">
+          <h5 className="text-[13px] font-bold text-white tracking-tight leading-snug mb-0.5">
             {rawTitle}
           </h5>
         )}
-        <div className={`text-xs sm:text-[13px] text-white/95 leading-relaxed ${!isGenericTitle && rawTitle ? 'mt-1' : ''} line-clamp-3`}>
+        <div className="text-[13.5px] font-medium text-white leading-snug break-words">
           {cleanMessage}
         </div>
 
-        {/* Action Link / Button */}
+        {/* Action Link / Button if present */}
         {(item.link || item.onAction) && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-1.5 flex items-center gap-2">
             {item.link ? (
               <a
                 href={item.link}
@@ -255,10 +281,10 @@ const ToastCard: React.FC<{
                     window.location.href = item.link;
                   }
                 }}
-                className="text-xs font-bold text-white underline underline-offset-4 hover:text-white/80 inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="text-xs font-bold text-white underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-1 cursor-pointer transition-opacity"
               >
                 <span>{item.actionText || 'Xem chi tiết'}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3 h-3" />
               </a>
             ) : item.onAction ? (
               <button
@@ -267,7 +293,7 @@ const ToastCard: React.FC<{
                   item.onAction?.();
                   onDismiss(item.id);
                 }}
-                className="text-xs font-bold text-white underline underline-offset-4 hover:text-white/80 inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                className="text-xs font-bold text-white underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-1 cursor-pointer transition-opacity"
               >
                 <span>{item.actionText || 'Xử lý ngay'}</span>
               </button>
@@ -280,20 +306,23 @@ const ToastCard: React.FC<{
       <button
         type="button"
         onClick={() => onDismiss(item.id)}
-        className="w-7 h-7 rounded-lg text-white/80 hover:text-white hover:bg-white/20 flex items-center justify-center transition-colors shrink-0 -mr-1 mt-0.5 cursor-pointer"
+        className="w-5 h-5 text-white/75 hover:text-white flex items-center justify-center shrink-0 ml-auto transition-opacity cursor-pointer self-start -mr-1"
         aria-label="Đóng thông báo"
       >
-        <X className="w-4 h-4" />
+        <X className="w-4 h-4 stroke-[2.5]" />
       </button>
 
-      {/* Subtle Progress Bar */}
+      {/* Bottom Progress Bar */}
       {duration > 0 && (
-        <div
-          className="absolute bottom-0 left-0 h-1 w-full bg-white/25"
-          style={{
-            animation: `shrinkWidth ${duration}ms linear forwards`,
-          }}
-        />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10 overflow-hidden">
+          <div
+            className="h-full bg-white/40"
+            style={{
+              animation: `shrinkWidth ${duration}ms linear forwards`,
+              animationPlayState: isPaused ? 'paused' : 'running',
+            }}
+          />
+        </div>
       )}
     </div>
   );

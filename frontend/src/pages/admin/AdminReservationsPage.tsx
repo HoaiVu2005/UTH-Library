@@ -32,7 +32,8 @@ import { Barcode } from '@/components/ui/Barcode';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 import { toast } from '@/components/ui/Toast';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
-import { cn, formatDateVN } from '@/lib/utils';
+import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
+import { cn, formatDateVN, isDateToday } from '@/lib/utils';
 
 interface ReservationItem {
   id: number;
@@ -81,6 +82,9 @@ export const AdminReservationsPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(5);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [dateFilter, setDateFilter] = useState<{ preset: DatePreset; customDate?: string }>({
+    preset: 'all',
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [advancingId, setAdvancingId] = useState<number | null>(null);
 
@@ -91,12 +95,29 @@ export const AdminReservationsPage: React.FC = () => {
 
   // Barcode detail modal
   const [barcodeModalItem, setBarcodeModalItem] = useState<ReservationItem | null>(null);
+  const [isExpiring, setIsExpiring] = useState<boolean>(false);
+
+  const handleExpireStale = async () => {
+    try {
+      setIsExpiring(true);
+      const res = await api.post('/reservations/expire-stale');
+      toast.success(res.data?.detail || 'Đã quét và xử lý thành công.');
+      fetchReservations();
+      broadcastRealtimeSync('reservations');
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Lỗi khi quét xử lý giữ chỗ quá hạn.');
+    } finally {
+      setIsExpiring(false);
+    }
+  };
 
   const fetchReservations = useCallback(async (isBackground = false) => {
     try {
       if (!isBackground) setIsLoading(true);
       let url = `/reservations/all?page=${page}&page_size=${pageSize}`;
       if (statusFilter) url += `&status=${statusFilter}`;
+      if (dateFilter.preset !== 'all') url += `&date_preset=${dateFilter.preset}`;
+      if (dateFilter.customDate) url += `&date=${dateFilter.customDate}`;
       if (appliedSearch.trim()) url += `&search=${encodeURIComponent(appliedSearch.trim())}`;
 
       const res = await api.get(url);
@@ -110,14 +131,21 @@ export const AdminReservationsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, statusFilter, appliedSearch]);
+  }, [page, pageSize, statusFilter, dateFilter, appliedSearch]);
 
   useEffect(() => {
     fetchReservations();
   }, [fetchReservations]);
 
+  const handleDateFilterChange = (newVal: { preset: DatePreset; customDate?: string }) => {
+    setDateFilter(newVal);
+    setPage(1);
+  };
+
   // Realtime synchronization: updates live when holds/reservations change
-  useRealtimeSync('reservations', () => fetchReservations(true), 5000);
+  useRealtimeSync('reservations', () => {
+    fetchReservations(true);
+  }, 5000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +248,7 @@ export const AdminReservationsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Hàng chờ Đặt trước (Reservations)</span>
+              <span>Hàng chờ Đặt trước</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Theo dõi sách đang giữ tại quầy (quy định 3 ngày) và điều phối thứ tự hàng chờ của bạn đọc
@@ -229,6 +257,15 @@ export const AdminReservationsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <button
+            onClick={handleExpireStale}
+            disabled={isExpiring || isLoading}
+            className="text-xs h-9 px-3.5 border border-amber-300 text-amber-800 hover:bg-amber-100/70 rounded-xl bg-amber-50/70 transition-colors inline-flex items-center gap-1.5 shadow-2xs font-semibold cursor-pointer disabled:opacity-50 shrink-0"
+            title="Tự động hủy các yêu cầu giữ chỗ quá hạn 3 ngày và chuyển tiếp bản sao cho bạn đọc kế tiếp"
+          >
+            <Clock className={cn('w-3.5 h-3.5 text-amber-600', isExpiring && 'animate-spin')} />
+            <span>Quét hết hạn (3 ngày)</span>
+          </button>
           <button
             onClick={() => fetchReservations()}
             disabled={isLoading}
@@ -251,87 +288,92 @@ export const AdminReservationsPage: React.FC = () => {
       {/* Filter and Search Bar */}
       <Card className="shadow-xs border-gray-200/80">
         <CardContent className="p-4 space-y-3">
-          {/* Segmented Filter Tabs: Soft Outline Pills */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
-            <button
-              onClick={() => {
-                setStatusFilter('ready');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'ready'
-                  ? 'bg-teal-50 text-brand border-brand shadow-2xs'
-                  : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
-              )}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Đang giữ chỗ (Ready)</span>
-            </button>
+          {/* Segmented Filter Tabs & Date Filter */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setStatusFilter('ready');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'ready'
+                    ? 'bg-teal-50 text-brand border-brand shadow-2xs font-bold'
+                    : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Đang giữ chỗ</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('pending');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'pending'
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                  : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
-              )}
-            >
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>Hàng chờ (Pending)</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('pending');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'pending'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs font-bold'
+                    : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
+                )}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Hàng chờ</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('fulfilled');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'fulfilled'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
-                  : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
-              )}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Đã nhận sách</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('fulfilled');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'fulfilled'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                    : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
+                )}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đã nhận sách</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('expired');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'expired'
-                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
-                  : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
-              )}
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Hết hạn giữ</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('expired');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'expired'
+                    ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs font-bold'
+                    : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
+                )}
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Hết hạn giữ</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === ''
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
-                  : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tất cả</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === ''
+                    ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs font-bold'
+                    : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
+                <span>Tất cả</span>
+              </button>
+            </div>
+
+            {/* Date Filter */}
+            <DateFilter value={dateFilter} onChange={handleDateFilterChange} />
           </div>
 
           {/* Search Controls & Pagination Limit */}
@@ -446,15 +488,31 @@ export const AdminReservationsPage: React.FC = () => {
                     <TableRow key={r.id} className="hover:bg-teal-50/15 transition-colors">
                       {/* ID */}
                       <TableCell className="font-mono text-gray-400 text-xs">
-                        #{r.id}
+                        <div>#{r.id}</div>
+                        {isDateToday(r.created_at) && (
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            Hôm nay
+                          </span>
+                        )}
                       </TableCell>
 
                       {/* Patron: Re-formatted with role badge at the outer edge */}
                       <TableCell>
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70">
-                              {firstChar}
+                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden">
+                              {(r.patron_avatar || r.user?.avatar) ? (
+                                <img
+                                  src={r.patron_avatar || r.user?.avatar}
+                                  alt={patronName}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <span className={(r.patron_avatar || r.user?.avatar) ? 'hidden' : ''}>{firstChar}</span>
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-800 text-xs truncate" title={patronName}>
@@ -481,11 +539,50 @@ export const AdminReservationsPage: React.FC = () => {
                         </div>
                       </TableCell>
 
-                      {/* Book: ONLY document title */}
-                      <TableCell>
-                        <p className="font-medium text-gray-800 text-xs line-clamp-2 max-w-md" title={bookTitle}>
-                          {bookTitle}
-                        </p>
+                      {/* Book: Document title & cover image */}
+                      <TableCell className="max-w-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-11 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs relative">
+                            {(r.book_cover || r.book?.cover_image) ? (
+                              <img
+                                src={r.book_cover || r.book?.cover_image}
+                                alt={bookTitle}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.style.display = 'none';
+                                  const fallback = target.parentElement?.querySelector('.book-fallback-icon');
+                                  if (fallback) fallback.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={cn('book-fallback-icon flex items-center justify-center', (r.book_cover || r.book?.cover_image) ? 'hidden' : '')}>
+                              <BookOpen className="w-3.5 h-3.5 text-slate-300" />
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            {r.book?.id ? (
+                              <Link
+                                to={`/books/${r.book.id}`}
+                                className="font-medium text-gray-800 hover:text-brand transition-colors text-xs line-clamp-2 leading-snug block"
+                                title={bookTitle}
+                              >
+                                {bookTitle}
+                              </Link>
+                            ) : (
+                              <p className="font-medium text-gray-800 text-xs line-clamp-2 leading-snug" title={bookTitle}>
+                                {bookTitle}
+                              </p>
+                            )}
+                            {(r.book_isbn || r.book?.isbn) && (
+                              <p className="font-mono text-[10.5px] text-gray-400 mt-0.5">
+                                ISBN: {r.book_isbn || r.book?.isbn}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
 
                       {/* Barcode: Outline Button "Xem" */}

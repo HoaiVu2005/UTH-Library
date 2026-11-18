@@ -33,14 +33,19 @@ import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { toast } from '@/components/ui/Toast';
-import { cn, formatDateVN } from '@/lib/utils';
+import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
+import { cn, formatDateVN, isDateToday, getRemainingDays } from '@/lib/utils';
 
 interface LoanRecord {
   id: number;
+  book?: number;
   patron_name: string;
   patron_card_code: string;
   patron_role: string;
+  patron_avatar?: string;
   book_title: string;
+  cover_image?: string;
+  category_name?: string;
   copy_barcode: string;
   shelf_location: string;
   borrowed_at: string;
@@ -84,6 +89,11 @@ export const LoansManagementPage: React.FC = () => {
     lost: 0,
   });
 
+  // Date Filter state
+  const [dateFilter, setDateFilter] = useState<{ preset: DatePreset; customDate?: string }>({
+    preset: 'all',
+  });
+
   // Action states
   const [selectedLoan, setSelectedLoan] = useState<LoanRecord | null>(null);
   const [actionType, setActionType] = useState<'renew' | 'lost' | null>(null);
@@ -112,6 +122,14 @@ export const LoansManagementPage: React.FC = () => {
         params.append('search', appliedSearch.trim());
       }
 
+      // Date Filtering
+      if (dateFilter.preset !== 'all') {
+        params.append('date_preset', dateFilter.preset);
+      }
+      if (dateFilter.customDate) {
+        params.append('date', dateFilter.customDate);
+      }
+
       params.append('page', page.toString());
       params.append('page_size', pageSize.toString());
 
@@ -138,11 +156,16 @@ export const LoansManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, appliedSearch, page, pageSize]);
+  }, [activeTab, appliedSearch, dateFilter, page, pageSize]);
 
   useEffect(() => {
     fetchLoans();
   }, [fetchLoans]);
+
+  const handleDateFilterChange = (newVal: { preset: DatePreset; customDate?: string }) => {
+    setDateFilter(newVal);
+    setPage(1);
+  };
 
   // Realtime synchronization: updates live when checkout, return, or renew happens
   useRealtimeSync('loans', () => fetchLoans(true), 5000);
@@ -247,10 +270,7 @@ export const LoansManagementPage: React.FC = () => {
   };
 
   const getDaysRemaining = (dueAt: string) => {
-    const now = new Date();
-    const due = new Date(dueAt);
-    const diffMs = due.getTime() - now.getTime();
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    return getRemainingDays(dueAt);
   };
 
   // Convert patron role to compact abbreviation: SV, GV, AD
@@ -301,178 +321,85 @@ export const LoansManagementPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Stat Cards (Clickable Filter Shortcuts) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {/* Total */}
-        <button
-          onClick={() => handleTabChange('all')}
-          className={cn(
-            'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-gray-300',
-            activeTab === 'all'
-              ? 'border-brand bg-teal-50/20'
-              : 'border-gray-200/80'
-          )}
-        >
-          <div className="flex items-center justify-between text-gray-500 text-xs font-medium">
-            <span>Tất cả phiếu mượn</span>
-            <Layers className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-gray-800 tracking-tight">{counts.total}</div>
-          <p className="text-[11px] text-gray-400 mt-0.5">Lịch sử toàn hệ thống</p>
-        </button>
-
-        {/* Active */}
-        <button
-          onClick={() => handleTabChange('active')}
-          className={cn(
-            'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-teal-300',
-            activeTab === 'active'
-              ? 'border-brand bg-teal-50/30'
-              : 'border-gray-200/80'
-          )}
-        >
-          <div className="flex items-center justify-between text-teal-700 text-xs font-medium">
-            <span>Đang mượn</span>
-            <BookOpen className="w-4 h-4 text-brand" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-brand tracking-tight">{counts.active}</div>
-          <p className="text-[11px] text-teal-600/70 mt-0.5">Sách bạn đọc đang giữ</p>
-        </button>
-
-        {/* Overdue */}
-        <button
-          onClick={() => handleTabChange('overdue')}
-          className={cn(
-            'p-3.5 rounded-xl border text-left transition-all duration-150 relative shadow-2xs hover:border-red-300',
-            activeTab === 'overdue'
-              ? 'border-red-500 bg-red-50/30'
-              : counts.overdue > 0
-                ? 'bg-red-50/20 border-red-200'
-                : 'bg-white border-gray-200/80'
-          )}
-        >
-          <div className="flex items-center justify-between text-red-600 text-xs font-semibold">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-              Sách quá hạn
-            </span>
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-red-600 tracking-tight">{counts.overdue}</div>
-          <p className="text-[11px] text-red-500/80 mt-0.5 font-medium">Cần nhắc trả & thu phạt</p>
-        </button>
-
-        {/* Returned */}
-        <button
-          onClick={() => handleTabChange('returned')}
-          className={cn(
-            'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-emerald-300',
-            activeTab === 'returned'
-              ? 'border-emerald-500 bg-emerald-50/20'
-              : 'border-gray-200/80'
-          )}
-        >
-          <div className="flex items-center justify-between text-emerald-700 text-xs font-medium">
-            <span>Đã hoàn trả</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-emerald-600 tracking-tight">{counts.returned}</div>
-          <p className="text-[11px] text-emerald-600/70 mt-0.5">Đã nhập kho lưu trữ</p>
-        </button>
-
-        {/* Lost */}
-        <button
-          onClick={() => handleTabChange('lost')}
-          className={cn(
-            'p-3.5 rounded-xl border text-left transition-all duration-150 relative bg-white shadow-2xs hover:border-gray-300',
-            activeTab === 'lost'
-              ? 'border-gray-600 bg-gray-50'
-              : 'border-gray-200/80'
-          )}
-        >
-          <div className="flex items-center justify-between text-gray-600 text-xs font-medium">
-            <span>Báo mất tài liệu</span>
-            <XCircle className="w-4 h-4 text-gray-400" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-gray-700 tracking-tight">{counts.lost}</div>
-          <p className="text-[11px] text-gray-400 mt-0.5">Đang xử lý bồi thường</p>
-        </button>
-      </div>
-
       {/* Filter and Search Bar */}
       <Card className="shadow-xs border-gray-200/80">
         <CardContent className="p-4 space-y-3">
-          {/* Segmented Filter Tabs: Soft Colored Pills like Sách quá hạn */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
-            {/* Tất cả */}
-            <button
-              onClick={() => handleTabChange('all')}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                activeTab === 'all'
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
-                  : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tất cả ({counts.total})</span>
-            </button>
+          {/* Segmented Filter Tabs & Date Filter */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Tất cả */}
+              <button
+                onClick={() => handleTabChange('all')}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  activeTab === 'all'
+                    ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
+                    : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
+                <span>Tất cả ({counts.total})</span>
+              </button>
 
-            {/* Đang mượn */}
-            <button
-              onClick={() => handleTabChange('active')}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                activeTab === 'active'
-                  ? 'bg-teal-50 text-brand border-brand shadow-2xs'
-                  : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
-              )}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Đang mượn ({counts.active})</span>
-            </button>
+              {/* Đang mượn */}
+              <button
+                onClick={() => handleTabChange('active')}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  activeTab === 'active'
+                    ? 'bg-teal-50 text-brand border-brand shadow-2xs'
+                    : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Đang mượn ({counts.active})</span>
+              </button>
 
-            {/* Sách quá hạn */}
-            <button
-              onClick={() => handleTabChange('overdue')}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                activeTab === 'overdue'
-                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
-                  : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
-              )}
-            >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Sách quá hạn ({counts.overdue})</span>
-            </button>
+              {/* Sách quá hạn */}
+              <button
+                onClick={() => handleTabChange('overdue')}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  activeTab === 'overdue'
+                    ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
+                    : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
+                )}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Sách quá hạn ({counts.overdue})</span>
+              </button>
 
-            {/* Đã trả */}
-            <button
-              onClick={() => handleTabChange('returned')}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                activeTab === 'returned'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
-                  : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
-              )}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Đã trả ({counts.returned})</span>
-            </button>
+              {/* Đã trả */}
+              <button
+                onClick={() => handleTabChange('returned')}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  activeTab === 'returned'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
+                    : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
+                )}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đã trả ({counts.returned})</span>
+              </button>
 
-            {/* Báo mất */}
-            <button
-              onClick={() => handleTabChange('lost')}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                activeTab === 'lost'
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                  : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
-              )}
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Báo mất ({counts.lost})</span>
-            </button>
+              {/* Báo mất */}
+              <button
+                onClick={() => handleTabChange('lost')}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  activeTab === 'lost'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                    : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
+                )}
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Báo mất ({counts.lost})</span>
+              </button>
+            </div>
+
+            {/* Date Filter: Presets (Hôm nay, 7 ngày qua, Tháng này) + Date Picker */}
+            <DateFilter value={dateFilter} onChange={handleDateFilterChange} />
           </div>
 
           {/* Search Controls & Pagination Limit */}
@@ -610,8 +537,18 @@ export const LoansManagementPage: React.FC = () => {
                       <TableCell>
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70">
-                              {firstChar}
+                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden">
+                              {l.patron_avatar ? (
+                                <img
+                                  src={l.patron_avatar}
+                                  alt={l.patron_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <span className={l.patron_avatar ? 'hidden' : ''}>{firstChar}</span>
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-800 text-xs truncate" title={l.patron_name}>
@@ -638,11 +575,50 @@ export const LoansManagementPage: React.FC = () => {
                         </div>
                       </TableCell>
 
-                      {/* Book: ONLY document title (removed shelf location) */}
-                      <TableCell>
-                        <p className="font-medium text-gray-800 text-xs line-clamp-2 max-w-md" title={l.book_title}>
-                          {l.book_title}
-                        </p>
+                      {/* Book: Document title & cover image */}
+                      <TableCell className="max-w-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-11 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs relative">
+                            {l.cover_image ? (
+                              <img
+                                src={l.cover_image}
+                                alt={l.book_title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.style.display = 'none';
+                                  const fallback = target.parentElement?.querySelector('.book-fallback-icon');
+                                  if (fallback) fallback.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={cn('book-fallback-icon flex items-center justify-center', l.cover_image ? 'hidden' : '')}>
+                              <BookOpen className="w-3.5 h-3.5 text-slate-300" />
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            {l.book ? (
+                              <Link
+                                to={`/books/${l.book}`}
+                                className="font-medium text-gray-800 hover:text-brand transition-colors text-xs line-clamp-2 leading-snug block"
+                                title={l.book_title}
+                              >
+                                {l.book_title}
+                              </Link>
+                            ) : (
+                              <p className="font-medium text-gray-800 text-xs line-clamp-2 leading-snug" title={l.book_title}>
+                                {l.book_title}
+                              </p>
+                            )}
+                            {l.category_name && (
+                              <p className="text-[10.5px] text-gray-400 mt-0.5">
+                                {l.category_name}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
 
                       {/* Barcode: ONLY the "Xem" button (removed UTH string) */}

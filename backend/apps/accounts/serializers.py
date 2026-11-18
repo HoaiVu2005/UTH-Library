@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User, StudentRoster, StudentStatus, PaymentTransaction, PaymentMethod, TransactionStatus, TransactionType
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True, trim_whitespace=True)
@@ -98,3 +98,33 @@ class UserCreateAdminSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+class StudentRosterSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    card_code = serializers.CharField(source='user.card_code', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+
+    class Meta:
+        model = StudentRoster
+        fields = [
+            'id', 'student_code', 'full_name', 'department', 'major', 'class_name',
+            'email', 'phone', 'academic_year', 'status', 'status_display',
+            'is_card_issued', 'card_code', 'user_id', 'created_at',
+        ]
+
+class PaymentTransactionSerializer(serializers.ModelSerializer):
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    collected_by_name = serializers.CharField(source='collected_by.full_name', read_only=True)
+    card_code = serializers.CharField(source='user.card_code', read_only=True)
+    department = serializers.CharField(source='user.department', read_only=True)
+
+    class Meta:
+        model = PaymentTransaction
+        fields = [
+            'id', 'transaction_code', 'receipt_code', 'transaction_type', 'transaction_type_display',
+            'user', 'student_code', 'payer_name', 'amount', 'payment_method', 'payment_method_display',
+            'status', 'status_display', 'collected_by', 'collected_by_name', 'collected_at',
+            'card_code', 'department', 'note', 'created_at',
+        ]

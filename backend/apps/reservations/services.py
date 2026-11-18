@@ -281,3 +281,68 @@ def advance_reservation(reservation_id: int, admin_user: User, request=None) -> 
         )
 
         return reservation
+
+def expire_stale_reservations(admin_user: User = None, request=None) -> dict:
+    """
+    Tự động quét và hủy các yêu cầu đặt trước (giữ chỗ) đã quá thời hạn 3 ngày tại quầy
+    mà bạn đọc không đến nhận. Bản sao sách sẽ được chuyển tiếp tự động cho bạn đọc
+    kế tiếp trong hàng chờ, hoặc chuyển về trạng thái sẵn sàng (available) nếu không còn ai.
+    """
+    now = timezone.now()
+    hold_days = 3
+
+    expired_count = 0
+    forwarded_count = 0
+    expired_ids = []
+
+    stale_reservations = Reservation.objects.filter(
+        status=ReservationStatus.READY
+    ).select_related('copy', 'book', 'user')
+
+    for res in stale_reservations:
+        deadline = res.hold_expires_at or (res.ready_at + timedelta(days=hold_days) if res.ready_at else res.created_at + timedelta(days=hold_days))
+        if deadline <= now:
+            with transaction.atomic():
+                locked_res = Reservation.objects.select_for_update().filter(id=res.id, status=ReservationStatus.READY).first()
+                if not locked_res:
+                    continue
+
+                locked_res.status = ReservationStatus.EXPIRED
+                locked_res.cancel_reason = f'Tự động hủy do quá hạn nhận sách ({hold_days} ngày) tại quầy.'
+                record_no_show_and_check_lockout(locked_res.user)
+                locked_res.save(update_fields=['status', 'cancel_reason', 'no_show_counted'])
+
+                has_next_in_queue = False
+                if locked_res.copy:
+                    copy = Copy.objects.select_for_update().get(id=locked_res.copy.id)
+                    next_pending = Reservation.objects.filter(
+                        book_id=locked_res.book_id,
+                        status=ReservationStatus.PENDING
+                    ).exists()
+                    if next_pending:
+                        has_next_in_queue = True
+                        forwarded_count += 1
+                    process_reservation_queue_for_copy(copy)
+
+                log_action(
+                    user=admin_user or locked_res.user,
+                    action='EXPIRE_RESERVATION',
+                    entity_type='Reservation',
+                    entity_id=locked_res.id,
+                    detail={
+                        'reason': locked_res.cancel_reason,
+                        'copy_id': locked_res.copy_id,
+                        'forwarded_to_next': has_next_in_queue
+                    },
+                    request=request
+                )
+
+                expired_count += 1
+                expired_ids.append(locked_res.id)
+
+    return {
+        'expired_count': expired_count,
+        'forwarded_count': forwarded_count,
+        'expired_ids': expired_ids
+    }
+

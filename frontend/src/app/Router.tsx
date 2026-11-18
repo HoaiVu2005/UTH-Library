@@ -83,6 +83,14 @@ export const ProtectedRoute: React.FC<{ allowedRoles?: string[] }> = ({ allowedR
   return <Outlet />;
 };
 
+const AdminIndexRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (user?.role === 'librarian') {
+    return <Navigate to="/admin/circulation" replace />;
+  }
+  return <Navigate to="/admin/dashboard" replace />;
+};
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -102,7 +110,7 @@ export const router = createBrowserRouter([
 
       // Patron Protected Routes (Giao 4)
       {
-        element: <ProtectedRoute allowedRoles={['student', 'lecturer', 'admin']} />,
+        element: <ProtectedRoute allowedRoles={['student', 'lecturer', 'librarian', 'admin']} />,
         children: [
           { path: 'dashboard', element: <DashboardPage /> },
           { path: 'loans', element: <MyLoansPage /> },
@@ -114,12 +122,12 @@ export const router = createBrowserRouter([
         ],
       },
 
-      // Admin Protected Routes (Giao 3 & 5)
+      // Admin & Librarian Staff Routes (Giao 3 & 5)
       {
         path: 'admin',
-        element: <ProtectedRoute allowedRoles={['admin']} />,
+        element: <ProtectedRoute allowedRoles={['admin', 'librarian']} />,
         children: [
-          { path: 'dashboard', element: <AdminDashboardPage /> },
+          { index: true, element: <AdminIndexRedirect /> },
           { path: 'circulation', element: <CirculationDeskPage /> },
           { path: 'books', element: <BooksManagementPage /> },
           { path: 'copies', element: <CopiesManagementPage /> },
@@ -128,10 +136,16 @@ export const router = createBrowserRouter([
           { path: 'loans', element: <LoansManagementPage /> },
           { path: 'reservations', element: <AdminReservationsPage /> },
           { path: 'fines', element: <FinesManagementPage /> },
-          { path: 'suggestions', element: <SuggestionsReviewPage /> },
           { path: 'reports', element: <ReportsPage /> },
-          { path: 'settings', element: <SystemSettingsPage /> },
-          { path: 'audit', element: <AuditLogsPage /> },
+          {
+            element: <ProtectedRoute allowedRoles={['admin']} />,
+            children: [
+              { path: 'dashboard', element: <AdminDashboardPage /> },
+              { path: 'suggestions', element: <SuggestionsReviewPage /> },
+              { path: 'settings', element: <SystemSettingsPage /> },
+              { path: 'audit', element: <AuditLogsPage /> },
+            ],
+          },
         ],
       },
 

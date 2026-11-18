@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/components/ui/Toast';
-import { cn, formatDateVN } from '@/lib/utils';
+import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
+import { cn, formatDateVN, isDateToday } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
@@ -33,6 +34,7 @@ interface SuggestionItem {
     card_code: string;
     role?: string;
     department?: string;
+    avatar?: string;
   };
   reviewed_by?: {
     full_name: string;
@@ -48,6 +50,9 @@ export const SuggestionsReviewPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(5);
   const [totalRecords, setTotalRecords] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [dateFilter, setDateFilter] = useState<{ preset: DatePreset; customDate?: string }>({
+    preset: 'all',
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Modal State for Approve/Reject Note
@@ -60,6 +65,8 @@ export const SuggestionsReviewPage: React.FC = () => {
       if (isInitial) setIsLoading(true);
       let url = `/suggestions?page=${page}&page_size=${pageSize}`;
       if (statusFilter) url += `&status=${statusFilter}`;
+      if (dateFilter.preset !== 'all') url += `&date_preset=${dateFilter.preset}`;
+      if (dateFilter.customDate) url += `&date=${dateFilter.customDate}`;
       if (appliedSearch.trim()) url += `&search=${encodeURIComponent(appliedSearch.trim())}`;
 
       const res = await api.get(url);
@@ -71,14 +78,21 @@ export const SuggestionsReviewPage: React.FC = () => {
     } finally {
       if (isInitial) setIsLoading(false);
     }
-  }, [page, pageSize, statusFilter, appliedSearch]);
+  }, [page, pageSize, statusFilter, dateFilter, appliedSearch]);
+
+  const handleDateFilterChange = (newVal: { preset: DatePreset; customDate?: string }) => {
+    setDateFilter(newVal);
+    setPage(1);
+  };
 
   useEffect(() => {
     fetchSuggestions(true);
   }, [fetchSuggestions]);
 
   // Realtime synchronization: updates live when student submits or actions occur
-  useRealtimeSync('suggestions', () => fetchSuggestions(false), 4000);
+  useRealtimeSync('suggestions', () => {
+    fetchSuggestions(false);
+  }, 4000);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +183,7 @@ export const SuggestionsReviewPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Duyệt Đề xuất Mua sách mới (Suggestions)</span>
+              <span>Duyệt Đề xuất mua sách</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Xem xét các yêu cầu bổ sung giáo trình, tài liệu chuyên ngành từ sinh viên và giảng viên UTH
@@ -193,97 +207,102 @@ export const SuggestionsReviewPage: React.FC = () => {
       {/* Filter and Search Bar */}
       <Card className="shadow-xs border-gray-200/80">
         <CardContent className="p-4 space-y-3">
-          {/* Segmented Filter Tabs: Soft Colored Pills */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
-            {/* Chờ duyệt */}
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('pending');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'pending'
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                  : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
-              )}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Chờ duyệt (Pending)</span>
-            </button>
+          {/* Segmented Filter Tabs & Date Filter */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Chờ duyệt */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('pending');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'pending'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs font-bold'
+                    : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Chờ duyệt</span>
+              </button>
 
-            {/* Đã duyệt */}
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('approved');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'approved'
-                  ? 'bg-blue-50 text-blue-800 border-blue-300 shadow-2xs'
-                  : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
-              )}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Đã duyệt (Approved)</span>
-            </button>
+              {/* Đã duyệt */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('approved');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'approved'
+                    ? 'bg-blue-50 text-blue-800 border-blue-300 shadow-2xs font-bold'
+                    : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
+                )}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đã duyệt</span>
+              </button>
 
-            {/* Đã nhập kho */}
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('received');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'received'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
-                  : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
-              )}
-            >
-              <PackageCheck className="w-3.5 h-3.5" />
-              <span>Đã nhập kho (Received)</span>
-            </button>
+              {/* Đã nhập kho */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('received');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'received'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                    : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
+                )}
+              >
+                <PackageCheck className="w-3.5 h-3.5" />
+                <span>Đã nhập kho</span>
+              </button>
 
-            {/* Đã từ chối */}
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('rejected');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'rejected'
-                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
-                  : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
-              )}
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span>Đã từ chối (Rejected)</span>
-            </button>
+              {/* Đã từ chối */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('rejected');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'rejected'
+                    ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs font-bold'
+                    : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
+                )}
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Đã từ chối</span>
+              </button>
 
-            {/* Tất cả */}
-            <button
-              type="button"
-              onClick={() => {
-                setStatusFilter('');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === ''
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
-                  : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tất cả</span>
-            </button>
+              {/* Tất cả */}
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === ''
+                    ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs font-bold'
+                    : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
+                <span>Tất cả</span>
+              </button>
+            </div>
+
+            {/* Date Filter */}
+            <DateFilter value={dateFilter} onChange={handleDateFilterChange} />
           </div>
 
           {/* Search Controls & Pagination Limit */}
@@ -397,7 +416,15 @@ export const SuggestionsReviewPage: React.FC = () => {
                   return (
                     <TableRow key={s.id} className="hover:bg-teal-50/15 transition-colors">
                       {/* ID */}
-                      <TableCell className="font-mono text-gray-400 text-xs">#{s.id}</TableCell>
+                      <TableCell className="font-mono text-gray-400 text-xs">
+                        <div>#{s.id}</div>
+                        {isDateToday(s.created_at) && (
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold bg-rose-50 text-rose-600 border border-rose-200 shadow-2xs whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                            Hôm nay
+                          </span>
+                        )}
+                      </TableCell>
 
                       {/* Title & Author */}
                       <TableCell className="max-w-xs">
@@ -411,8 +438,18 @@ export const SuggestionsReviewPage: React.FC = () => {
                       <TableCell>
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70">
-                              {firstChar}
+                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden">
+                              {s.user?.avatar ? (
+                                <img
+                                  src={s.user.avatar}
+                                  alt={s.user.full_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <span className={s.user?.avatar ? 'hidden' : ''}>{firstChar}</span>
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-800 text-xs truncate" title={s.user?.full_name}>
@@ -442,7 +479,7 @@ export const SuggestionsReviewPage: React.FC = () => {
                       {/* Reason */}
                       <TableCell className="max-w-xs">
                         <p className="text-gray-700 line-clamp-2 text-xs">{s.reason}</p>
-                        <span className="text-[10px] text-gray-400 block mt-1">
+                        <span className="text-[10px] block mt-1 text-gray-400">
                           Ngày gửi: {formatDateVN(s.created_at)}
                         </span>
                       </TableCell>

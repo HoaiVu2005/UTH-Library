@@ -13,6 +13,16 @@ from .views import (
     UserLockToggleView,
     UserCardExtendView,
     UserResetPasswordAdminView,
+    AutoSuspendCheckView,
+    StudentLookupView,
+    IssueStudentCardView,
+    StudentRosterListView,
+    StudentRosterTemplateView,
+    StudentRosterImportView,
+    PaymentTransactionListView,
+    PaymentTransactionExportView,
+    CheckStudentCardPaymentStatusView,
+    SimulateSepayCardPaymentView,
 )
 
 urlpatterns = [
@@ -29,9 +39,24 @@ urlpatterns = [
     path('profile/avatar', AvatarUploadView.as_view(), name='profile-avatar-upload'),
 
     # Admin User Management endpoints
+    path('users/auto-suspend-check', AutoSuspendCheckView.as_view(), name='user-auto-suspend-check'),
     path('users', UserAdminListView.as_view(), name='user-admin-list'),
     path('users/<int:pk>', UserAdminDetailView.as_view(), name='user-admin-detail'),
     path('users/<int:pk>/lock', UserLockToggleView.as_view(), name='user-admin-lock'),
+    path('users/<int:pk>/unlock', UserLockToggleView.as_view(), name='user-admin-unlock'),
     path('users/<int:pk>/extend-card', UserCardExtendView.as_view(), name='user-admin-extend-card'),
     path('users/<int:pk>/reset-password', UserResetPasswordAdminView.as_view(), name='user-admin-reset-password'),
+
+    # UTH Student Roster & 1-Click Card Issuance
+    path('students/lookup', StudentLookupView.as_view(), name='student-lookup'),
+    path('students/issue-card', IssueStudentCardView.as_view(), name='student-issue-card'),
+    path('students/payment-status', CheckStudentCardPaymentStatusView.as_view(), name='student-payment-status'),
+    path('students/simulate-sepay-transfer', SimulateSepayCardPaymentView.as_view(), name='student-simulate-sepay-transfer'),
+    path('students/template', StudentRosterTemplateView.as_view(), name='student-roster-template'),
+    path('students/import', StudentRosterImportView.as_view(), name='student-roster-import'),
+    path('students', StudentRosterListView.as_view(), name='student-roster-list'),
+
+    # Financial Transactions & Receipts Reconciliation
+    path('transactions', PaymentTransactionListView.as_view(), name='payment-transaction-list'),
+    path('transactions/export', PaymentTransactionExportView.as_view(), name='payment-transaction-export'),
 ]

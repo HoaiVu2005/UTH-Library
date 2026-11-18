@@ -159,16 +159,20 @@ export const CirculationDeskPage: React.FC = () => {
         return;
       }
 
-      const [loansRes, finesRes] = await Promise.all([
-        api.get<{ data: any[]; meta: { total: number } }>(`/loans?card_code=${encodeURIComponent(code)}&status=active`),
-        api.get<{ data: any[] }>(`/fines?card_code=${encodeURIComponent(code)}&status=unpaid`),
+      const [loansRes, finesRes, reservationsRes] = await Promise.all([
+        api.get<{ data: any[]; meta: { total: number } }>(`/loans?card_code=${encodeURIComponent(code)}&status=active`).catch(() => ({ data: { data: [], meta: { total: 0 } } })),
+        api.get<{ data: any[] }>(`/fines?card_code=${encodeURIComponent(code)}&status=unpaid`).catch(() => ({ data: { data: [] } })),
+        api.get<{ data: any[] }>(`/reservations/all?card_code=${encodeURIComponent(code)}&status=ready`).catch(() => ({ data: { data: [] } })),
       ]);
 
       const activeLoans = loansRes.data.data || [];
       const unpaidFines = finesRes.data.data || [];
+      const readyReservations = reservationsRes.data.data || [];
       const hasOverdue = activeLoans.some((l) => l.is_overdue);
       const maxLimit = userObj.role === 'lecturer' ? 10 : 5;
       const unpaidTotal = unpaidFines.reduce((sum, f) => sum + (f.amount - f.paid_amount), 0);
+      const readyReservationsCount = readyReservations.length;
+      const remainingQuota = Math.max(0, maxLimit - (activeLoans.length + readyReservationsCount));
 
       setPatron({
         id: userObj.id,
@@ -183,10 +187,18 @@ export const CirculationDeskPage: React.FC = () => {
         is_currently_locked: userObj.is_currently_locked,
         active_loans_count: activeLoans.length,
         max_loans: maxLimit,
-        remaining_quota: Math.max(0, maxLimit - activeLoans.length),
+        remaining_quota: remainingQuota,
         has_overdue: hasOverdue,
         has_unpaid_fines: unpaidFines.length > 0,
         unpaid_fines_total: unpaidTotal,
+        ready_reservations: readyReservations.map((r: any) => ({
+          id: r.id,
+          book_id: r.book?.id || r.book,
+          book_title: r.book_title || r.book?.title,
+          barcode: r.barcode || r.copy?.barcode,
+          shelf_location: r.shelf_location || r.copy?.shelf_location,
+          hold_expires_at: r.hold_expires_at,
+        })),
       });
 
       setPatronScanInput(userObj.card_code || code);
@@ -267,7 +279,11 @@ export const CirculationDeskPage: React.FC = () => {
     }
 
     if (patron && cart.length >= patron.remaining_quota) {
-      setCartError(`Bạn đọc đã đạt giới hạn hạn mức còn lại (${patron.remaining_quota} cuốn).`);
+      if (patron.remaining_quota === 0) {
+        setCartError(`Bạn đọc đã hết hạn mức mượn (đang mượn ${patron.active_loans_count} cuốn, đang giữ chỗ ${patron.ready_reservations?.length || 0} cuốn đặt trước / tối đa ${patron.max_loans} cuốn).`);
+      } else {
+        setCartError(`Bạn đọc chỉ còn được mượn thêm tối đa ${patron.remaining_quota} cuốn (đang mượn ${patron.active_loans_count} cuốn, đang giữ ${patron.ready_reservations?.length || 0} cuốn đặt trước / tối đa ${patron.max_loans} cuốn).`);
+      }
       setBookScanInput('');
       return;
     }
@@ -593,9 +609,14 @@ export const CirculationDeskPage: React.FC = () => {
                     <div className="p-2.5 rounded-lg bg-white border border-gray-100">
                       <span className="text-gray-500 block text-[11px] mb-0.5">Đang mượn:</span>
                       <span className="font-bold text-gray-900">{patron.active_loans_count} / {patron.max_loans} cuốn</span>
+                      {patron.ready_reservations && patron.ready_reservations.length > 0 && (
+                        <span className="text-[10px] text-amber-700 block mt-0.5 font-semibold">
+                          + {patron.ready_reservations.length} cuốn đặt trước tại quầy
+                        </span>
+                      )}
                     </div>
                     <div className="p-2.5 rounded-lg bg-white border border-teal-200">
-                      <span className="text-gray-500 block text-[11px] mb-0.5">Hạn mức còn lại:</span>
+                      <span className="text-gray-500 block text-[11px] mb-0.5">Hạn mức mượn thêm:</span>
                       <span className="font-black text-brand text-sm">{patron.remaining_quota} cuốn</span>
                     </div>
                   </div>

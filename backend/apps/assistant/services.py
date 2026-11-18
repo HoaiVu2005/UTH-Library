@@ -52,11 +52,14 @@ def get_admin_library_statistics():
         lecturer_loans = active_loans.filter(user__role='lecturer')
         student_loans = active_loans.filter(user__role='student')
 
+        today_date = timezone.localdate()
+
         # Chi tiết giảng viên đang mượn sách
         lecturer_borrowers = []
         for l in lecturer_loans:
             is_overdue = l.due_at < now
-            diff_days = (now - l.due_at).days if is_overdue else 0
+            loan_due_date = l.due_at.astimezone(timezone.get_current_timezone()).date()
+            diff_days = max(1, (today_date - loan_due_date).days) if is_overdue else 0
             lecturer_borrowers.append({
                 "loan_id": l.id,
                 "user_id": l.user.id,
@@ -75,7 +78,8 @@ def get_admin_library_statistics():
         # Chi tiết danh sách bạn đọc mượn quá hạn
         overdue_students = []
         for l in overdue_loans_qs:
-            diff_days = max(1, (now - l.due_at).days)
+            loan_due_date = l.due_at.astimezone(timezone.get_current_timezone()).date()
+            diff_days = max(1, (today_date - loan_due_date).days)
             est_fine = diff_days * 2000
             overdue_students.append({
                 "loan_id": l.id,
@@ -237,18 +241,20 @@ def get_patron_context(user) -> dict:
         max_borrow_days = 30 if is_lecturer else 14
 
         # Sách đang mượn của chính bạn đọc này
+        today_date = timezone.localdate()
         active_loans = Loan.objects.filter(user=user, status=LoanStatus.ACTIVE).select_related('book', 'copy')
         loans_info = []
         overdue_count = 0
         for l in active_loans:
             is_overdue = l.due_at < now
+            loan_due_date = l.due_at.astimezone(timezone.get_current_timezone()).date()
             if is_overdue:
                 overdue_count += 1
-                diff_days = max(1, (now - l.due_at).days)
+                diff_days = max(1, (today_date - loan_due_date).days)
                 fine = diff_days * 2000
                 status_str = f"ĐÃ QUÁ HẠN {diff_days} ngày (Phí phạt tạm tính: {fine:,} VNĐ)"
             else:
-                remaining_days = max(0, (l.due_at - now).days)
+                remaining_days = max(0, (loan_due_date - today_date).days)
                 status_str = f"Còn {remaining_days} ngày (Hạn trả: {l.due_at.strftime('%d/%m/%Y')})"
 
             loans_info.append({

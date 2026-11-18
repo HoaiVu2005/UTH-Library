@@ -6,6 +6,7 @@ class LoanSerializer(serializers.ModelSerializer):
     patron_name = serializers.CharField(source='user.full_name', read_only=True)
     patron_card_code = serializers.CharField(source='user.card_code', read_only=True)
     patron_role = serializers.CharField(source='user.role', read_only=True)
+    patron_avatar = serializers.CharField(source='user.avatar', read_only=True, default=None)
     book_title = serializers.CharField(source='book.title', read_only=True)
     cover_image = serializers.CharField(source='book.cover_image', read_only=True, default='')
     category_name = serializers.CharField(source='book.category.name', read_only=True, default='')
@@ -17,7 +18,7 @@ class LoanSerializer(serializers.ModelSerializer):
     class Meta:
         model = Loan
         fields = [
-            'id', 'user', 'patron_name', 'patron_card_code', 'patron_role',
+            'id', 'user', 'patron_name', 'patron_card_code', 'patron_role', 'patron_avatar',
             'book', 'book_title', 'cover_image', 'category_name', 'copy', 'copy_barcode', 'shelf_location',
             'borrowed_at', 'due_at', 'returned_at', 'renewal_count',
             'status', 'return_condition', 'lost_at', 'note',

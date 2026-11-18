@@ -132,7 +132,7 @@ export const SystemSettingsPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-12 animate-page-enter">
+    <div className="space-y-6 pb-12 animate-page-enter">
       {/* Header */}
       <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
@@ -142,7 +142,7 @@ export const SystemSettingsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-primary tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Cài đặt Hệ thống & Chính sách Lưu thông (Settings)</span>
+              <span>Cài đặt Hệ thống & Chính sách Lưu thông</span>
             </h1>
             <p className="text-xs text-textSecondary mt-0.5">
               Thiết lập thông tin thư viện, ngưỡng tự động hóa cron và chính sách mượn trả append-only
@@ -256,7 +256,7 @@ export const SystemSettingsPage: React.FC = () => {
 
                 <div>
                   <Input
-                    label="Số ngày ân hạn (Grace days)"
+                    label="Số ngày ân hạn"
                     type="number"
                     value={overdueGraceDays}
                     onChange={(e) => setOverdueGraceDays(Number(e.target.value))}

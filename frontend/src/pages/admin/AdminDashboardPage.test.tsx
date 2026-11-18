@@ -64,7 +64,7 @@ describe('AdminDashboardPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Bảng điều khiển quản trị (Admin Dashboard)')).toBeInTheDocument();
+      expect(screen.getByText('Bảng điều khiển quản trị')).toBeInTheDocument();
       expect(screen.getByText('Sách đang mượn')).toBeInTheDocument();
       expect(screen.getByText('Sách quá hạn')).toBeInTheDocument();
       expect(screen.getByText('Công nợ tiền phạt')).toBeInTheDocument();

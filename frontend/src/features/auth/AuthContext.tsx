@@ -8,7 +8,7 @@ export interface UserSummary {
   email?: string;
   phone?: string;
   avatar?: string;
-  role: 'student' | 'lecturer' | 'admin';
+  role: 'student' | 'lecturer' | 'librarian' | 'admin';
   card_code: string;
   department?: string;
   dob?: string;

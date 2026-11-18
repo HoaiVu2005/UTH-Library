@@ -4,11 +4,11 @@ from typing import List, Optional
 import barcode
 from barcode.writer import ImageWriter, SVGWriter
 from django.db import transaction
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Min, Max
 from django.utils import timezone
 from apps.core.exceptions import BusinessLogicError
 from apps.core.enums import CopyStatus, LoanStatus, ReservationStatus
-from .models import Category, Author, Book, Copy, BarcodeSequence
+from .models import Category, Author, Book, Copy, BarcodeSequence, DeaccessionBatch
 
 BARCODE_REGEX = re.compile(r'^UTH-([A-Z0-9]{2,10})-(\d{6})$')
 
@@ -48,9 +48,13 @@ def generate_barcode_image(barcode_str: str, output_format: str = 'png') -> byte
 def search_books(
     q: Optional[str] = None,
     category_id: Optional[int] = None,
+    category_query: Optional[str] = None,
     author_id: Optional[int] = None,
     author_name: Optional[str] = None,
+    publisher: Optional[str] = None,
     year: Optional[int] = None,
+    year_from: Optional[int] = None,
+    year_to: Optional[int] = None,
     available_only: bool = False,
     ordering: str = '-created_at'
 ):
@@ -69,6 +73,12 @@ def search_books(
 
     if category_id:
         queryset = queryset.filter(category_id=category_id)
+    elif category_query:
+        cleaned_cat = category_query.strip()
+        queryset = queryset.filter(
+            Q(category__name__unaccent__icontains=cleaned_cat) |
+            Q(category__code__icontains=cleaned_cat)
+        )
 
     if author_id:
         queryset = queryset.filter(authors__id=author_id)
@@ -77,8 +87,17 @@ def search_books(
         cleaned_author = ' '.join(author_name.strip().split())
         queryset = queryset.filter(authors__name__unaccent__icontains=cleaned_author).distinct()
 
+    if publisher:
+        cleaned_pub = publisher.strip()
+        queryset = queryset.filter(publisher__icontains=cleaned_pub)
+
     if year:
         queryset = queryset.filter(year=year)
+    else:
+        if year_from:
+            queryset = queryset.filter(year__gte=year_from)
+        if year_to:
+            queryset = queryset.filter(year__lte=year_to)
 
     if available_only:
         queryset = queryset.filter(
@@ -93,9 +112,47 @@ def search_books(
         'title': 'title',
         '-title': '-title',
         'year': '-year',
+        '-year': '-year',
     }
     order_field = valid_orderings.get(ordering, '-created_at')
     return queryset.order_by(order_field)
+
+def get_book_facets() -> dict:
+    """
+    Trả về dữ liệu đa diện (facets) cho OPAC:
+    - Danh mục kèm số lượng sách
+    - Danh sách nhà xuất bản phổ biến
+    - Năm xuất bản nhỏ nhất & lớn nhất
+    """
+    categories = list(
+        Category.objects.annotate(book_count=Count('books', filter=Q(books__deleted_at__isnull=True)))
+        .filter(book_count__gt=0)
+        .values('id', 'name', 'code', 'book_count')
+        .order_by('-book_count', 'name')
+    )
+
+    publishers = list(
+        Book.objects.filter(deleted_at__isnull=True, publisher__isnull=False)
+        .exclude(publisher='')
+        .values('publisher')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:15]
+    )
+
+    year_stats = Book.objects.filter(deleted_at__isnull=True, year__isnull=False).aggregate(
+        min_year=Min('year'),
+        max_year=Max('year')
+    )
+
+    return {
+        'categories': categories,
+        'publishers': publishers,
+        'years': {
+            'min': year_stats.get('min_year') or 2000,
+            'max': year_stats.get('max_year') or timezone.now().year
+        }
+    }
+
 
 def suggest_books(q: str, limit: int = 10):
     if not q or not q.strip():
@@ -308,3 +365,140 @@ def export_books_to_csv() -> str:
             avail_copies,
         ])
     return output.getvalue()
+
+def create_deaccession_batch(
+    decision_number: str,
+    decision_date,
+    reason: str,
+    copy_ids: List[int],
+    created_by,
+    code: Optional[str] = None,
+    committee: Optional[str] = None,
+    note: Optional[str] = None,
+    request=None
+) -> DeaccessionBatch:
+    with transaction.atomic():
+        copies = Copy.objects.select_for_update().filter(id__in=copy_ids, deleted_at__isnull=True)
+        if len(copies) != len(copy_ids):
+            raise BusinessLogicError('NOT_FOUND', detail='Một số bản sao không tồn tại hoặc đã bị xóa.')
+
+        for cp in copies:
+            if cp.status == CopyStatus.BORROWED:
+                raise BusinessLogicError('COPY_BORROWED', detail=f"Bản sao mã vạch {cp.barcode} đang có bạn đọc mượn, không thể thanh lý.")
+            if cp.status == CopyStatus.WITHDRAWN:
+                raise BusinessLogicError('COPY_ALREADY_WITHDRAWN', detail=f"Bản sao mã vạch {cp.barcode} đã thanh lý trước đó.")
+
+        if not code or not code.strip():
+            year_now = timezone.now().year
+            count_year = DeaccessionBatch.objects.filter(created_at__year=year_now).count() + 1
+            code = f"BBTL-{year_now}-{count_year:03d}"
+
+        total_value = sum(cp.purchase_price or (cp.book.price if cp.book else 0) or 0 for cp in copies)
+
+        batch = DeaccessionBatch.objects.create(
+            code=code.strip(),
+            decision_number=decision_number.strip(),
+            decision_date=decision_date,
+            reason=reason,
+            status='draft',
+            committee=committee or 'Hội đồng thanh lý tài liệu Thư viện Trường ĐH Giao thông Vận tải TP.HCM',
+            total_copies=len(copies),
+            total_value=total_value,
+            note=note,
+            created_by=created_by,
+        )
+
+        for cp in copies:
+            cp.deaccession_batch = batch
+            cp.save(update_fields=['deaccession_batch'])
+
+        from apps.audit.services import log_action
+        log_action(
+            user=created_by,
+            action='CREATE_DEACCESSION_BATCH',
+            entity_type='DeaccessionBatch',
+            entity_id=batch.id,
+            detail={'code': batch.code, 'total_copies': batch.total_copies, 'total_value': batch.total_value},
+            request=request
+        )
+
+        return batch
+
+def approve_deaccession_batch(batch_id: int, approved_by, approval_data: dict = None, request=None) -> DeaccessionBatch:
+    with transaction.atomic():
+        batch = DeaccessionBatch.objects.select_for_update().filter(id=batch_id).first()
+        if not batch:
+            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy biên bản thanh lý.')
+
+        if batch.status != 'draft':
+            raise BusinessLogicError('INVALID_STATUS', detail=f'Biên bản đang ở trạng thái {batch.get_status_display()}, không thể duyệt.')
+
+        # Căn cứ pháp lý phê duyệt của Ban Giám hiệu
+        if approval_data:
+            batch.bgh_decision_number = approval_data.get('bgh_decision_number', '').strip()
+            batch.bgh_decision_date = approval_data.get('bgh_decision_date')
+            batch.bgh_approver_name = approval_data.get('bgh_approver_name', '').strip()
+            batch.disposal_method = approval_data.get('disposal_method') or 'Tiêu hủy phân loại sinh học'
+            batch.approval_note = approval_data.get('approval_note', '').strip()
+
+        copies = Copy.objects.select_for_update().filter(deaccession_batch=batch)
+        for cp in copies:
+            cp.status = CopyStatus.WITHDRAWN
+            qd_ref = batch.bgh_decision_number or batch.decision_number
+            cp.note = f"Thanh lý theo QĐ {qd_ref} (Biên bản {batch.code})"
+            cp.save(update_fields=['status', 'note'])
+
+        batch.status = 'approved'
+        batch.approved_by = approved_by
+        batch.approved_at = timezone.now()
+        batch.save(update_fields=[
+            'status', 'approved_by', 'approved_at',
+            'bgh_decision_number', 'bgh_decision_date', 'bgh_approver_name',
+            'disposal_method', 'approval_note'
+        ])
+
+        from apps.audit.services import log_action
+        log_action(
+            user=approved_by,
+            action='APPROVE_DEACCESSION_BATCH',
+            entity_type='DeaccessionBatch',
+            entity_id=batch.id,
+            detail={
+                'code': batch.code,
+                'total_copies': batch.total_copies,
+                'bgh_decision_number': batch.bgh_decision_number,
+                'bgh_approver_name': batch.bgh_approver_name,
+            },
+            request=request
+        )
+
+        return batch
+
+def cancel_deaccession_batch(batch_id: int, user, reason: str = None, request=None) -> DeaccessionBatch:
+    with transaction.atomic():
+        batch = DeaccessionBatch.objects.select_for_update().filter(id=batch_id).first()
+        if not batch:
+            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy biên bản thanh lý.')
+
+        if batch.status != 'draft':
+            raise BusinessLogicError('INVALID_STATUS', detail=f'Biên bản đã {batch.get_status_display()}, không thể hủy.')
+
+        Copy.objects.filter(deaccession_batch=batch).update(deaccession_batch=None)
+
+        batch.status = 'cancelled'
+        if reason:
+            batch.note = f"{(batch.note or '')}\nLý do hủy: {reason}".strip()
+        batch.save(update_fields=['status', 'note'])
+
+        from apps.audit.services import log_action
+        log_action(
+            user=user,
+            action='CANCEL_DEACCESSION_BATCH',
+            entity_type='DeaccessionBatch',
+            entity_id=batch.id,
+            detail={'code': batch.code},
+            request=request
+        )
+
+        return batch
+

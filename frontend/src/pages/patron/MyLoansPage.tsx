@@ -22,8 +22,7 @@ import { toast } from '@/components/ui/Toast';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
-import { formatDateVN } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatDateVN, getRemainingDays, cn } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface LoanItem {
@@ -116,15 +115,7 @@ export const MyLoansPage: React.FC = () => {
   };
 
   const getDaysLeft = (dueDateStr: string) => {
-    try {
-      const due = new Date(dueDateStr);
-      if (isNaN(due.getTime())) return 0;
-      const now = new Date();
-      const diffMs = due.getTime() - now.getTime();
-      return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    } catch {
-      return 0;
-    }
+    return getRemainingDays(dueDateStr);
   };
 
   const overdueCount = loans.filter((l) => l.is_overdue).length;

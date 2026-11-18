@@ -47,6 +47,10 @@ interface SummaryData {
   pending_reservations: number;
   ready_reservations: number;
   pending_suggestions: number;
+  today_reservations?: number;
+  today_pending_reservations?: number;
+  today_suggestions?: number;
+  today_pending_suggestions?: number;
   total_users: number;
   locked_users: number;
 }
@@ -109,7 +113,7 @@ export const AdminDashboardPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Bảng điều khiển quản trị (Admin Dashboard)</span>
+              <span>Bảng điều khiển quản trị</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               {currentDateFormatted} &bull; Tổng quan vận hành Thư viện UTH, công việc cần xử lý và xu hướng lưu thông
@@ -252,7 +256,7 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="border-b border-gray-100 pb-3 flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-warning" />
-                <h2 className="text-sm font-bold text-gray-800">Cần xử lý hôm nay (Action Items)</h2>
+                <h2 className="text-sm font-bold text-gray-800">Cần xử lý hôm nay</h2>
               </div>
               <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Thời gian thực</span>
             </div>
@@ -265,7 +269,9 @@ export const AdminDashboardPage: React.FC = () => {
                     <Lightbulb className="w-3.5 h-3.5 text-purple-600" />
                     <span>Đề xuất mua sách mới</span>
                   </span>
-                  <Badge variant="warning" size="sm">{summary.pending_suggestions} chờ</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="warning" size="sm">{summary.pending_suggestions} chờ</Badge>
+                  </div>
                 </div>
                 {actionItems?.pending_suggestions?.length ? (
                   <p className="text-[11px] text-gray-500 truncate">
@@ -335,7 +341,13 @@ export const AdminDashboardPage: React.FC = () => {
               { title: 'Quầy mượn trả', desc: 'Scan barcode tức thì', icon: ScanLine, to: '/admin/circulation', color: 'text-primary bg-primary-light' },
               { title: 'Biên mục sách', desc: 'Thêm & sửa đầu sách', icon: BookOpen, to: '/admin/books', color: 'text-blue-600 bg-blue-50' },
               { title: 'Quản lý bản sao', desc: 'In mã vạch & xếp giá', icon: Layers, to: '/admin/copies', color: 'text-indigo-600 bg-indigo-50' },
-              { title: 'Hàng chờ giữ chỗ', desc: 'Điều phối đặt trước', icon: BookmarkCheck, to: '/admin/reservations', color: 'text-amber-600 bg-amber-50' },
+              {
+                title: 'Hàng chờ giữ chỗ',
+                desc: 'Điều phối đặt trước',
+                icon: BookmarkCheck,
+                to: '/admin/reservations',
+                color: 'text-amber-600 bg-amber-50',
+              },
               { title: 'Quản lý bạn đọc', desc: 'Thẻ & tài khoản', icon: Users, to: '/admin/users', color: 'text-emerald-600 bg-emerald-50' },
               { title: 'Thu tiền phạt', desc: 'Biên lai & miễn phạt', icon: Receipt, to: '/admin/fines', color: 'text-red-600 bg-red-50' },
               { title: 'Báo cáo thống kê', desc: 'Xuất Excel & CSV', icon: TrendingUp, to: '/admin/reports', color: 'text-orange-600 bg-orange-50' },

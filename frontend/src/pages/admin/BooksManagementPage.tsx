@@ -41,6 +41,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerModal';
 import { formatCurrencyVND, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
+import { useAuth } from '@/features/auth/AuthContext';
 
 export interface BookItem {
   id: number;
@@ -69,6 +70,8 @@ interface CategoryOption {
 }
 
 export const BooksManagementPage: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const [books, setBooks] = useState<BookItem[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -500,22 +503,26 @@ export const BooksManagementPage: React.FC = () => {
 
         {/* Action Buttons: Clean & Outlined */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleOpenAddModal}
-            className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4 mr-1.5 text-brand" />
-            <span>Thêm đầu sách</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleOpenAddModal}
+              className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 mr-1.5 text-brand" />
+              <span>Thêm đầu sách</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
-            title="Nhập danh mục từ Excel/CSV"
-          >
-            <Upload className="w-3.5 h-3.5 mr-1.5 text-brand" />
-            <span>Nhập CSV</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
+              title="Nhập danh mục từ Excel/CSV"
+            >
+              <Upload className="w-3.5 h-3.5 mr-1.5 text-brand" />
+              <span>Nhập CSV</span>
+            </button>
+          )}
 
           <button
             onClick={handleExportCsv}
@@ -765,12 +772,16 @@ export const BooksManagementPage: React.FC = () => {
                           statusDot={avail > 0 ? 'success' : 'warning'}
                           isNearBottom={index >= books.length - 2 && books.length > 2}
                           items={[
-                            {
-                              label: 'Chỉnh sửa thông tin',
-                              icon: <Edit2 className="w-3.5 h-3.5" />,
-                              variant: 'primary',
-                              onClick: () => handleOpenEditModal(book),
-                            },
+                            ...(isAdmin
+                              ? [
+                                  {
+                                    label: 'Chỉnh sửa thông tin',
+                                    icon: <Edit2 className="w-3.5 h-3.5" />,
+                                    variant: 'primary' as const,
+                                    onClick: () => handleOpenEditModal(book),
+                                  },
+                                ]
+                              : []),
                             {
                               label: `Quản lý bản sao (${avail}/${total})`,
                               icon: <BookCopy className="w-3.5 h-3.5" />,
@@ -783,13 +794,17 @@ export const BooksManagementPage: React.FC = () => {
                               variant: 'default',
                               onClick: () => navigate(`/books/${book.id}`),
                             },
-                            {
-                              label: 'Xóa đầu sách',
-                              icon: <Trash2 className="w-3.5 h-3.5" />,
-                              variant: 'danger',
-                              isDividerBefore: true,
-                              onClick: () => setDeletingBook(book),
-                            },
+                            ...(isAdmin
+                              ? [
+                                  {
+                                    label: 'Xóa đầu sách',
+                                    icon: <Trash2 className="w-3.5 h-3.5" />,
+                                    variant: 'danger' as const,
+                                    isDividerBefore: true,
+                                    onClick: () => setDeletingBook(book),
+                                  },
+                                ]
+                              : []),
                           ]}
                         />
                       </TableCell>

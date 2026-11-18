@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from apps.accounts.permissions import IsAdminUserRole
+from apps.accounts.permissions import IsAdminUserRole, IsAdminOnlyRole
 from apps.audit.services import log_action
 from apps.core.exceptions import BusinessLogicError
 from .models import SystemConfig, Policy, Holiday
@@ -49,7 +49,7 @@ class PublicSystemConfigView(APIView):
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 class AdminSystemConfigView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def get(self, request):
         config = SystemConfig.get_solo()
@@ -74,7 +74,7 @@ class AdminSystemConfigView(APIView):
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 class PolicyListView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def get(self, request):
         # Current active policies
@@ -83,7 +83,7 @@ class PolicyListView(APIView):
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 class PolicyUpdateView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def put(self, request, role):
         # Policy is APPEND-ONLY to ensure historical snapshots can always be traced (BR21)

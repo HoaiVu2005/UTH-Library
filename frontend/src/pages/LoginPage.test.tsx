@@ -30,10 +30,14 @@ describe('LoginPage', () => {
       </BrowserRouter>
     );
 
-    const adminBtn = screen.getByText('Thủ thư (Admin)');
+    const adminBtn = screen.getByText('Admin / Trưởng TV');
     fireEvent.click(adminBtn);
 
     const identityInput = screen.getByPlaceholderText(/Tài khoản đăng nhập/i) as HTMLInputElement;
     expect(identityInput.value).toBe('admin');
+
+    const librarianBtn = screen.getByText('Thủ thư (Trực quầy)');
+    fireEvent.click(librarianBtn);
+    expect(identityInput.value).toBe('thuthu');
   });
 });

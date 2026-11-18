@@ -7,12 +7,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
-from apps.accounts.permissions import IsAdminUserRole
+from apps.accounts.permissions import IsAdminUserRole, IsAdminOnlyRole
 from apps.audit.services import log_action
 from apps.core.exceptions import BusinessLogicError
 from apps.core.pagination import StandardPagination
-from apps.core.enums import CopyStatus
-from .models import Category, Author, Book, Copy
+from apps.core.enums import CopyStatus, UserRole
+from .models import Category, Author, Book, Copy, DeaccessionBatch
 from .serializers import (
     CategorySerializer,
     AuthorSerializer,
@@ -21,16 +21,24 @@ from .serializers import (
     BookWriteSerializer,
     CopySerializer,
     BatchCopyCreateSerializer,
+    DeaccessionBatchSerializer,
+    DeaccessionBatchDetailSerializer,
+    CreateDeaccessionBatchSerializer,
+    ApproveDeaccessionBatchSerializer,
 )
 from .services import (
     search_books,
     suggest_books,
+    get_book_facets,
     delete_book,
     generate_barcodes_for_category,
     generate_barcode_image,
     normalize_barcode,
     import_books_from_csv,
     export_books_to_csv,
+    create_deaccession_batch,
+    approve_deaccession_batch,
+    cancel_deaccession_batch,
 )
 from .isbn_service import lookup_isbn_metadata
 
@@ -50,19 +58,35 @@ class BookListView(APIView):
 
     def get(self, request):
         q = request.query_params.get('q')
-        category_id = request.query_params.get('category_id') or request.query_params.get('category')
+        category_param = request.query_params.get('category_id') or request.query_params.get('category')
+        category_id = None
+        category_query = None
+        if category_param:
+            clean_cat = str(category_param).strip()
+            if clean_cat.isdigit():
+                category_id = int(clean_cat)
+            else:
+                category_query = clean_cat
+
         author_id = request.query_params.get('author_id')
         author_name = request.query_params.get('author') or request.query_params.get('author_name')
+        publisher = request.query_params.get('publisher')
         year = request.query_params.get('year')
+        year_from = request.query_params.get('year_from')
+        year_to = request.query_params.get('year_to')
         available_only = request.query_params.get('available_only', 'false').lower() == 'true'
         ordering = request.query_params.get('ordering', '-created_at')
 
         queryset = search_books(
             q=q,
-            category_id=int(category_id) if category_id else None,
+            category_id=category_id,
+            category_query=category_query,
             author_id=int(author_id) if author_id else None,
             author_name=author_name,
+            publisher=publisher,
             year=int(year) if year else None,
+            year_from=int(year_from) if year_from else None,
+            year_to=int(year_to) if year_to else None,
             available_only=available_only,
             ordering=ordering,
         )
@@ -74,6 +98,13 @@ class BookListView(APIView):
 
     def post(self, request):
         return BookAdminCreateView().post(request)
+
+class BookFacetsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        facets = get_book_facets()
+        return Response(facets, status=status.HTTP_200_OK)
 
 class BookDetailView(APIView):
     def get_permissions(self):
@@ -165,6 +196,8 @@ class BookAdminUpdateDeleteView(APIView):
         return Response({'data': BookDetailSerializer(book).data}, status=status.HTTP_200_OK)
 
     def delete(self, request, pk):
+        if request.user.role != UserRole.ADMIN:
+            raise BusinessLogicError('FORBIDDEN', detail='Chỉ Quản trị viên mới có thẩm quyền xóa đầu sách khỏi danh mục.')
         book = delete_book(pk)
 
         log_action(
@@ -239,10 +272,19 @@ class CopyAdminListView(APIView):
                 queryset = queryset.filter(barcode__icontains=barcode_q)
 
             if status_q:
-                queryset = queryset.filter(status=status_q)
+                if status_q in ('reserved', 'reserved_hold'):
+                    queryset = queryset.filter(status__in=['reserved', 'reserved_hold'])
+                else:
+                    queryset = queryset.filter(status=status_q)
 
             if book_id:
                 queryset = queryset.filter(book_id=book_id)
+
+            ids_param = request.query_params.get('ids')
+            if ids_param:
+                id_list = [int(i.strip()) for i in ids_param.split(',') if i.strip().isdigit()]
+                if id_list:
+                    queryset = queryset.filter(id__in=id_list)
 
             paginator = StandardPagination()
             page_records = paginator.paginate_queryset(queryset, request)
@@ -254,7 +296,10 @@ class CopyAdminListView(APIView):
         if barcode_q:
             book_qs = book_qs.filter(copies__barcode__icontains=barcode_q)
         if status_q:
-            book_qs = book_qs.filter(copies__status=status_q)
+            if status_q in ('reserved', 'reserved_hold'):
+                book_qs = book_qs.filter(copies__status__in=['reserved', 'reserved_hold'])
+            else:
+                book_qs = book_qs.filter(copies__status=status_q)
         if book_id:
             book_qs = book_qs.filter(id=book_id)
 
@@ -275,8 +320,9 @@ class CopyAdminListView(APIView):
             total_qty = len(copies)
             avail_qty = sum(1 for c in copies if c.status == 'available')
             borrowed_qty = sum(1 for c in copies if c.status == 'borrowed')
-            reserved_qty = sum(1 for c in copies if c.status == 'reserved')
-            damaged_qty = sum(1 for c in copies if c.status in ('damaged', 'lost'))
+            reserved_qty = sum(1 for c in copies if c.status in ('reserved', 'reserved_hold'))
+            damaged_qty = sum(1 for c in copies if c.status == 'damaged')
+            lost_qty = sum(1 for c in copies if c.status == 'lost')
             withdrawn_qty = sum(1 for c in copies if c.status == 'withdrawn')
             shelf_locations = list(dict.fromkeys(c.shelf_location for c in copies if c.shelf_location))
 
@@ -293,6 +339,7 @@ class CopyAdminListView(APIView):
                 'borrowed_quantity': borrowed_qty,
                 'reserved_quantity': reserved_qty,
                 'damaged_quantity': damaged_qty,
+                'lost_quantity': lost_qty,
                 'withdrawn_quantity': withdrawn_qty,
                 'shelf_location': shelf_locations[0] if shelf_locations else 'Quầy lưu trữ trung tâm',
                 'shelf_locations': shelf_locations,
@@ -405,7 +452,7 @@ class CopyUpdateView(APIView):
         return Response({'data': CopySerializer(updated).data}, status=status.HTTP_200_OK)
 
 class CopyWithdrawView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def post(self, request, pk):
         copy = Copy.objects.filter(id=pk, deleted_at__isnull=True).first()
@@ -532,7 +579,7 @@ class BookCsvExportView(APIView):
         return response
 
 class BookCsvImportView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def post(self, request):
         csv_text = ''
@@ -560,5 +607,93 @@ class ISBNLookupView(APIView):
             )
         result = lookup_isbn_metadata(isbn)
         return Response({'data': result}, status=status.HTTP_200_OK)
+
+
+class DeaccessionBatchListCreateView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        status_filter = request.query_params.get('status')
+        reason_filter = request.query_params.get('reason')
+        search = request.query_params.get('search')
+
+        qs = DeaccessionBatch.objects.select_related('created_by', 'approved_by').order_by('-created_at')
+
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if reason_filter:
+            qs = qs.filter(reason=reason_filter)
+        if search:
+            qs = qs.filter(
+                Q(code__icontains=search) |
+                Q(decision_number__icontains=search) |
+                Q(committee__icontains=search) |
+                Q(note__icontains=search)
+            )
+
+        paginator = StandardPagination()
+        page = paginator.paginate_queryset(qs, request)
+        serializer = DeaccessionBatchSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        serializer = CreateDeaccessionBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        d = serializer.validated_data
+
+        batch = create_deaccession_batch(
+            decision_number=d['decision_number'],
+            decision_date=d['decision_date'],
+            reason=d['reason'],
+            copy_ids=d['copy_ids'],
+            committee=d.get('committee', ''),
+            note=d.get('note', ''),
+            code=d.get('code', ''),
+            created_by=request.user,
+            request=request,
+        )
+        detail_ser = DeaccessionBatchDetailSerializer(batch)
+        return Response({'data': detail_ser.data, 'message': 'Đã lập biên bản thanh lý thành công.'}, status=status.HTTP_201_CREATED)
+
+
+class DeaccessionBatchDetailView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request, pk):
+        batch = DeaccessionBatch.objects.select_related('created_by', 'approved_by').prefetch_related(
+            Prefetch('copies', queryset=Copy.objects.select_related('book', 'book__category'))
+        ).filter(id=pk).first()
+
+        if not batch:
+            return Response({'detail': 'Không tìm thấy biên bản thanh lý.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = DeaccessionBatchDetailSerializer(batch)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        reason = request.data.get('reason') or request.query_params.get('reason', '')
+        batch = cancel_deaccession_batch(batch_id=pk, user=request.user, reason=reason, request=request)
+        serializer = DeaccessionBatchSerializer(batch)
+        return Response({'data': serializer.data, 'message': 'Đã hủy biên bản thanh lý thành công.'}, status=status.HTTP_200_OK)
+
+
+class ApproveDeaccessionBatchView(APIView):
+    permission_classes = [IsAdminOnlyRole]
+
+    def post(self, request, pk):
+        serializer = ApproveDeaccessionBatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        batch = approve_deaccession_batch(
+            batch_id=pk,
+            approved_by=request.user,
+            approval_data=serializer.validated_data,
+            request=request
+        )
+        response_serializer = DeaccessionBatchDetailSerializer(batch)
+        return Response({
+            'data': response_serializer.data,
+            'message': f'Phê duyệt biên bản thanh lý {batch.code} thành công theo Quyết định số {batch.bgh_decision_number} của Ban Giám hiệu.'
+        }, status=status.HTTP_200_OK)
+
 
 

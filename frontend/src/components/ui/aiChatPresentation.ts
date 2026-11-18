@@ -1,4 +1,4 @@
-export type ChatRole = 'student' | 'lecturer' | 'admin';
+export type ChatRole = 'student' | 'lecturer' | 'librarian' | 'admin';
 
 type GreetingUser = {
   role: ChatRole;
@@ -36,7 +36,8 @@ function capitalizeName(value: string): string {
 }
 
 export function getChatGreeting(user: GreetingUser): string {
-  if (user.role === 'admin') return 'Chào Thủ thư!';
+  if (user.role === 'admin') return 'Chào Quản trị viên!';
+  if (user.role === 'librarian') return 'Chào Thủ thư!';
   if (user.role === 'lecturer') return 'Kính chào Thầy/Cô!';
   const displayName = capitalizeName(user.fullName || user.username || 'bạn');
   return `Chào ${displayName}!`;

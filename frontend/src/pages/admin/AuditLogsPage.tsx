@@ -8,6 +8,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -32,6 +33,9 @@ export const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [actionFilter, setActionFilter] = useState<string>('');
   const [entityFilter, setEntityFilter] = useState<string>('');
+  const [dateFilter, setDateFilter] = useState<{ preset: DatePreset; customDate?: string }>({
+    preset: 'all',
+  });
   const [page, setPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(5);
   const [totalRecords, setTotalRecords] = useState<number>(0);
@@ -45,6 +49,8 @@ export const AuditLogsPage: React.FC = () => {
       let url = `/audit-logs?page=${page}&page_size=${pageSize}`;
       if (actionFilter) url += `&action=${actionFilter}`;
       if (entityFilter) url += `&entity_type=${entityFilter}`;
+      if (dateFilter.preset !== 'all') url += `&date_preset=${dateFilter.preset}`;
+      if (dateFilter.customDate) url += `&date=${dateFilter.customDate}`;
 
       const res = await api.get(url);
       setLogs(res.data?.data || []);
@@ -59,7 +65,7 @@ export const AuditLogsPage: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, pageSize, actionFilter, entityFilter]);
+  }, [page, pageSize, actionFilter, entityFilter, dateFilter]);
 
   return (
     <div className="space-y-5 pb-12 animate-page-enter">
@@ -72,7 +78,7 @@ export const AuditLogsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Nhật ký Kiểm toán Hệ thống (Audit Logs)</span>
+              <span>Nhật ký Kiểm toán Hệ thống</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Ghi vết bất biến mọi thao tác lưu thông, mượn trả, thu phạt, thay đổi cấu hình và bảo mật tài khoản
@@ -95,78 +101,91 @@ export const AuditLogsPage: React.FC = () => {
 
       {/* Filter and Limit Bar */}
       <Card className="shadow-xs border-gray-200/80">
-        <CardContent className="p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
-            <div className="flex-1 max-w-sm">
-              <Select
-                value={actionFilter}
-                onChange={(e) => {
-                  setActionFilter(e.target.value);
-                  setPage(1);
-                }}
-                options={[
-                  { value: '', label: 'Tất cả hành động (Actions)' },
-                  { value: 'BORROW_DIRECT', label: 'Mượn trực tiếp tại quầy' },
-                  { value: 'RETURN_LOAN', label: 'Trả sách' },
-                  { value: 'RENEW_LOAN', label: 'Gia hạn sách' },
-                  { value: 'COLLECT_FINE', label: 'Thu tiền phạt' },
-                  { value: 'WAIVE_FINE', label: 'Miễn giảm tiền phạt' },
-                  { value: 'HOLD_RESERVATION_READY', label: 'Giữ chỗ sách (Ready)' },
-                  { value: 'CANCEL_RESERVATION', label: 'Hủy đặt trước' },
-                  { value: 'SUGGESTION_APPROVE', label: 'Duyệt đề xuất mua' },
-                  { value: 'AUTO_LOST_LOAN', label: 'Tự động chuyển mất (Cron)' },
-                  { value: 'ADMIN_LOCK_USER', label: 'Khóa bạn đọc' },
-                  { value: 'ADMIN_UNLOCK_USER', label: 'Mở khóa bạn đọc' },
-                  { value: 'UPDATE_SYSTEM_CONFIG', label: 'Cập nhật cấu hình' },
-                ]}
-                className="text-xs h-9 rounded-xl border-gray-200"
-              />
+        <CardContent className="p-4 space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+              <div className="flex-1 max-w-sm">
+                <Select
+                  value={actionFilter}
+                  onChange={(e) => {
+                    setActionFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: '', label: 'Tất cả hành động' },
+                    { value: 'BORROW_DIRECT', label: 'Mượn trực tiếp tại quầy' },
+                    { value: 'RETURN_LOAN', label: 'Trả sách' },
+                    { value: 'RENEW_LOAN', label: 'Gia hạn sách' },
+                    { value: 'COLLECT_FINE', label: 'Thu tiền phạt' },
+                    { value: 'WAIVE_FINE', label: 'Miễn giảm tiền phạt' },
+                    { value: 'HOLD_RESERVATION_READY', label: 'Giữ chỗ sách' },
+                    { value: 'CANCEL_RESERVATION', label: 'Hủy đặt trước' },
+                    { value: 'SUGGESTION_APPROVE', label: 'Duyệt đề xuất mua' },
+                    { value: 'AUTO_LOST_LOAN', label: 'Tự động chuyển mất' },
+                    { value: 'ADMIN_LOCK_USER', label: 'Khóa bạn đọc' },
+                    { value: 'ADMIN_UNLOCK_USER', label: 'Mở khóa bạn đọc' },
+                    { value: 'UPDATE_SYSTEM_CONFIG', label: 'Cập nhật cấu hình' },
+                  ]}
+                  className="text-xs h-9 rounded-xl border-gray-200"
+                />
+              </div>
+
+              <div className="w-full sm:w-64">
+                <Select
+                  value={entityFilter}
+                  onChange={(e) => {
+                    setEntityFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: '', label: 'Tất cả đối tượng' },
+                    { value: 'Loan', label: 'Phiếu mượn' },
+                    { value: 'Fine', label: 'Khoản phạt' },
+                    { value: 'Reservation', label: 'Đặt trước' },
+                    { value: 'User', label: 'Bạn đọc' },
+                    { value: 'Book', label: 'Đầu sách' },
+                    { value: 'Copy', label: 'Bản sao' },
+                    { value: 'SystemConfig', label: 'Cấu hình hệ thống' },
+                  ]}
+                  className="text-xs h-9 rounded-xl border-gray-200"
+                />
+              </div>
             </div>
 
-            <div className="w-full sm:w-64">
-              <Select
-                value={entityFilter}
-                onChange={(e) => {
-                  setEntityFilter(e.target.value);
-                  setPage(1);
-                }}
-                options={[
-                  { value: '', label: 'Tất cả đối tượng (Entities)' },
-                  { value: 'Loan', label: 'Phiếu mượn (Loan)' },
-                  { value: 'Fine', label: 'Khoản phạt (Fine)' },
-                  { value: 'Reservation', label: 'Đặt trước (Reservation)' },
-                  { value: 'User', label: 'Bạn đọc (User)' },
-                  { value: 'Book', label: 'Đầu sách (Book)' },
-                  { value: 'Copy', label: 'Bản sao (Copy)' },
-                  { value: 'SystemConfig', label: 'Cấu hình hệ thống' },
-                ]}
-                className="text-xs h-9 rounded-xl border-gray-200"
-              />
+            <div className="flex items-center gap-2.5 shrink-0 text-xs text-gray-500">
+              <span className="text-[11px] text-gray-500">Hiển thị:</span>
+              <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50/60">
+                {[5, 10, 20].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => {
+                      setPageSize(size);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      'px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all',
+                      pageSize === size
+                        ? 'bg-white text-brand shadow-2xs border border-gray-200'
+                        : 'text-gray-500 hover:text-gray-800'
+                    )}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0 text-xs text-gray-500">
-            <span className="text-[11px] text-gray-500">Hiển thị:</span>
-            <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50/60">
-              {[5, 10, 20].map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(size);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    'px-2.5 py-1 text-[11px] font-semibold rounded-md transition-all',
-                    pageSize === size
-                      ? 'bg-white text-brand shadow-2xs border border-gray-200'
-                      : 'text-gray-500 hover:text-gray-800'
-                  )}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
+          {/* Date Filter Row */}
+          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+            <DateFilter
+              value={dateFilter}
+              onChange={(newVal) => {
+                setDateFilter(newVal);
+                setPage(1);
+              }}
+            />
           </div>
         </CardContent>
       </Card>

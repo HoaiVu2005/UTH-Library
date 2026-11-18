@@ -27,9 +27,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Barcode } from '@/components/ui/Barcode';
-import { formatDateVN } from '@/lib/utils';
+import { formatDateVN, getRemainingDays, cn } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
-import { cn } from '@/lib/utils';
 
 interface ReservationItem {
   id: number;
@@ -78,15 +77,7 @@ const formatHoldExpiry = (dateStr?: string) => {
 
 const getDaysLeft = (dateStr?: string) => {
   if (!dateStr) return 3;
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 3;
-    const now = new Date();
-    const diffMs = d.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  } catch {
-    return 3;
-  }
+  return Math.max(0, getRemainingDays(dateStr));
 };
 
 export const MyReservationsPage: React.FC = () => {
@@ -153,7 +144,7 @@ export const MyReservationsPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-page-enter">
+    <div className="space-y-6 pb-16 animate-page-enter">
       {/* Page Header Banner */}
       <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center space-x-3.5">

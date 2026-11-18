@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.core.enums import CopyStatus
-from .models import Category, Author, Book, Copy
+from .models import Category, Author, Book, Copy, DeaccessionBatch
 
 class CategorySerializer(serializers.ModelSerializer):
     book_count = serializers.IntegerField(read_only=True, default=0)
@@ -23,6 +23,7 @@ class CopySerializer(serializers.ModelSerializer):
     book_cover_image = serializers.CharField(source='book.cover_image', read_only=True, default=None)
     category_name = serializers.CharField(source='book.category.name', read_only=True)
     category_code = serializers.CharField(source='book.category.code', read_only=True)
+    deaccession_batch_code = serializers.CharField(source='deaccession_batch.code', read_only=True, default=None)
     book = serializers.SerializerMethodField()
 
     class Meta:
@@ -33,6 +34,7 @@ class CopySerializer(serializers.ModelSerializer):
             'hold_expires_at', 'acquired_date', 'purchase_price',
             'source', 'supplier', 'note',
             'book_id', 'book_title', 'book_isbn', 'book_cover_image', 'category_name', 'category_code', 'book',
+            'deaccession_batch', 'deaccession_batch_code',
         ]
         read_only_fields = ['id', 'barcode', 'acquired_date', 'held_for_user', 'hold_expires_at']
 
@@ -283,4 +285,48 @@ class BatchCopyCreateSerializer(serializers.Serializer):
     source = serializers.CharField(required=False, default='Trường cấp')
     supplier = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+class DeaccessionBatchSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.full_name', read_only=True, default=None)
+    reason_display = serializers.CharField(source='get_reason_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = DeaccessionBatch
+        fields = [
+            'id', 'code', 'decision_number', 'decision_date', 'reason', 'reason_display',
+            'status', 'status_display', 'committee', 'total_copies', 'total_value',
+            'note', 'created_by', 'created_by_name', 'approved_by', 'approved_by_name',
+            'approved_at', 'bgh_decision_number', 'bgh_decision_date', 'bgh_approver_name',
+            'disposal_method', 'approval_note', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'total_copies', 'total_value', 'status', 'created_by', 'approved_by', 'approved_at', 'created_at', 'updated_at']
+
+class DeaccessionBatchDetailSerializer(DeaccessionBatchSerializer):
+    copies = CopySerializer(many=True, read_only=True)
+
+    class Meta(DeaccessionBatchSerializer.Meta):
+        fields = DeaccessionBatchSerializer.Meta.fields + ['copies']
+
+class CreateDeaccessionBatchSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    decision_number = serializers.CharField(max_length=100)
+    decision_date = serializers.DateField()
+    reason = serializers.ChoiceField(choices=DeaccessionBatch.REASON_CHOICES, default='damaged')
+    committee = serializers.CharField(required=False, allow_blank=True)
+    note = serializers.CharField(required=False, allow_blank=True)
+    copy_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        allow_empty=False,
+        help_text='Danh sách ID các bản sao sách cần thanh lý'
+    )
+
+class ApproveDeaccessionBatchSerializer(serializers.Serializer):
+    bgh_decision_number = serializers.CharField(max_length=100, required=True, help_text='Số quyết định phê duyệt BGH')
+    bgh_decision_date = serializers.DateField(required=True, help_text='Ngày ký quyết định BGH')
+    bgh_approver_name = serializers.CharField(max_length=150, required=True, help_text='Người ký phê duyệt BGH (VD: PGS.TS Nguyễn Xuân Phương - Hiệu trưởng)')
+    disposal_method = serializers.CharField(max_length=100, required=False, default='Tiêu hủy phân loại sinh học')
+    approval_note = serializers.CharField(required=False, allow_blank=True, default='')
+
 

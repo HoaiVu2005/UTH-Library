@@ -61,6 +61,48 @@ export function formatDateTimeVN(dateInput: string | Date | null | undefined): s
 }
 
 /**
+ * Checks if a date string or Date object falls on today.
+ */
+export function isDateToday(dateInput: string | Date | null | undefined): boolean {
+  if (!dateInput) return false;
+  try {
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+    return (
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear()
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Calculates remaining calendar days between today and a target due/expiration date.
+ * Normalizes both dates to local calendar midnight (00:00:00) so that:
+ * - If today is 17/11 and due date is 30/11, it accurately returns 30 - 17 = 13 days.
+ * - If due date is today, returns 0 ("Hết hạn hôm nay").
+ * - If due date has passed, returns a negative number representing overdue days.
+ */
+export function getRemainingDays(dueDateInput: string | Date | null | undefined): number {
+  if (!dueDateInput) return 0;
+  try {
+    const target = typeof dueDateInput === 'string' ? new Date(dueDateInput) : dueDateInput;
+    if (isNaN(target.getTime())) return 0;
+    const now = new Date();
+    // Normalize both to start of day in local time to calculate exact calendar days
+    const targetDate = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = targetDate.getTime() - todayDate.getTime();
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Truncates text safely with an ellipsis.
  */
 export function truncate(text: string, maxLength: number): string {
@@ -231,3 +273,70 @@ export function exportToCsv(filename: string, headers: string[], rows: (string |
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Chuyển đổi số tiền thành chữ tiếng Việt chuẩn biên bản tài chính (ví dụ: 1500000 -> Một triệu năm trăm nghìn đồng).
+ */
+export function numberToVietnameseWords(amount: number): string {
+  if (isNaN(amount) || amount === 0) return 'Không đồng';
+  if (amount < 0) return `Âm ${numberToVietnameseWords(-amount).toLowerCase()}`;
+
+  const num = Math.floor(amount);
+  const units = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ', 'triệu tỷ'];
+  const digits = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+
+  function readThreeDigits(n: number, isFirstGroup: boolean): string {
+    const h = Math.floor(n / 100);
+    const t = Math.floor((n % 100) / 10);
+    const u = n % 10;
+    let res = '';
+
+    if (h > 0 || !isFirstGroup) {
+      res += `${digits[h]} trăm `;
+    }
+
+    if (t > 1) {
+      res += `${digits[t]} mươi `;
+      if (u === 1) res += 'mốt ';
+      else if (u === 5) res += 'lăm ';
+      else if (u > 0) res += `${digits[u]} `;
+    } else if (t === 1) {
+      res += 'mười ';
+      if (u === 5) res += 'lăm ';
+      else if (u > 0) res += `${digits[u]} `;
+    } else {
+      if (u > 0) {
+        if (h > 0 || !isFirstGroup) res += 'lẻ ';
+        res += `${digits[u]} `;
+      }
+    }
+
+    return res.trim();
+  }
+
+  let temp = num;
+  const groups: number[] = [];
+  while (temp > 0) {
+    groups.push(temp % 1000);
+    temp = Math.floor(temp / 1000);
+  }
+
+  let result = '';
+  for (let i = groups.length - 1; i >= 0; i--) {
+    const grp = groups[i];
+    if (grp > 0) {
+      const read = readThreeDigits(grp, i === groups.length - 1);
+      const unit = units[i];
+      result += `${read} ${unit} `;
+    }
+  }
+
+  const trimmed = result.trim().replace(/\s+/g, ' ');
+  if (!trimmed) return 'Không đồng';
+  const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return `${capitalized} đồng`;
+}
+
+
+
+

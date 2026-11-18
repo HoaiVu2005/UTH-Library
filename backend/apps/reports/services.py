@@ -47,6 +47,13 @@ def get_dashboard_summary():
     ready_reservations = Reservation.objects.filter(status=ReservationStatus.READY).count()
     pending_suggestions = Suggestion.objects.filter(status=SuggestionStatus.PENDING).count()
 
+    # Activity today (since 00:00:00 today)
+    start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_reservations = Reservation.objects.filter(created_at__gte=start_of_today).count()
+    today_pending_reservations = Reservation.objects.filter(created_at__gte=start_of_today, status=ReservationStatus.PENDING).count()
+    today_suggestions = Suggestion.objects.filter(created_at__gte=start_of_today).count()
+    today_pending_suggestions = Suggestion.objects.filter(created_at__gte=start_of_today, status=SuggestionStatus.PENDING).count()
+
     total_users = User.objects.filter(deleted_at__isnull=True).count()
     locked_users = User.objects.filter(is_locked=True, deleted_at__isnull=True).count()
 
@@ -67,6 +74,10 @@ def get_dashboard_summary():
         'pending_reservations': pending_reservations,
         'ready_reservations': ready_reservations,
         'pending_suggestions': pending_suggestions,
+        'today_reservations': today_reservations,
+        'today_pending_reservations': today_pending_reservations,
+        'today_suggestions': today_suggestions,
+        'today_pending_suggestions': today_pending_suggestions,
         'total_users': total_users,
         'locked_users': locked_users,
     }

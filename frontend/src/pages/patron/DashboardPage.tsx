@@ -23,8 +23,8 @@ import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { StudentIdCardModal } from '@/components/patron/StudentIdCardModal';
-import { format, differenceInDays } from 'date-fns';
-import { formatCurrencyVND, cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { formatCurrencyVND, cn, getRemainingDays } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
 interface ActiveLoan {
@@ -457,7 +457,7 @@ export const DashboardPage: React.FC = () => {
             ) : (
               <div className="space-y-2.5">
                 {loans.slice(0, 3).map((loan) => {
-                  const daysLeft = differenceInDays(new Date(loan.due_at), new Date());
+                  const daysLeft = getRemainingDays(loan.due_at);
                   const isLate = loan.days_late > 0;
 
                   return (

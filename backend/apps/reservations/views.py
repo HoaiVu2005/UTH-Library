@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,10 +16,17 @@ from .services import (
     create_reservation,
     cancel_reservation,
     advance_reservation,
+    expire_stale_reservations,
 )
 
 class CreateReservationView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAdminUserRole()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        return ReservationListView().get(request)
 
     def post(self, request):
         serializer = CreateReservationSerializer(data=request.data)
@@ -50,6 +58,31 @@ class MyReservationsView(APIView):
         if status_q:
             queryset = queryset.filter(status=status_q)
 
+        today_q = request.query_params.get('today')
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        now = timezone.now()
+        today = now.date()
+        if today_q in ('true', '1', 'True') or date_preset == 'today':
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=today_start)
+        elif date_preset == 'week':
+            week_ago = now - timezone.timedelta(days=7)
+            queryset = queryset.filter(created_at__gte=week_ago)
+        elif date_preset == 'month':
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=month_start)
+        elif date_exact:
+            queryset = queryset.filter(created_at__date=date_exact)
+        else:
+            if from_date:
+                queryset = queryset.filter(created_at__date__gte=from_date)
+            if to_date:
+                queryset = queryset.filter(created_at__date__lte=to_date)
+
         paginator = StandardPagination()
         page_records = paginator.paginate_queryset(queryset, request)
         serializer = ReservationSerializer(page_records, many=True)
@@ -73,11 +106,41 @@ class ReservationListView(APIView):
     permission_classes = [IsAdminUserRole]
 
     def get(self, request):
+        try:
+            expire_stale_reservations(admin_user=request.user, request=request)
+        except Exception:
+            pass
+
         queryset = Reservation.objects.select_related('user', 'book', 'book__category', 'copy').order_by('status', 'queue_position', '-created_at')
 
         status_q = request.query_params.get('status')
         if status_q:
             queryset = queryset.filter(status=status_q)
+
+        today_q = request.query_params.get('today')
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        now = timezone.now()
+        today = now.date()
+        if today_q in ('true', '1', 'True') or date_preset == 'today':
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=today_start)
+        elif date_preset == 'week':
+            week_ago = now - timezone.timedelta(days=7)
+            queryset = queryset.filter(created_at__gte=week_ago)
+        elif date_preset == 'month':
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=month_start)
+        elif date_exact:
+            queryset = queryset.filter(created_at__date=date_exact)
+        else:
+            if from_date:
+                queryset = queryset.filter(created_at__date__gte=from_date)
+            if to_date:
+                queryset = queryset.filter(created_at__date__lte=to_date)
 
         book_id = request.query_params.get('book_id')
         if book_id:
@@ -111,4 +174,15 @@ class AdvanceReservationView(APIView):
             'detail': 'Đã đưa yêu cầu đặt trước lên đầu hàng chờ.',
             'data': ReservationSerializer(advanced).data
         }, status=status.HTTP_200_OK)
+
+class ExpireStaleReservationsView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def post(self, request):
+        result = expire_stale_reservations(admin_user=request.user, request=request)
+        return Response({
+            'detail': f"Đã quét và xử lý thành công: Hủy {result['expired_count']} yêu cầu giữ chỗ quá hạn 3 ngày; Chuyển tiếp thành công cho {result['forwarded_count']} bạn đọc kế tiếp trong hàng chờ.",
+            'data': result
+        }, status=status.HTTP_200_OK)
+
 

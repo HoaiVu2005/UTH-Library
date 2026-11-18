@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     SuggestBooksView,
+    BookFacetsView,
     BookListView,
     BookDetailView,
     RelatedBooksView,
@@ -22,6 +23,9 @@ from .views import (
     BookCsvExportView,
     BookCsvImportView,
     ISBNLookupView,
+    DeaccessionBatchListCreateView,
+    DeaccessionBatchDetailView,
+    ApproveDeaccessionBatchView,
 )
 
 urlpatterns = [
@@ -41,6 +45,7 @@ urlpatterns = [
     path('catalog/books/import-csv', BookCsvImportView.as_view()),
 
     # Books
+    path('books/facets', BookFacetsView.as_view(), name='book-facets'),
     path('books', BookListView.as_view(), name='book-list'),
     path('books/<int:pk>', BookDetailView.as_view(), name='book-detail'),
     path('books/<int:pk>/related', RelatedBooksView.as_view(), name='book-related'),
@@ -56,6 +61,25 @@ urlpatterns = [
     path('copies/batch', BatchCopyCreateView.as_view(), name='copy-batch-create'),
     path('copies/<int:pk>', CopyUpdateView.as_view(), name='copy-update'),
     path('copies/<int:pk>/withdraw', CopyWithdrawView.as_view(), name='copy-withdraw'),
+    path('catalog/copies', CopyAdminListView.as_view()),
+    path('catalog/copies/lookup', CopyLookupView.as_view()),
+    path('catalog/copies/batch', BatchCopyCreateView.as_view()),
+    path('catalog/copies/<int:pk>', CopyUpdateView.as_view()),
+    path('catalog/copies/<int:pk>/withdraw', CopyWithdrawView.as_view()),
+
+    # Deaccession Batches
+    path('deaccession-batches', DeaccessionBatchListCreateView.as_view(), name='deaccession-batch-list-create'),
+    path('deaccession-batches/<int:pk>', DeaccessionBatchDetailView.as_view(), name='deaccession-batch-detail'),
+    path('deaccession-batches/<int:pk>/approve', ApproveDeaccessionBatchView.as_view(), name='deaccession-batch-approve'),
+    path('deaccession_batches', DeaccessionBatchListCreateView.as_view()),
+    path('deaccession_batches/<int:pk>', DeaccessionBatchDetailView.as_view()),
+    path('deaccession_batches/<int:pk>/approve', ApproveDeaccessionBatchView.as_view()),
+    path('catalog/deaccession-batches', DeaccessionBatchListCreateView.as_view()),
+    path('catalog/deaccession-batches/<int:pk>', DeaccessionBatchDetailView.as_view()),
+    path('catalog/deaccession-batches/<int:pk>/approve', ApproveDeaccessionBatchView.as_view()),
+    path('catalog/deaccession_batches', DeaccessionBatchListCreateView.as_view()),
+    path('catalog/deaccession_batches/<int:pk>', DeaccessionBatchDetailView.as_view()),
+    path('catalog/deaccession_batches/<int:pk>/approve', ApproveDeaccessionBatchView.as_view()),
 
     # Categories
     path('categories', CategoryListCreateView.as_view(), name='category-list-create'),

@@ -81,8 +81,58 @@ class BarcodeSequence(models.Model):
     def __str__(self):
         return f"{self.category.code}: {self.last_value}"
 
+class DeaccessionBatch(BaseModel):
+    REASON_CHOICES = [
+        ('damaged', 'Hư hỏng không thể phục hồi'),
+        ('lost', 'Mất tài liệu không tìm thấy'),
+        ('outdated', 'Lạc hậu nội dung / Hết hạn lưu trữ'),
+        ('other', 'Lý do khác'),
+    ]
+
+    STATUS_CHOICES = [
+        ('draft', 'Dự thảo'),
+        ('approved', 'Đã duyệt thanh lý'),
+        ('cancelled', 'Đã hủy'),
+    ]
+
+    code = models.CharField(max_length=50, unique=True, db_index=True, help_text='Mã biên bản (VD: BBTL-2026-001)')
+    decision_number = models.CharField(max_length=100, help_text='Số quyết định (VD: 128/QĐ-ĐHGTVT)')
+    decision_date = models.DateField(help_text='Ngày ký quyết định')
+    reason = models.CharField(max_length=50, choices=REASON_CHOICES, default='damaged')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', db_index=True)
+    committee = models.TextField(blank=True, null=True, help_text='Thành viên Hội đồng thanh lý')
+    total_copies = models.PositiveIntegerField(default=0)
+    total_value = models.BigIntegerField(default=0, help_text='Tổng nguyên giá tài liệu thanh lý (VND)')
+    note = models.TextField(blank=True, null=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_deaccession_batches')
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_deaccession_batches')
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    # Căn cứ phê duyệt của Ban Giám hiệu / Hội đồng cấp Trường
+    bgh_decision_number = models.CharField(max_length=100, blank=True, null=True, help_text='Số quyết định phê duyệt BGH (VD: 125/QĐ-ĐHGTVT-BGH)')
+    bgh_decision_date = models.DateField(blank=True, null=True, help_text='Ngày ký QĐ phê duyệt BGH')
+    bgh_approver_name = models.CharField(max_length=150, blank=True, null=True, help_text='Người ký duyệt BGH (VD: PGS.TS Nguyễn Xuân Phương - Hiệu trưởng)')
+    disposal_method = models.CharField(max_length=100, blank=True, null=True, default='Tiêu hủy phân loại sinh học', help_text='Phương thức xử lý tài sản thanh lý')
+    approval_note = models.TextField(blank=True, null=True, help_text='Ý kiến / Căn cứ phê duyệt của BGH')
+
+    class Meta:
+        db_table = 'deaccession_batches'
+        verbose_name = 'Biên bản Thanh lý Sách'
+        verbose_name_plural = 'Biên bản Thanh lý Sách'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.decision_number} ({self.get_status_display()})"
+
 class Copy(BaseModel):
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='copies')
+    deaccession_batch = models.ForeignKey(
+        DeaccessionBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='copies'
+    )
     barcode = models.CharField(max_length=50, unique=True, db_index=True)
     shelf_location = models.CharField(max_length=100, default='Kệ 01', help_text='Vị trí kệ')
     status = models.CharField(
@@ -116,6 +166,7 @@ class Copy(BaseModel):
             models.Index(fields=['status']),
             models.Index(fields=['barcode']),
             models.Index(fields=['held_for_user']),
+            models.Index(fields=['deaccession_batch']),
         ]
 
     def __str__(self):

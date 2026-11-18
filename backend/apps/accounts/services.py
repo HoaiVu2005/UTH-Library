@@ -5,10 +5,10 @@ from datetime import timedelta
 import jwt
 from django.conf import settings
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.core.cache import cache
 from apps.core.exceptions import BusinessLogicError
-from apps.core.enums import LockReason
+from apps.core.enums import LockReason, LoanStatus, FineStatus, NotificationType
 from .models import User, RefreshToken, PasswordResetToken
 
 def hash_token(raw_token: str) -> str:
@@ -153,3 +153,121 @@ def revoke_refresh_token(raw_refresh_token: str):
 
 def revoke_all_user_tokens(user: User):
     RefreshToken.objects.filter(user=user, revoked_at__isnull=True).update(revoked_at=timezone.now())
+
+def check_and_suspend_user(user: User, admin_user: User = None, request=None) -> dict:
+    """
+    Tự động kiểm tra điều kiện vi phạm của bạn đọc:
+    - Có sách quá hạn > 7 ngày.
+    - Hoặc có tổng nợ tiền phạt chưa thanh toán > 50.000đ.
+    Nếu vi phạm: Tự động khóa thẻ mượn và gửi thông báo.
+    Nếu đã khắc phục và trước đó bị khóa vì lý do ngưỡng: Tự động mở khóa thẻ.
+    """
+    if user.role in ['admin', 'librarian']:
+        return {'status': 'skipped', 'reason': 'staff_exempt'}
+
+    from apps.circulation.models import Loan
+    from apps.fines.models import Fine
+    from apps.notifications.models import Notification
+    from apps.audit.services import log_action
+
+    now = timezone.now()
+    threshold_date = now - timedelta(days=7)
+    fine_threshold = 50000
+
+    overdue_loans_count = Loan.objects.filter(
+        user=user,
+        status=LoanStatus.ACTIVE,
+        due_at__lt=threshold_date
+    ).count()
+
+    unpaid_fines = Fine.objects.filter(
+        user=user,
+        status__in=[FineStatus.UNPAID, FineStatus.PARTIAL]
+    ).aggregate(total=Sum('amount'))['total'] or 0
+
+    is_overdue_violated = overdue_loans_count > 0
+    is_fine_violated = unpaid_fines > fine_threshold
+
+    if is_overdue_violated or is_fine_violated:
+        reason = LockReason.OVERDUE_THRESHOLD if is_overdue_violated else LockReason.UNPAID_FINE_THRESHOLD
+        reason_text = (
+            f"Tự động khóa thẻ do có {overdue_loans_count} lượt mượn quá hạn trên 7 ngày."
+            if is_overdue_violated
+            else f"Tự động khóa thẻ do tổng nợ tiền phạt {unpaid_fines:,.0f}đ vượt ngưỡng quy định (> 50.000đ)."
+        )
+
+        if not user.is_locked:
+            user.is_locked = True
+            user.lock_reason = reason
+            user.save(update_fields=['is_locked', 'lock_reason'])
+
+            Notification.objects.create(
+                user=user,
+                content=f"Thẻ bạn đọc bị tạm khóa tự động: {reason_text}",
+                type=NotificationType.OVERDUE if is_overdue_violated else NotificationType.FINE_CREATED
+            )
+
+            log_action(
+                user=admin_user or user,
+                action='AUTO_SUSPEND_USER',
+                entity_type='User',
+                entity_id=user.id,
+                detail={'reason': reason, 'message': reason_text},
+                request=request
+            )
+            return {'status': 'suspended', 'reason': reason, 'detail': reason_text}
+
+        return {'status': 'already_suspended', 'reason': user.lock_reason}
+
+    # Nếu không còn vi phạm và trước đó bị khóa vì lý do ngưỡng -> Mở khóa lại
+    if user.lock_reason in [LockReason.OVERDUE_THRESHOLD, LockReason.UNPAID_FINE_THRESHOLD]:
+        user.is_locked = False
+        user.lock_reason = None
+        user.save(update_fields=['is_locked', 'lock_reason'])
+
+        Notification.objects.create(
+            user=user,
+            content='Thẻ bạn đọc đã được tự động mở khóa. Tài khoản đã hoàn tất các nghĩa vụ sách quá hạn và tiền phạt. Quyền mượn sách được khôi phục.',
+            type=NotificationType.CARD_EXPIRING
+        )
+
+        log_action(
+            user=admin_user or user,
+            action='AUTO_UNSUSPEND_USER',
+            entity_type='User',
+            entity_id=user.id,
+            detail={'message': 'Đã hoàn tất nghĩa vụ mượn trả và nộp phạt.'},
+            request=request
+        )
+        return {'status': 'unsuspended', 'detail': 'Khôi phục thẻ thành công.'}
+
+    return {'status': 'normal'}
+
+def auto_suspend_violating_users(admin_user: User = None, request=None) -> dict:
+    """
+    Quét toàn bộ tài khoản bạn đọc đang hoạt động trong hệ thống để tự động khóa thẻ
+    hoặc mở khóa theo các ngưỡng quy định.
+    """
+    patrons = User.objects.filter(
+        role__in=['student', 'lecturer'],
+        is_active=True,
+        deleted_at__isnull=True
+    )
+    total_checked = 0
+    total_suspended = 0
+    total_unsuspended = 0
+
+    for patron in patrons:
+        total_checked += 1
+        res = check_and_suspend_user(patron, admin_user=admin_user, request=request)
+        if res.get('status') == 'suspended':
+            total_suspended += 1
+        elif res.get('status') == 'unsuspended':
+            total_unsuspended += 1
+
+    return {
+        'total_checked': total_checked,
+        'total_suspended': total_suspended,
+        'total_unsuspended': total_unsuspended
+    }
+

@@ -8,7 +8,7 @@ export interface ModalProps {
   onClose: () => void;
   title?: React.ReactNode;
   description?: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
   children: React.ReactNode;
   closeOnOutsideClick?: boolean;
   className?: string;
@@ -58,7 +58,10 @@ export const Modal: React.FC<ModalProps> = ({
     lg: 'max-w-xl',
     xl: 'max-w-2xl',
     '2xl': 'max-w-4xl',
-    full: 'max-w-6xl',
+    '3xl': 'max-w-5xl',
+    '4xl': 'max-w-6xl',
+    '5xl': 'max-w-7xl',
+    full: 'max-w-[96vw]',
   }[size];
 
   const modalContent = (
@@ -75,7 +78,7 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={cn(
-          'relative w-full bg-white rounded-2xl shadow-modal border border-border flex flex-col max-h-[88vh] overflow-hidden animate-in zoom-in-95 duration-150',
+          'relative w-full bg-white rounded-2xl shadow-modal border border-border flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-150',
           sizeClasses,
           className
         )}

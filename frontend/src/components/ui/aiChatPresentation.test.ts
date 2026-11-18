@@ -17,6 +17,14 @@ describe('AI chat presentation by role', () => {
         fullName: 'Nguyễn Văn Quản Trị (Thủ Thư Trưởng)',
         username: 'admin',
       }),
+    ).toBe('Chào Quản trị viên!');
+
+    expect(
+      getChatGreeting({
+        role: 'librarian',
+        fullName: 'Trần Thị Thủ Thư',
+        username: 'librarian01',
+      }),
     ).toBe('Chào Thủ thư!');
   });
 

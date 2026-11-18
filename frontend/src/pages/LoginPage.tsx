@@ -44,6 +44,8 @@ export const LoginPage: React.FC = () => {
       const user = await login(identity.trim(), password);
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
+      } else if (user.role === 'librarian') {
+        navigate('/admin/circulation');
       } else {
         navigate(from === '/' ? '/dashboard' : from);
       }
@@ -183,21 +185,28 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleDemoFill('admin', 'AdminPassword123')}
-              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
+              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors cursor-pointer"
             >
-              Thủ thư (Admin)
+              Admin / Trưởng TV
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDemoFill('thuthu', 'Password123')}
+              className="px-2.5 py-1 text-[11px] font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-md transition-colors cursor-pointer shadow-2xs"
+            >
+              Thủ thư (Trực quầy)
             </button>
             <button
               type="button"
               onClick={() => handleDemoFill('052205006506', 'Password123')}
-              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
+              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors cursor-pointer"
             >
               Sinh viên
             </button>
             <button
               type="button"
               onClick={() => handleDemoFill('gv01', 'Password123')}
-              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors"
+              className="px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-teal-50 hover:text-teal-700 border border-gray-200 rounded-md transition-colors cursor-pointer"
             >
               Giảng viên
             </button>

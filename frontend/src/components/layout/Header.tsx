@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Right: Quick actions + User Profile Dropdown */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Patron Digital ID Card Shortcut (Student & Lecturer) */}
-          {isAuthenticated && user && user.role !== 'admin' && (
+          {isAuthenticated && user && (user.role === 'student' || user.role === 'lecturer') && (
             <button
               type="button"
               onClick={() => setIsCardModalOpen(true)}
@@ -122,8 +122,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             >
               <Bell className="w-4 h-4" />
               {unreadCount > 0 ? (
-                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[18px] h-[18px] bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                <span className="absolute -top-1 -right-1 flex items-center justify-center">
+                  <span className="absolute -inset-0.5 rounded-full bg-rose-400/35 animate-ping opacity-75" />
+                  <span className="relative px-1.5 py-0.2 min-w-[18px] h-[18px] bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white shadow-2xs">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
                 </span>
               ) : (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-slate-300 rounded-full" />
@@ -155,6 +158,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                       <span className="text-primary font-semibold flex items-center gap-0.5">
                         <Shield className="w-2.5 h-2.5" /> Quản trị viên
                       </span>
+                    ) : user.role === 'librarian' ? (
+                      <span className="text-teal-700 font-semibold flex items-center gap-0.5">
+                        <Shield className="w-2.5 h-2.5" /> Thủ thư
+                      </span>
                     ) : (
                       <span className="font-mono">{user.card_code}</span>
                     )}
@@ -170,7 +177,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                     <p className="font-bold text-textPrimary leading-snug">{user.full_name}</p>
                     <p className="text-[11px] text-textSecondary font-mono mt-0.5">{user.card_code}</p>
                     <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-primary-light text-primary-dark border border-primary/20">
-                      {user.role === 'admin' ? 'Quản trị viên / Thủ thư' : user.role === 'lecturer' ? 'Giảng viên' : 'Bạn đọc sinh viên'}
+                      {user.role === 'admin'
+                        ? 'Quản trị viên / Trưởng thư viện'
+                        : user.role === 'librarian'
+                        ? 'Thủ thư quầy & nghiệp vụ'
+                        : user.role === 'lecturer'
+                        ? 'Giảng viên'
+                        : 'Bạn đọc sinh viên'}
                     </span>
                   </div>
 
@@ -183,7 +196,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                     Hồ sơ tài khoản & Thẻ UTH
                   </Link>
 
-                  {user.role !== 'admin' && (
+                  {(user.role === 'student' || user.role === 'lecturer') && (
                     <button
                       type="button"
                       onClick={() => {
@@ -231,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       </div>
 
       {/* Student ID Card Modal (Patrons only) */}
-      {user && user.role !== 'admin' && (
+      {user && (user.role === 'student' || user.role === 'lecturer') && (
         <StudentIdCardModal
           isOpen={isCardModalOpen}
           onClose={() => setIsCardModalOpen(false)}

@@ -136,3 +136,117 @@ class PasswordResetToken(BaseModel):
         verbose_name = 'Mã đặt lại mật khẩu'
         verbose_name_plural = 'Mã đặt lại mật khẩu'
 
+class StudentStatus(models.TextChoices):
+    ENROLLED = 'enrolled', 'Đang học'
+    GRADUATED = 'graduated', 'Đã tốt nghiệp'
+    SUSPENDED = 'suspended', 'Bảo lưu / Thôi học'
+
+class StudentRoster(BaseModel):
+    student_code = models.CharField(max_length=50, unique=True, db_index=True, verbose_name='Mã số sinh viên (MSSV)')
+    full_name = models.CharField(max_length=255, verbose_name='Họ và tên sinh viên')
+    department = models.CharField(max_length=255, verbose_name='Khoa / Viện đào tạo')
+    major = models.CharField(max_length=255, blank=True, null=True, verbose_name='Chuyên ngành đào tạo')
+    class_name = models.CharField(max_length=100, blank=True, null=True, verbose_name='Lớp sinh hoạt')
+    email = models.EmailField(blank=True, null=True, verbose_name='Email trường cấp')
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='Số điện thoại')
+    academic_year = models.CharField(max_length=50, default='K22 (2022 - 2026)', verbose_name='Khóa học')
+    status = models.CharField(
+        max_length=20,
+        choices=StudentStatus.choices,
+        default=StudentStatus.ENROLLED,
+        db_index=True,
+        verbose_name='Tình trạng đào tạo'
+    )
+    is_card_issued = models.BooleanField(default=False, db_index=True, verbose_name='Đã cấp thẻ thư viện')
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='roster_entry',
+        verbose_name='Tài khoản bạn đọc thư viện'
+    )
+
+    class Meta:
+        db_table = 'student_roster'
+        verbose_name = 'Danh sách Sinh viên trường UTH'
+        verbose_name_plural = 'Danh sách Sinh viên trường UTH'
+        indexes = [
+            models.Index(fields=['student_code']),
+            models.Index(fields=['status', 'is_card_issued']),
+        ]
+
+    def __str__(self):
+        return f"{self.student_code} - {self.full_name} ({self.get_status_display()})"
+
+class TransactionType(models.TextChoices):
+    CARD_ISSUANCE = 'card_issuance', 'Phí cấp thẻ bạn đọc mới'
+    CARD_RENEWAL = 'card_renewal', 'Phí gia hạn thẻ thư viện'
+    CARD_REPLACEMENT = 'card_replacement', 'Phí cấp lại thẻ mất'
+    FINE_PAYMENT = 'fine_payment', 'Thanh toán tiền phạt'
+
+class PaymentMethod(models.TextChoices):
+    CASH = 'cash', 'Tiền mặt tại quầy'
+    TRANSFER = 'transfer', 'Chuyển khoản (VietQR)'
+
+class TransactionStatus(models.TextChoices):
+    SUCCESS = 'success', 'Thành công'
+    REFUNDED = 'refunded', 'Đã hoàn tiền'
+    ADJUSTED = 'adjusted', 'Đã điều chỉnh'
+
+class PaymentTransaction(BaseModel):
+    transaction_code = models.CharField(max_length=50, unique=True, db_index=True, verbose_name='Mã giao dịch')
+    receipt_code = models.CharField(max_length=50, unique=True, db_index=True, verbose_name='Mã biên lai thu phí')
+    transaction_type = models.CharField(
+        max_length=30,
+        choices=TransactionType.choices,
+        default=TransactionType.CARD_ISSUANCE,
+        db_index=True,
+        verbose_name='Loại giao dịch thu phí'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='payment_transactions',
+        verbose_name='Bạn đọc nộp phí'
+    )
+    student_code = models.CharField(max_length=50, db_index=True, verbose_name='Mã số sinh viên / Mã bạn đọc')
+    payer_name = models.CharField(max_length=255, verbose_name='Họ tên người nộp phí')
+    amount = models.BigIntegerField(default=100000, verbose_name='Số tiền thu (VND)')
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+        verbose_name='Phương thức thanh toán'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=TransactionStatus.choices,
+        default=TransactionStatus.SUCCESS,
+        db_index=True,
+        verbose_name='Trạng thái giao dịch'
+    )
+    collected_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='collected_transactions',
+        verbose_name='Thủ thư lập biên lai & thu tiền'
+    )
+    collected_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Thời gian thu tiền')
+    note = models.TextField(blank=True, null=True, verbose_name='Ghi chú thu phí')
+
+    class Meta:
+        db_table = 'payment_transactions'
+        verbose_name = 'Giao dịch thu phí & Biên lai'
+        verbose_name_plural = 'Giao dịch thu phí & Biên lai'
+        ordering = ['-collected_at']
+        indexes = [
+            models.Index(fields=['transaction_code']),
+            models.Index(fields=['receipt_code']),
+            models.Index(fields=['transaction_type', 'status']),
+            models.Index(fields=['collected_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.receipt_code} - {self.payer_name} ({self.amount:,}đ)"
+

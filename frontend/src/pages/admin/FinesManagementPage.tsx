@@ -15,6 +15,7 @@ import {
   Clock,
   Sparkles,
   QrCode,
+  BookOpen,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -28,7 +29,8 @@ import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
-import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
+import { formatCurrencyVND, formatDateVN, isDateToday, cn } from '@/lib/utils';
+import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
 import { toast } from '@/components/ui/Toast';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
@@ -37,7 +39,10 @@ interface FineRecord {
   patron_name: string;
   patron_card_code: string;
   patron_role?: string;
+  patron_avatar?: string;
   book_title?: string;
+  book_cover_image?: string;
+  category_name?: string;
   copy_barcode?: string;
   type: string;
   amount: number;
@@ -63,6 +68,9 @@ export const FinesManagementPage: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(5);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  const [dateFilter, setDateFilter] = useState<{ preset: DatePreset; customDate?: string }>({
+    preset: 'all',
+  });
 
   // Collect modal
   const [collectTarget, setCollectTarget] = useState<FineRecord | null>(null);
@@ -87,6 +95,8 @@ export const FinesManagementPage: React.FC = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (typeFilter) params.append('type', typeFilter);
       if (appliedSearch.trim()) params.append('search', appliedSearch.trim());
+      if (dateFilter.preset !== 'all') params.append('date_preset', dateFilter.preset);
+      if (dateFilter.customDate) params.append('date', dateFilter.customDate);
       params.append('page', page.toString());
       params.append('page_size', pageSize.toString());
 
@@ -103,7 +113,7 @@ export const FinesManagementPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, typeFilter, appliedSearch, page, pageSize]);
+  }, [statusFilter, typeFilter, appliedSearch, dateFilter, page, pageSize]);
 
   useEffect(() => {
     fetchFines();
@@ -207,7 +217,7 @@ export const FinesManagementPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Quản lý Tiền phạt & Công nợ (Fines)</span>
+              <span>Quản lý Tiền phạt & Công nợ</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Thu tiền phạt trễ hạn, đền bù tài liệu hư hỏng hoặc làm mất sách theo biểu phí quy định của Thư viện UTH
@@ -238,87 +248,98 @@ export const FinesManagementPage: React.FC = () => {
       {/* Filter and Search Bar */}
       <Card className="shadow-xs border-gray-200/80">
         <CardContent className="p-4 space-y-3">
-          {/* Segmented Filter Tabs: Soft Outline Pills */}
-          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
-            <button
-              onClick={() => {
-                setStatusFilter('');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === ''
-                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
-                  : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
-              )}
-            >
-              <Layers className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tất cả trạng thái</span>
-            </button>
+          {/* Segmented Filter Tabs & Date Filter */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => {
+                  setStatusFilter('');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === ''
+                    ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs font-bold'
+                    : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
+                )}
+              >
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
+                <span>Tất cả trạng thái</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('unpaid');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'unpaid'
-                  ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
-                  : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
-              )}
-            >
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>Chưa thanh toán</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('unpaid');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-bold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'unpaid'
+                    ? 'bg-red-50 text-red-600 border-red-300 shadow-2xs'
+                    : 'bg-red-50/60 text-red-600 border-red-200/80 hover:bg-red-100/70'
+                )}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Chưa thanh toán</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('partial');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'partial'
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
-                  : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
-              )}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Nộp một phần</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('partial');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'partial'
+                    ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs font-bold'
+                    : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
+                )}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Nộp một phần</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('paid');
-                setPage(1);
-              }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'paid'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
-                  : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
-              )}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Đã thanh toán đủ</span>
-            </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('paid');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'paid'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs font-bold'
+                    : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
+                )}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đã thanh toán đủ</span>
+              </button>
 
-            <button
-              onClick={() => {
-                setStatusFilter('waived');
+              <button
+                onClick={() => {
+                  setStatusFilter('waived');
+                  setPage(1);
+                }}
+                className={cn(
+                  'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                  statusFilter === 'waived'
+                    ? 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs font-bold'
+                    : 'bg-purple-50/60 text-purple-700 border-purple-200/80 hover:bg-purple-100/70'
+                )}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Được miễn giảm</span>
+              </button>
+            </div>
+
+            {/* Date Filter */}
+            <DateFilter
+              value={dateFilter}
+              onChange={(newVal) => {
+                setDateFilter(newVal);
                 setPage(1);
               }}
-              className={cn(
-                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
-                statusFilter === 'waived'
-                  ? 'bg-purple-50 text-purple-800 border-purple-300 shadow-2xs'
-                  : 'bg-purple-50/60 text-purple-700 border-purple-200/80 hover:bg-purple-100/70'
-              )}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Được miễn giảm</span>
-            </button>
+            />
           </div>
 
           {/* Search Controls & Pagination Limit */}
@@ -438,8 +459,18 @@ export const FinesManagementPage: React.FC = () => {
                       <TableCell>
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70">
-                              {firstChar}
+                            <div className="w-7 h-7 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden">
+                              {f.patron_avatar ? (
+                                <img
+                                  src={f.patron_avatar}
+                                  alt={f.patron_name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <span className={f.patron_avatar ? 'hidden' : ''}>{firstChar}</span>
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-800 text-xs truncate" title={f.patron_name}>
@@ -466,19 +497,47 @@ export const FinesManagementPage: React.FC = () => {
                         </div>
                       </TableCell>
 
-                      {/* Type & Note */}
-                      <TableCell>
-                        <p className="font-medium text-gray-800 text-xs">
-                          {f.type === 'overdue' ? 'Phạt trễ hạn' : f.type === 'damage' ? 'Bồi thường hỏng sách' : 'Bồi thường mất sách'}
-                        </p>
-                        {f.book_title && (
-                          <p className="text-[11px] text-gray-500 truncate max-w-sm" title={f.book_title}>
-                            {f.book_title}
-                          </p>
-                        )}
-                        {f.note && (
-                          <p className="text-[11px] text-gray-400 italic mt-0.5 line-clamp-1">{f.note}</p>
-                        )}
+                      {/* Type & Note with Book Cover */}
+                      <TableCell className="max-w-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-11 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs relative">
+                            {f.book_cover_image ? (
+                              <img
+                                src={f.book_cover_image}
+                                alt={f.book_title || 'Tài liệu'}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.style.display = 'none';
+                                  const fallback = target.parentElement?.querySelector('.fine-fallback-icon');
+                                  if (fallback) fallback.classList.remove('hidden');
+                                }}
+                              />
+                            ) : null}
+                            <div className={cn('fine-fallback-icon flex items-center justify-center', f.book_cover_image ? 'hidden' : '')}>
+                              {f.book_title ? (
+                                <BookOpen className="w-3.5 h-3.5 text-slate-300" />
+                              ) : (
+                                <Receipt className="w-3.5 h-3.5 text-slate-300" />
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-800 text-xs">
+                              {f.type === 'overdue' ? 'Phạt trễ hạn' : f.type === 'damage' ? 'Bồi thường hỏng sách' : 'Bồi thường mất sách'}
+                            </p>
+                            {f.book_title ? (
+                              <p className="text-[11px] text-gray-700 font-medium truncate max-w-sm mt-0.5" title={f.book_title}>
+                                {f.book_title}
+                              </p>
+                            ) : null}
+                            {f.note && (
+                              <p className="text-[10.5px] text-gray-400 italic mt-0.5 line-clamp-1">{f.note}</p>
+                            )}
+                          </div>
+                        </div>
                       </TableCell>
 
                       {/* Total Amount */}

@@ -9,10 +9,11 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from apps.accounts.models import User
 from apps.accounts.permissions import IsAdminUserRole
 from apps.core.pagination import StandardPagination
-from apps.core.enums import LoanStatus, ReturnCondition, FineStatus
+from apps.core.enums import LoanStatus, ReturnCondition, FineStatus, ReservationStatus
 from apps.core.models import Policy
 from apps.fines.models import Fine
 from apps.catalog.models import Copy
+from apps.reservations.models import Reservation
 from .models import Loan
 from .serializers import (
     LoanSerializer,
@@ -116,6 +117,29 @@ class LoanListView(APIView):
                 Q(book__title__icontains=sq) |
                 Q(copy__barcode__icontains=sq)
             )
+
+        # Date filtering (actions: borrowed or returned on that date)
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        today = now.date()
+        if date_preset == 'today' or request.query_params.get('today') in ('true', '1', 'True'):
+            queryset = queryset.filter(Q(borrowed_at__date=today) | Q(returned_at__date=today))
+        elif date_preset == 'week':
+            week_ago = today - timezone.timedelta(days=7)
+            queryset = queryset.filter(Q(borrowed_at__date__gte=week_ago) | Q(returned_at__date__gte=week_ago))
+        elif date_preset == 'month':
+            month_start = today.replace(day=1)
+            queryset = queryset.filter(Q(borrowed_at__date__gte=month_start) | Q(returned_at__date__gte=month_start))
+        elif date_exact:
+            queryset = queryset.filter(Q(borrowed_at__date=date_exact) | Q(returned_at__date=date_exact))
+        else:
+            if from_date:
+                queryset = queryset.filter(Q(borrowed_at__date__gte=from_date) | Q(returned_at__date__gte=from_date))
+            if to_date:
+                queryset = queryset.filter(Q(borrowed_at__date__lte=to_date) | Q(returned_at__date__lte=to_date))
 
         paginator = StandardPagination()
         page_records = paginator.paginate_queryset(queryset, request)
@@ -254,10 +278,11 @@ class DeskPatronView(APIView):
                 'book_title': r.book.title,
                 'barcode': r.copy.barcode if r.copy else '',
                 'shelf_location': r.copy.shelf_location if r.copy else '',
-                'hold_expires_at': r.hold_expires_at,
+                'hold_expires_at': r.hold_expires_at.isoformat() if r.hold_expires_at else None,
             }
             for r in ready_reservations
         ]
+        ready_count = len(ready_res_list)
 
         return Response({
             'data': {
@@ -273,7 +298,7 @@ class DeskPatronView(APIView):
                 'is_currently_locked': user.is_currently_locked,
                 'active_loans_count': active_count,
                 'max_loans': max_limit,
-                'remaining_quota': max(0, max_limit - active_count),
+                'remaining_quota': max(0, max_limit - (active_count + ready_count)),
                 'has_overdue': has_overdue,
                 'has_unpaid_fines': unpaid_fines.exists(),
                 'unpaid_fines_total': unpaid_total,
@@ -347,6 +372,25 @@ class BatchCheckoutView(APIView):
 
         if not patron:
             return Response({'detail': 'Không tìm thấy bạn đọc trong hệ thống.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # BR02: Check quota upfront before processing batch
+        from .services import get_current_policy_for_user
+        from apps.core.enums import LoanStatus, ReservationStatus
+        from apps.reservations.models import Reservation
+        policy = get_current_policy_for_user(patron)
+        active_loans_count = Loan.objects.filter(user=patron, status=LoanStatus.ACTIVE).count()
+        ready_reservations_count = Reservation.objects.filter(user=patron, status=ReservationStatus.READY).count()
+        remaining_quota = max(0, policy.max_loans - (active_loans_count + ready_reservations_count))
+
+        if len(barcodes) > remaining_quota:
+            if remaining_quota == 0:
+                return Response({
+                    'detail': f'Bạn đọc đã đạt giới hạn tối đa {policy.max_loans} cuốn (hiện đang mượn {active_loans_count} cuốn và có {ready_reservations_count} cuốn đặt trước đang giữ tại quầy). Không thể mượn thêm.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'detail': f'Bạn đọc chỉ còn được mượn thêm {remaining_quota} cuốn (hiện đang mượn: {active_loans_count}, đang giữ chỗ: {ready_reservations_count} / tối đa: {policy.max_loans} cuốn). Giỏ hàng đang có {len(barcodes)} cuốn, vui lòng bớt ra.'
+                }, status=status.HTTP_400_BAD_REQUEST)
 
         created_loans = []
         with transaction.atomic():

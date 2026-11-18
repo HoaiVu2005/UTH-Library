@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from apps.accounts.permissions import IsAdminUserRole
+from apps.accounts.permissions import IsAdminUserRole, IsAdminOnlyRole
 from apps.accounts.models import User
 from apps.core.pagination import StandardPagination
 from apps.core.enums import SuggestionStatus, NotificationType, NotificationChannel, UserRole
@@ -26,6 +26,30 @@ class MySuggestionsView(APIView):
         status_param = request.query_params.get('status')
         if status_param:
             queryset = queryset.filter(status=status_param)
+
+        today_param = request.query_params.get('today')
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        now = timezone.now()
+        if today_param in ('true', '1', 'True') or date_preset == 'today':
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=today_start)
+        elif date_preset == 'week':
+            week_ago = now - timezone.timedelta(days=7)
+            queryset = queryset.filter(created_at__gte=week_ago)
+        elif date_preset == 'month':
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=month_start)
+        elif date_exact:
+            queryset = queryset.filter(created_at__date=date_exact)
+        else:
+            if from_date:
+                queryset = queryset.filter(created_at__date__gte=from_date)
+            if to_date:
+                queryset = queryset.filter(created_at__date__lte=to_date)
 
         paginator = StandardPagination()
         page_records = paginator.paginate_queryset(queryset, request)
@@ -77,13 +101,37 @@ class MySuggestionsView(APIView):
 
 
 class AdminSuggestionListView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def get(self, request):
         queryset = Suggestion.objects.select_related('user', 'reviewed_by').order_by('-created_at')
         status_param = request.query_params.get('status')
         if status_param:
             queryset = queryset.filter(status=status_param)
+
+        today_param = request.query_params.get('today')
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        now = timezone.now()
+        if today_param in ('true', '1', 'True') or date_preset == 'today':
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=today_start)
+        elif date_preset == 'week':
+            week_ago = now - timezone.timedelta(days=7)
+            queryset = queryset.filter(created_at__gte=week_ago)
+        elif date_preset == 'month':
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            queryset = queryset.filter(created_at__gte=month_start)
+        elif date_exact:
+            queryset = queryset.filter(created_at__date=date_exact)
+        else:
+            if from_date:
+                queryset = queryset.filter(created_at__date__gte=from_date)
+            if to_date:
+                queryset = queryset.filter(created_at__date__lte=to_date)
 
         search = request.query_params.get('search')
         if search:
@@ -96,7 +144,7 @@ class AdminSuggestionListView(APIView):
 
 
 class ApproveSuggestionView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def post(self, request, pk):
         suggestion = Suggestion.objects.filter(id=pk).first()
@@ -138,7 +186,7 @@ class ApproveSuggestionView(APIView):
 
 
 class RejectSuggestionView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def post(self, request, pk):
         suggestion = Suggestion.objects.filter(id=pk).first()
@@ -180,7 +228,7 @@ class RejectSuggestionView(APIView):
 
 
 class ReceiveSuggestionView(APIView):
-    permission_classes = [IsAdminUserRole]
+    permission_classes = [IsAdminOnlyRole]
 
     def post(self, request, pk):
         suggestion = Suggestion.objects.filter(id=pk).first()

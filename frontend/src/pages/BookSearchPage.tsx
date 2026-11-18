@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, Filter, LayoutGrid, List, RotateCcw, X, SlidersHorizontal, Check, User, Book as BookIcon, ChevronRight, ChevronLeft } from 'lucide-react';
+import {
+  Search,
+  Filter,
+  LayoutGrid,
+  List,
+  RotateCcw,
+  X,
+  SlidersHorizontal,
+  Check,
+  User,
+  Book as BookIcon,
+  ChevronRight,
+  ChevronLeft,
+  GraduationCap,
+  Building2,
+} from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { BookCard, BookHorizontalCard, BookCardItem } from '@/components/ui/BookCard';
 import { Button } from '@/components/ui/Button';
@@ -15,20 +30,39 @@ interface CategoryItem {
   id: number;
   code: string;
   name: string;
+  book_count?: number;
 }
 
-interface AuthorItem {
-  id: number;
-  name: string;
+interface PublisherItem {
+  publisher: string;
+  count: number;
+}
+
+interface FacetsData {
+  categories: CategoryItem[];
+  publishers: PublisherItem[];
+  years: {
+    min: number;
+    max: number;
+  };
 }
 
 interface FilterPanelProps {
   inputQ: string;
   setInputQ: (val: string) => void;
+  inputCategory: string;
+  setInputCategory: (val: string) => void;
   inputAuthor: string;
   setInputAuthor: (val: string) => void;
+  inputPublisher: string;
+  setInputPublisher: (val: string) => void;
+  inputYearFrom: string;
+  setInputYearFrom: (val: string) => void;
+  inputYearTo: string;
+  setInputYearTo: (val: string) => void;
   availableOnly: boolean;
   setAvailableOnly: (val: boolean) => void;
+  facets: FacetsData | null;
   activeFilterCount: number;
   onApplyFilter: (e?: React.FormEvent) => void;
   onResetFilters: () => void;
@@ -37,50 +71,59 @@ interface FilterPanelProps {
 const FilterPanel: React.FC<FilterPanelProps> = ({
   inputQ,
   setInputQ,
+  inputCategory,
+  setInputCategory,
   inputAuthor,
   setInputAuthor,
+  inputPublisher,
+  setInputPublisher,
+  inputYearFrom,
+  setInputYearFrom,
+  inputYearTo,
+  setInputYearTo,
   availableOnly,
   setAvailableOnly,
+  facets,
   activeFilterCount,
   onApplyFilter,
   onResetFilters,
 }) => {
   return (
-    <form onSubmit={onApplyFilter} className="space-y-4 text-sm">
-      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-        <div className="flex items-center space-x-2 text-brand font-bold text-sm">
-          <Filter className="w-4 h-4 text-brand" />
-          <span>Bộ lọc tìm kiếm {activeFilterCount > 0 && `(${activeFilterCount})`}</span>
+    <form onSubmit={onApplyFilter} className="space-y-2.5 text-sm">
+      <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+        <div className="flex items-center space-x-1.5 text-brand font-bold text-xs">
+          <Filter className="w-3.5 h-3.5 text-brand" />
+          <span>Bộ lọc đa diện {activeFilterCount > 0 && `(${activeFilterCount})`}</span>
         </div>
         <button
           type="button"
           onClick={onResetFilters}
-          className="text-xs text-gray-500 hover:text-red-600 flex items-center transition-colors font-medium"
+          className="text-[11px] text-gray-500 hover:text-red-600 flex items-center transition-colors font-medium cursor-pointer"
         >
-          <RotateCcw className="w-3 h-3 mr-1" />
+          <RotateCcw className="w-2.5 h-2.5 mr-1" />
           Đặt lại
         </button>
       </div>
 
-      {/* Ô 1: Tìm kiếm */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-gray-700 block">
-          Tìm kiếm
+      {/* Ô 1: Từ khóa tra cứu */}
+      <div className="space-y-1">
+        <label className="text-[11px] font-bold text-gray-700 block">
+          Từ khóa tra cứu
         </label>
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-3 pointer-events-none" />
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
           <input
             type="text"
             value={inputQ}
             onChange={(e) => setInputQ(e.target.value)}
-            placeholder="Tên tài liệu, chuyên ngành, môn học..."
-            className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
+            placeholder="Tên tài liệu, ISBN..."
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
           />
           {inputQ && (
             <button
               type="button"
               onClick={() => setInputQ('')}
-              className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs font-bold"
+              className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold"
               title="Xóa ô tìm kiếm"
             >
               ✕
@@ -89,25 +132,52 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
       </div>
 
-      {/* Ô 2: Tác giả */}
-      <div className="space-y-1.5">
-        <label className="text-xs font-bold text-gray-700 block">
+      {/* Ô 2: Chuyên ngành / Danh mục */}
+      <div className="space-y-1">
+        <label className="text-[11px] font-bold text-gray-700 block">
+          Chuyên ngành / Danh mục
+        </label>
+        <div className="relative">
+          <GraduationCap className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
+          <input
+            type="text"
+            value={inputCategory}
+            onChange={(e) => setInputCategory(e.target.value)}
+            placeholder="Tìm theo chuyên ngành..."
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
+          />
+          {inputCategory && (
+            <button
+              type="button"
+              onClick={() => setInputCategory('')}
+              className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+              title="Xóa chuyên ngành"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Ô 3: Tác giả */}
+      <div className="space-y-1">
+        <label className="text-[11px] font-bold text-gray-700 block">
           Tác giả
         </label>
         <div className="relative">
-          <User className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-3 pointer-events-none" />
+          <User className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
           <input
             type="text"
             value={inputAuthor}
             onChange={(e) => setInputAuthor(e.target.value)}
             placeholder="Tìm theo tên tác giả..."
-            className="w-full pl-9 pr-7 py-2 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
           />
           {inputAuthor && (
             <button
               type="button"
               onClick={() => setInputAuthor('')}
-              className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs font-bold"
+              className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold"
               title="Xóa tác giả"
             >
               ✕
@@ -116,36 +186,90 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
       </div>
 
+      {/* Ô 4: Nhà xuất bản */}
+      <div className="space-y-1">
+        <label className="text-[11px] font-bold text-gray-700 block">
+          Nhà xuất bản
+        </label>
+        <div className="relative">
+          <Building2 className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" />
+          <input
+            type="text"
+            value={inputPublisher}
+            onChange={(e) => setInputPublisher(e.target.value)}
+            placeholder="Tìm theo nhà xuất bản..."
+            className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-gray-200 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs transition-all"
+          />
+          {inputPublisher && (
+            <button
+              type="button"
+              onClick={() => setInputPublisher('')}
+              className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold"
+              title="Xóa nhà xuất bản"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Facet: Năm xuất bản (Range) */}
+      <div className="space-y-1">
+        <label className="text-[11px] font-bold text-gray-700 block">
+          Năm xuất bản
+        </label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <input
+            type="number"
+            min={facets?.years.min || 1990}
+            max={facets?.years.max || 2030}
+            value={inputYearFrom}
+            onChange={(e) => setInputYearFrom(e.target.value)}
+            placeholder={`Từ ${facets?.years.min || '2000'}`}
+            className="w-full px-2 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs"
+          />
+          <input
+            type="number"
+            min={facets?.years.min || 1990}
+            max={facets?.years.max || 2030}
+            value={inputYearTo}
+            onChange={(e) => setInputYearTo(e.target.value)}
+            placeholder={`Đến ${facets?.years.max || '2026'}`}
+            className="w-full px-2 py-1.5 text-xs rounded-xl border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand shadow-2xs"
+          />
+        </div>
+      </div>
+
       {/* Tình trạng sách còn bản mượn */}
-      <div className="pt-1">
-        <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-gray-200 hover:bg-gray-50/70 cursor-pointer transition-colors shadow-2xs">
+      <div>
+        <label className="flex items-center gap-2 p-2 rounded-xl border border-gray-200 hover:bg-gray-50/70 cursor-pointer transition-colors shadow-2xs">
           <input
             type="checkbox"
             checked={availableOnly}
             onChange={(e) => {
               setAvailableOnly(e.target.checked);
             }}
-            className="mt-0.5 rounded border-gray-300 text-brand focus:ring-brand/30 w-4 h-4 cursor-pointer"
+            className="rounded border-gray-300 text-brand focus:ring-brand/30 w-3.5 h-3.5 cursor-pointer"
           />
           <div className="min-w-0">
-            <span className="font-semibold text-xs text-gray-800 block">
+            <span className="font-semibold text-xs text-gray-800 block leading-tight">
               Chỉ hiện sách còn bản mượn
             </span>
-            <span className="text-[11px] text-gray-500 block leading-tight mt-0.5">
+            <span className="text-[10px] text-gray-500 block leading-tight mt-0.5">
               Có sẵn ít nhất 1 bản tại quầy
             </span>
           </div>
         </label>
       </div>
 
-      {/* Cuối cùng là 1 button tìm kiếm */}
-      <div className="pt-2">
+      {/* Nút Áp dụng bộ lọc */}
+      <div className="pt-1">
         <button
           type="submit"
-          className="w-full h-10 px-4 rounded-xl text-xs font-semibold border border-brand text-brand hover:bg-teal-50 bg-white transition-colors flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+          className="w-full h-9 px-3 rounded-xl text-xs font-semibold bg-brand text-white hover:bg-teal-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer active:scale-[0.99]"
         >
-          <Search className="w-4 h-4 text-brand" />
-          <span>Tìm kiếm</span>
+          <Search className="w-3.5 h-3.5 text-white" />
+          <span>Áp dụng bộ lọc</span>
         </button>
       </div>
     </form>
@@ -158,6 +282,10 @@ export const BookSearchPage: React.FC = () => {
   // Active query filters applied to backend
   const [q, setQ] = useState(searchParams.get('q') || '');
   const [author, setAuthor] = useState(searchParams.get('author') || '');
+  const [publisher, setPublisher] = useState(searchParams.get('publisher') || '');
+  const [category, setCategory] = useState(searchParams.get('category') || searchParams.get('category_id') || '');
+  const [yearFrom, setYearFrom] = useState(searchParams.get('year_from') || '');
+  const [yearTo, setYearTo] = useState(searchParams.get('year_to') || '');
   const [availableOnly, setAvailableOnly] = useState(searchParams.get('available_only') === 'true');
   const [ordering, setOrdering] = useState(searchParams.get('ordering') || '-created_at');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1', 10));
@@ -169,7 +297,12 @@ export const BookSearchPage: React.FC = () => {
   // Input states in the filter form
   const [inputQ, setInputQ] = useState(searchParams.get('q') || '');
   const [inputAuthor, setInputAuthor] = useState(searchParams.get('author') || '');
+  const [inputPublisher, setInputPublisher] = useState(searchParams.get('publisher') || '');
+  const [inputCategory, setInputCategory] = useState(searchParams.get('category') || searchParams.get('category_id') || '');
+  const [inputYearFrom, setInputYearFrom] = useState(searchParams.get('year_from') || '');
+  const [inputYearTo, setInputYearTo] = useState(searchParams.get('year_to') || '');
 
+  const [facets, setFacets] = useState<FacetsData | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -180,10 +313,27 @@ export const BookSearchPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch facets
+  useEffect(() => {
+    const fetchFacets = async () => {
+      try {
+        const res = await api.get<FacetsData>('/books/facets');
+        setFacets(res.data);
+      } catch (e) {
+        console.error('Failed to load book facets', e);
+      }
+    };
+    fetchFacets();
+  }, []);
+
   // Sync inputs with URL query params
   useEffect(() => {
     const urlQ = searchParams.get('q') || '';
     const urlAuthor = searchParams.get('author') || '';
+    const urlPub = searchParams.get('publisher') || '';
+    const urlCat = searchParams.get('category') || searchParams.get('category_id') || '';
+    const urlYFrom = searchParams.get('year_from') || '';
+    const urlYTo = searchParams.get('year_to') || '';
     const urlAvailable = searchParams.get('available_only') === 'true';
     const urlOrdering = searchParams.get('ordering') || '-created_at';
     const urlPage = parseInt(searchParams.get('page') || '1', 10);
@@ -193,6 +343,14 @@ export const BookSearchPage: React.FC = () => {
     setInputQ(urlQ);
     setAuthor(urlAuthor);
     setInputAuthor(urlAuthor);
+    setPublisher(urlPub);
+    setInputPublisher(urlPub);
+    setCategory(urlCat);
+    setInputCategory(urlCat);
+    setYearFrom(urlYFrom);
+    setInputYearFrom(urlYFrom);
+    setYearTo(urlYTo);
+    setInputYearTo(urlYTo);
     setAvailableOnly(urlAvailable);
     setOrdering(urlOrdering);
     setPage(urlPage);
@@ -209,6 +367,16 @@ export const BookSearchPage: React.FC = () => {
       const params = new URLSearchParams();
       if (q.trim()) params.append('q', q.trim());
       if (author.trim()) params.append('author', author.trim());
+      if (publisher.trim()) params.append('publisher', publisher.trim());
+      if (category.trim()) {
+        if (/^\d+$/.test(category.trim())) {
+          params.append('category_id', category.trim());
+        } else {
+          params.append('category', category.trim());
+        }
+      }
+      if (yearFrom) params.append('year_from', yearFrom);
+      if (yearTo) params.append('year_to', yearTo);
       if (availableOnly) params.append('available_only', 'true');
       if (ordering) params.append('ordering', ordering);
       params.append('page', page.toString());
@@ -229,13 +397,23 @@ export const BookSearchPage: React.FC = () => {
 
   useEffect(() => {
     fetchBooks();
-  }, [q, author, availableOnly, ordering, page, pageSize]);
+  }, [q, author, publisher, category, yearFrom, yearTo, availableOnly, ordering, page, pageSize]);
 
   const handleApplyFilter = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const params = new URLSearchParams();
     if (inputQ.trim()) params.set('q', inputQ.trim());
     if (inputAuthor.trim()) params.set('author', inputAuthor.trim());
+    if (inputPublisher.trim()) params.set('publisher', inputPublisher.trim());
+    if (inputCategory.trim()) {
+      if (/^\d+$/.test(inputCategory.trim())) {
+        params.set('category_id', inputCategory.trim());
+      } else {
+        params.set('category', inputCategory.trim());
+      }
+    }
+    if (inputYearFrom) params.set('year_from', inputYearFrom);
+    if (inputYearTo) params.set('year_to', inputYearTo);
     if (availableOnly) params.set('available_only', 'true');
     if (ordering && ordering !== '-created_at') params.set('ordering', ordering);
     params.set('page_size', pageSize.toString());
@@ -247,6 +425,10 @@ export const BookSearchPage: React.FC = () => {
   const handleResetFilters = () => {
     setInputQ('');
     setInputAuthor('');
+    setInputPublisher('');
+    setInputCategory('');
+    setInputYearFrom('');
+    setInputYearTo('');
     setAvailableOnly(false);
     setOrdering('-created_at');
     setPage(1);
@@ -255,13 +437,19 @@ export const BookSearchPage: React.FC = () => {
   };
 
   const activeFilterCount =
-    (q ? 1 : 0) + (author ? 1 : 0) + (availableOnly ? 1 : 0);
+    (q ? 1 : 0) +
+    (author ? 1 : 0) +
+    (publisher ? 1 : 0) +
+    (category ? 1 : 0) +
+    (yearFrom || yearTo ? 1 : 0) +
+    (availableOnly ? 1 : 0);
 
-  // Desktop Left Filter Column & Mobile Drawer both use top-level FilterPanel component
+  const selectedCategoryName = facets?.categories.find((c) => c.id.toString() === category)?.name || category;
+
   return (
-    <div className="space-y-6 pb-10 animate-page-enter">
+    <div className="space-y-4 pb-10 animate-page-enter">
       {/* Page Header */}
-      <div className="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-white border border-gray-200/80 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center space-x-3.5">
           <div className="w-10 h-10 rounded-xl bg-teal-50 text-brand flex items-center justify-center shrink-0 shadow-2xs">
             <Search className="w-5 h-5" />
@@ -293,16 +481,25 @@ export const BookSearchPage: React.FC = () => {
       </div>
 
       {/* Main Content: Left Filters, Right Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
         {/* Desktop Left Filter Column */}
-        <aside className="hidden lg:block bg-white border border-gray-200/80 rounded-2xl p-5 shadow-xs sticky top-20">
+        <aside className="hidden lg:block bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs sticky top-16">
           <FilterPanel
             inputQ={inputQ}
             setInputQ={setInputQ}
             inputAuthor={inputAuthor}
             setInputAuthor={setInputAuthor}
+            inputPublisher={inputPublisher}
+            setInputPublisher={setInputPublisher}
+            inputCategory={inputCategory}
+            setInputCategory={setInputCategory}
+            inputYearFrom={inputYearFrom}
+            setInputYearFrom={setInputYearFrom}
+            inputYearTo={inputYearTo}
+            setInputYearTo={setInputYearTo}
             availableOnly={availableOnly}
             setAvailableOnly={setAvailableOnly}
+            facets={facets}
             activeFilterCount={activeFilterCount}
             onApplyFilter={handleApplyFilter}
             onResetFilters={handleResetFilters}
@@ -329,8 +526,17 @@ export const BookSearchPage: React.FC = () => {
                   setInputQ={setInputQ}
                   inputAuthor={inputAuthor}
                   setInputAuthor={setInputAuthor}
+                  inputPublisher={inputPublisher}
+                  setInputPublisher={setInputPublisher}
+                  inputCategory={inputCategory}
+                  setInputCategory={setInputCategory}
+                  inputYearFrom={inputYearFrom}
+                  setInputYearFrom={setInputYearFrom}
+                  inputYearTo={inputYearTo}
+                  setInputYearTo={setInputYearTo}
                   availableOnly={availableOnly}
                   setAvailableOnly={setAvailableOnly}
+                  facets={facets}
                   activeFilterCount={activeFilterCount}
                   onApplyFilter={handleApplyFilter}
                   onResetFilters={handleResetFilters}
@@ -342,6 +548,55 @@ export const BookSearchPage: React.FC = () => {
 
         {/* Right Results Column */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Active Filters Chips Bar */}
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-teal-50/60 border border-teal-200/70 rounded-2xl text-xs">
+              <span className="text-gray-500 font-medium text-[11px] mr-1">Đang lọc theo:</span>
+              {q && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>Từ khóa: <strong>{q}</strong></span>
+                  <button onClick={() => { setInputQ(''); const p = new URLSearchParams(searchParams); p.delete('q'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              {category && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>Chuyên ngành: <strong>{selectedCategoryName}</strong></span>
+                  <button onClick={() => { setInputCategory(''); const p = new URLSearchParams(searchParams); p.delete('category'); p.delete('category_id'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              {author && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>Tác giả: <strong>{author}</strong></span>
+                  <button onClick={() => { setInputAuthor(''); const p = new URLSearchParams(searchParams); p.delete('author'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              {publisher && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>NXB: <strong>{publisher}</strong></span>
+                  <button onClick={() => { setInputPublisher(''); const p = new URLSearchParams(searchParams); p.delete('publisher'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              {(yearFrom || yearTo) && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>Năm: <strong>{yearFrom || '...'} &ndash; {yearTo || '...'}</strong></span>
+                  <button onClick={() => { setInputYearFrom(''); setInputYearTo(''); const p = new URLSearchParams(searchParams); p.delete('year_from'); p.delete('year_to'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              {availableOnly && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white text-teal-900 border border-teal-200 rounded-lg shadow-2xs text-xs">
+                  <span>Chỉ sách sẵn sàng</span>
+                  <button onClick={() => { setAvailableOnly(false); const p = new URLSearchParams(searchParams); p.delete('available_only'); setSearchParams(p); }} className="text-teal-600 hover:text-red-600">×</button>
+                </span>
+              )}
+              <button
+                onClick={handleResetFilters}
+                className="text-[11px] text-red-600 hover:underline font-semibold ml-auto pl-2"
+              >
+                Xóa tất cả
+              </button>
+            </div>
+          )}
+
           {/* Controls Bar */}
           <div className="bg-white border border-gray-200/80 rounded-2xl p-3 px-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
             <div className="text-xs text-gray-500 font-medium">

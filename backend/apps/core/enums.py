@@ -3,7 +3,8 @@ from django.db import models
 class UserRole(models.TextChoices):
     STUDENT = 'student', 'Sinh viên'
     LECTURER = 'lecturer', 'Giảng viên'
-    ADMIN = 'admin', 'Thủ thư / Quản trị'
+    LIBRARIAN = 'librarian', 'Thủ thư'
+    ADMIN = 'admin', 'Quản trị viên / Trưởng thư viện'
 
 class CopyStatus(models.TextChoices):
     AVAILABLE = 'available', 'Sẵn sàng'
@@ -74,4 +75,7 @@ class LockReason(models.TextChoices):
     MANUAL = 'manual', 'Khóa thủ công'
     LOGIN = 'login', 'Khóa do sai mật khẩu quá nhiều lần'
     UNPAID_LOST_FINE = 'unpaid_lost_fine', 'Khóa do quá hạn sách thành mất và chưa nộp phạt'
+    OVERDUE_THRESHOLD = 'overdue_threshold', 'Khóa do có sách quá hạn > 7 ngày'
+    UNPAID_FINE_THRESHOLD = 'unpaid_fine_threshold', 'Khóa do nợ phạt vượt ngưỡng (> 50.000đ)'
+
 

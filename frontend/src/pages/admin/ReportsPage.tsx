@@ -598,7 +598,7 @@ export const ReportsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-textPrimary tracking-tight flex items-center">
               <span className="text-accent font-bold mr-2 select-none">&gt;</span>
-              <span>Báo cáo & Thống kê Lưu thông (Reports & Analytics)</span>
+              <span>Báo cáo & Thống kê Lưu thông</span>
             </h1>
             <p className="text-xs text-textSecondary mt-0.5">
               Hệ thống sơ đồ phân tích trực quan toàn diện xu hướng mượn trả, cơ cấu kho sách, đối tượng độc giả và thu hồi công nợ UTH

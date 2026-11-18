@@ -1,5 +1,7 @@
 import re
+from datetime import timedelta
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,7 +9,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from django.conf import settings
-from apps.accounts.models import User
+from apps.accounts.models import (
+    User, StudentRoster, PaymentTransaction, PaymentMethod, TransactionStatus, TransactionType
+)
 from apps.accounts.permissions import IsAdminUserRole
 from apps.core.pagination import StandardPagination
 from apps.core.enums import UserRole, FineStatus, NotificationType
@@ -56,6 +60,31 @@ class FineListView(APIView):
         card_code = request.query_params.get('card_code')
         if card_code:
             queryset = queryset.filter(user__card_code__iexact=card_code.strip())
+
+        # Date filtering (actions: fine created or paid)
+        date_preset = request.query_params.get('date_preset')
+        date_exact = request.query_params.get('date')
+        from_date = request.query_params.get('from_date')
+        to_date = request.query_params.get('to_date')
+
+        now = timezone.now()
+        today = now.date()
+        from django.db.models import Q
+        if date_preset == 'today' or request.query_params.get('today') in ('true', '1', 'True'):
+            queryset = queryset.filter(Q(created_at__date=today) | Q(payments__payment_date__date=today)).distinct()
+        elif date_preset == 'week':
+            week_ago = today - timezone.timedelta(days=7)
+            queryset = queryset.filter(Q(created_at__date__gte=week_ago) | Q(payments__payment_date__date__gte=week_ago)).distinct()
+        elif date_preset == 'month':
+            month_start = today.replace(day=1)
+            queryset = queryset.filter(Q(created_at__date__gte=month_start) | Q(payments__payment_date__date__gte=month_start)).distinct()
+        elif date_exact:
+            queryset = queryset.filter(Q(created_at__date=date_exact) | Q(payments__payment_date__date=date_exact)).distinct()
+        else:
+            if from_date:
+                queryset = queryset.filter(Q(created_at__date__gte=from_date) | Q(payments__payment_date__date__gte=from_date)).distinct()
+            if to_date:
+                queryset = queryset.filter(Q(created_at__date__lte=to_date) | Q(payments__payment_date__date__lte=to_date)).distinct()
 
         paginator = StandardPagination()
         page_records = paginator.paginate_queryset(queryset, request)
@@ -308,14 +337,102 @@ class BankWebhookView(APIView):
         ref_code = str(data.get('referenceCode') or data.get('reference') or '')
         tx_code = f"SEPAY-{sepay_id}" if sepay_id else (ref_code or f"STB-{int(timezone.now().timestamp())}")
 
-        # 4. Kiểm tra chống trùng lặp (Idempotent): nếu mã GD này đã nộp phạt rồi thì không cộng dồn
-        if FinePayment.objects.filter(note__icontains=tx_code).exists():
+        # 4. Kiểm tra chống trùng lặp (Idempotent): nếu mã GD này đã nộp phạt hoặc nộp phí thẻ rồi thì không cộng dồn
+        if FinePayment.objects.filter(note__icontains=tx_code).exists() or PaymentTransaction.objects.filter(note__icontains=tx_code).exists():
             return Response(
                 {'success': True, 'message': f'Giao dịch {tx_code} đã được xử lý trước đó.'},
                 status=status.HTTP_200_OK
             )
 
         # 5. Phân tích nội dung chuyển khoản bằng Regex
+        # - Mẫu Cấp thẻ / Mở thẻ thư viện: UTH <MSSV> DKTHE hoặc DKTHE <MSSV> hoặc UTH <MSSV> THE
+        match_card = (
+            re.search(r'UTH\s*([0-9]{8,12})\s*(?:DKTHE|DK\s*THE|THE|CAP\s*THE)', desc) or
+            re.search(r'(?:DKTHE|DK\s*THE|CAP\s*THE)\s*([0-9]{8,12})', desc) or
+            re.search(r'UTH\s*([0-9]{8,12})\s*DK', desc)
+        )
+        if match_card:
+            student_code = match_card.group(1).strip()
+            roster = StudentRoster.objects.filter(student_code__iexact=student_code).first()
+            user = User.objects.filter(Q(card_code__iexact=student_code) | Q(username__iexact=student_code)).first()
+
+            pay_amount = amount if amount > 0 else 100000
+            today = timezone.localdate()
+
+            with transaction.atomic():
+                if not user:
+                    full_name = roster.full_name if roster else f"Sinh viên {student_code}"
+                    department = roster.department if roster else "Khoa Công nghệ thông tin"
+                    email = roster.email if roster else f"{student_code}@sv.ut.edu.vn"
+                    phone = roster.phone if roster else ""
+                    card_expiry = today + timedelta(days=365)
+
+                    user = User(
+                        username=student_code,
+                        full_name=full_name,
+                        card_code=student_code,
+                        email=email,
+                        phone=phone,
+                        department=department,
+                        role=UserRole.STUDENT,
+                        card_expiry=card_expiry,
+                        must_change_password=True,
+                    )
+                    user.set_password('Password123')
+                    user.save()
+                else:
+                    current_exp = user.card_expiry or today
+                    start_d = max(current_exp, today)
+                    user.card_expiry = start_d + timedelta(days=365)
+                    user.is_locked = False
+                    user.locked_until = None
+                    user.lock_reason = None
+                    user.save(update_fields=['card_expiry', 'is_locked', 'locked_until', 'lock_reason'])
+
+                if roster:
+                    roster.is_card_issued = True
+                    roster.user = user
+                    roster.save(update_fields=['is_card_issued', 'user'])
+
+                year_now = timezone.now().year
+                count_year = PaymentTransaction.objects.filter(collected_at__year=year_now).count() + 1
+                transaction_code = f"PAY-{year_now}-{count_year:05d}"
+                receipt_code = f"RC-{year_now}-{count_year:05d}"
+
+                admin_user = User.objects.filter(role=UserRole.ADMIN).first() or user
+
+                tx = PaymentTransaction.objects.create(
+                    transaction_code=transaction_code,
+                    receipt_code=receipt_code,
+                    transaction_type=TransactionType.CARD_ISSUANCE,
+                    user=user,
+                    student_code=student_code,
+                    payer_name=user.full_name,
+                    amount=pay_amount,
+                    payment_method=PaymentMethod.TRANSFER,
+                    status=TransactionStatus.SUCCESS,
+                    collected_by=admin_user,
+                    collected_at=timezone.now(),
+                    note=f"Tự động khớp lệnh SePay/Sacombank (Mã GD SePay: {tx_code}, Nội dung: {desc})",
+                )
+
+                Notification.objects.create(
+                    user=user,
+                    type=NotificationType.CARD_EXPIRING,
+                    content=f"Thẻ thư viện UTH đã được kích hoạt thành công qua cổng thanh toán SePay/Sacombank ({pay_amount:,.0f}đ). Hạn thẻ: {user.card_expiry.strftime('%d/%m/%Y')}.",
+                    link="/dashboard"
+                )
+
+            return Response({
+                'success': True,
+                'status': 'SUCCESS',
+                'detail': f'Khớp lệnh SePay/Sacombank thành công cấp thẻ cho sinh viên {student_code}',
+                'transaction_code': tx.transaction_code,
+                'receipt_code': tx.receipt_code,
+                'card_code': user.card_code,
+                'amount_paid': pay_amount,
+            }, status=status.HTTP_200_OK)
+
         # - Mẫu 1: UTH <card_code> PHAT <id> (nộp đích danh 1 khoản)
         # - Mẫu 2: UTH <card_code> NOP PHAT (nộp toàn bộ)
         # - Mẫu 3: PHAT <id> (fallback linh hoạt)

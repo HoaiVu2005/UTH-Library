@@ -43,14 +43,40 @@ interface MenuGroup {
   items: MenuItem[];
 }
 
+interface BadgeItem {
+  count: number;
+}
+
+const SEEN_BADGES_KEY = 'uth_sidebar_seen_badges';
+
+const getSeenBadges = (): Record<string, number> => {
+  try {
+    const raw = localStorage.getItem(SEEN_BADGES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveSeenBadge = (path: string, count: number) => {
+  try {
+    const current = getSeenBadges();
+    current[path] = count;
+    localStorage.setItem(SEEN_BADGES_KEY, JSON.stringify(current));
+  } catch {
+    // ignore
+  }
+};
+
 export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const location = useLocation();
-  const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'admin' || user?.role === 'librarian';
 
   // Section collapse state (default open)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({});
+  const [badges, setBadges] = useState<Record<string, BadgeItem>>({});
+  const [seenBadges, setSeenBadges] = useState<Record<string, number>>(() => getSeenBadges());
 
   const toggleGroup = (title: string) => {
     setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
@@ -59,17 +85,27 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
   const fetchBadgeCounts = useCallback(async () => {
     if (!user) return;
     try {
-      const counts: Record<string, number> = {};
+      const newBadges: Record<string, BadgeItem> = {};
 
-      if (isAdmin) {
-        // Admin badges
+      if (isStaff) {
+        // Admin badges: Hàng chờ đặt trước & Duyệt đề xuất mua sách
         try {
           const res = await api.get('/dashboard/summary');
           const d = res.data?.data || {};
-          if (d.pending_reservations > 0) counts['/admin/reservations'] = d.pending_reservations;
-          if (d.pending_suggestions > 0) counts['/admin/suggestions'] = d.pending_suggestions;
-          if (d.overdue_loans > 0) counts['/admin/loans'] = d.overdue_loans;
-          if (d.locked_users > 0) counts['/admin/users'] = d.locked_users;
+
+          // Reservations: pending reservations count
+          const resvCount = d.pending_reservations || d.today_reservations || 0;
+          if (resvCount > 0) {
+            newBadges['/admin/reservations'] = { count: resvCount };
+          }
+
+          // Suggestions: pending suggestions count (Admin only)
+          if (user?.role === 'admin') {
+            const suggCount = d.pending_suggestions || d.today_suggestions || 0;
+            if (suggCount > 0) {
+              newBadges['/admin/suggestions'] = { count: suggCount };
+            }
+          }
         } catch {
           // ignore
         }
@@ -85,18 +121,24 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
           if (resResv.status === 'fulfilled') {
             const list = resResv.value.data?.data || [];
             const readyOrPending = list.filter((r: any) => r.status === 'ready' || r.status === 'pending').length;
-            if (readyOrPending > 0) counts['/reservations'] = readyOrPending;
+            if (readyOrPending > 0) {
+              newBadges['/reservations'] = { count: readyOrPending };
+            }
           }
 
           if (resFines.status === 'fulfilled') {
             const list = resFines.value.data?.data || [];
-            if (list.length > 0) counts['/fines'] = list.length;
+            if (list.length > 0) {
+              newBadges['/fines'] = { count: list.length };
+            }
           }
 
           if (resLoans.status === 'fulfilled') {
             const list = resLoans.value.data?.data || [];
             const overdue = list.filter((l: any) => l.is_overdue || (l.due_at && new Date(l.due_at) < new Date())).length;
-            if (overdue > 0) counts['/loans'] = overdue;
+            if (overdue > 0) {
+              newBadges['/loans'] = { count: overdue };
+            }
           }
         } catch {
           // ignore
@@ -108,17 +150,36 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
         const resNotif = await api.get('/notifications/me?unread=true');
         const notifList = resNotif.data?.data || [];
         if (notifList.length > 0) {
-          counts['/notifications'] = notifList.length;
+          newBadges['/notifications'] = { count: notifList.length };
         }
       } catch {
         // ignore
       }
 
-      setBadgeCounts(counts);
+      // Automatically sync any stored seen count if current count dropped below it
+      const currentSeen = getSeenBadges();
+      let seenChanged = false;
+      Object.entries(currentSeen).forEach(([path, count]) => {
+        const currentCount = newBadges[path]?.count || 0;
+        if (currentCount < count) {
+          currentSeen[path] = currentCount;
+          seenChanged = true;
+        }
+      });
+      if (seenChanged) {
+        try {
+          localStorage.setItem(SEEN_BADGES_KEY, JSON.stringify(currentSeen));
+        } catch {
+          // ignore
+        }
+        setSeenBadges({ ...currentSeen });
+      }
+
+      setBadges(newBadges);
     } catch (err) {
       console.error('Failed to fetch sidebar badge counts', err);
     }
-  }, [user, isAdmin]);
+  }, [user, isStaff]);
 
   useEffect(() => {
     if (isOpen) {
@@ -126,13 +187,25 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
     }
   }, [isOpen, fetchBadgeCounts]);
 
+  // If user is already on the page of a menu item, auto-mark its badge as seen
+  useEffect(() => {
+    const badge = badges[location.pathname];
+    if (badge && badge.count > 0) {
+      const seen = seenBadges[location.pathname] ?? 0;
+      if (badge.count > seen) {
+        saveSeenBadge(location.pathname, badge.count);
+        setSeenBadges((prev) => ({ ...prev, [location.pathname]: badge.count }));
+      }
+    }
+  }, [location.pathname, badges, seenBadges]);
+
   // Sync real-time notification count from header/notification events
   useEffect(() => {
     const handleUnreadChanged = (e: any) => {
       if (typeof e.detail?.count === 'number') {
-        setBadgeCounts((prev) => ({
+        setBadges((prev) => ({
           ...prev,
-          '/notifications': e.detail.count,
+          '/notifications': { count: e.detail.count },
         }));
       }
     };
@@ -211,7 +284,25 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
     },
   ];
 
-  const currentGroups = isAdmin ? adminGroups : patronGroups;
+  const ADMIN_ONLY_PATHS = [
+    '/admin/dashboard',
+    '/admin/suggestions',
+    '/admin/settings',
+    '/admin/audit',
+    '/admin/reports',
+  ];
+
+  const currentGroups = isStaff
+    ? user?.role === 'librarian'
+      ? adminGroups
+          .map((g) => ({
+            ...g,
+            title: g.title === 'Hệ thống & Báo cáo' ? 'Báo cáo & Thống kê' : g.title,
+            items: g.items.filter((item) => !ADMIN_ONLY_PATHS.includes(item.path)),
+          }))
+          .filter((g) => g.items.length > 0)
+      : adminGroups
+    : patronGroups;
 
   return (
     <>
@@ -249,7 +340,11 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
         <div className="flex-1 overflow-y-auto py-5 px-4 space-y-4">
           {currentGroups.map((group) => {
             const isGroupCollapsed = collapsed[group.title];
-            const groupBadgeTotal = group.items.reduce((acc, it) => acc + (badgeCounts[it.path] || 0), 0);
+            const groupBadgeTotal = group.items.reduce((acc, it) => {
+              const b = badges[it.path];
+              const seen = seenBadges[it.path] ?? 0;
+              return acc + (b && b.count > seen ? b.count : 0);
+            }, 0);
 
             return (
               <div key={group.title} className="space-y-1.5">
@@ -263,8 +358,8 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
                     <span className="text-[13px] font-bold text-primary tracking-tight">{group.title}</span>
                     {isGroupCollapsed && groupBadgeTotal > 0 && (
                       <span className="relative flex items-center justify-center shrink-0 ml-1.5">
-                        <span className="absolute -inset-0.5 rounded-full bg-rose-500/25 animate-pulse" />
-                        <span className="relative inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 text-[9.5px] font-bold text-white bg-rose-500 rounded-full ring-2 ring-white shadow-2xs">
+                        <span className="absolute -inset-0.5 rounded-full bg-rose-400/40 animate-ping opacity-75" />
+                        <span className="relative inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 text-[9.5px] font-bold text-white rounded-full bg-rose-500 ring-2 ring-white shadow-2xs">
                           {groupBadgeTotal > 99 ? '99+' : groupBadgeTotal}
                         </span>
                       </span>
@@ -282,13 +377,23 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
                   <div className="space-y-1.5 pl-1.5">
                     {group.items.map((item) => {
                       const isActive = location.pathname === item.path;
-                      const badgeCount = badgeCounts[item.path] || 0;
+                      const badge = badges[item.path];
+                      const seenCount = seenBadges[item.path] ?? 0;
+                      const hasUnread = badge && badge.count > 0 && badge.count > seenCount;
+
+                      const handleLinkClick = () => {
+                        if (badge && badge.count > 0) {
+                          saveSeenBadge(item.path, badge.count);
+                          setSeenBadges((prev) => ({ ...prev, [item.path]: badge.count }));
+                        }
+                        onClose();
+                      };
 
                       return (
                         <Link
                           key={item.path + item.label}
                           to={item.path}
-                          onClick={onClose}
+                          onClick={handleLinkClick}
                           className={cn(
                             'flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] transition-all group/item',
                             isActive
@@ -301,18 +406,16 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
                             <span className="truncate">{item.label}</span>
                           </div>
 
-                          {badgeCount > 0 && (
+                          {hasUnread && (
                             <span
                               className="relative flex items-center justify-center shrink-0 ml-2"
-                              title={`${badgeCount} thông báo / tác vụ cần xử lý`}
+                              title={`${badge.count} tác vụ / thông báo cần xử lý`}
                             >
-                              {/* Soft breathing ring pulse glow */}
-                              <span className="absolute -inset-1 rounded-full bg-rose-500/20 animate-pulse" />
                               {/* Subtle ping ring wave */}
-                              <span className="absolute -inset-0.5 rounded-full bg-rose-400/30 animate-ping opacity-75" />
-                              {/* Badge */}
-                              <span className="relative inline-flex items-center justify-center min-w-[19px] h-[19px] px-1.5 text-[10px] font-bold text-white bg-rose-500 rounded-full ring-2 ring-white shadow-2xs">
-                                {badgeCount > 99 ? '99+' : badgeCount}
+                              <span className="absolute -inset-0.5 rounded-full bg-rose-400/40 animate-ping opacity-75" />
+                              {/* Notification-style circular badge */}
+                              <span className="relative min-w-[20px] h-[20px] px-1.5 flex items-center justify-center text-[11px] font-bold text-white bg-rose-500 rounded-full ring-2 ring-white shadow-2xs">
+                                {badge.count > 99 ? '99+' : badge.count}
                               </span>
                             </span>
                           )}
