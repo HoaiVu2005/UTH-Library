@@ -24,6 +24,7 @@ import {
   Zap,
   Barcode,
   Loader2,
+  FileText,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Input } from '@/components/ui/Input';
@@ -42,6 +43,8 @@ import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerM
 import { formatCurrencyVND, cn } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { useAuth } from '@/features/auth/AuthContext';
+import { DigitalResourcesModal } from './DigitalResourcesModal';
+import { PdfReaderModal, DigitalResourceItem } from '@/features/ebook/PdfReaderModal';
 
 export interface BookItem {
   id: number;
@@ -72,6 +75,7 @@ interface CategoryOption {
 export const BooksManagementPage: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'admin' || user?.role === 'librarian';
   const navigate = useNavigate();
   const [books, setBooks] = useState<BookItem[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -100,6 +104,10 @@ export const BooksManagementPage: React.FC = () => {
   const [formCoverImage, setFormCoverImage] = useState<string>('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  // Digital Resources Modal State
+  const [digitalResourceModalBook, setDigitalResourceModalBook] = useState<BookItem | null>(null);
+  const [previewDigitalResource, setPreviewDigitalResource] = useState<DigitalResourceItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Camera & ISBN Auto-Lookup State
@@ -301,9 +309,11 @@ export const BooksManagementPage: React.FC = () => {
     setFormCategoryId(Number(catId) || (categories.length > 0 ? categories[0].id : 0));
     setFormDescription('');
     setFormInitialCopies(0);
-    setFormCoverImage(book.cover_image || '');
+    const rawCover = book.cover_image || '';
+    const isValidCover = rawCover && !rawCover.toLowerCase().startsWith('khoa ') && !rawCover.toLowerCase().startsWith('viện ');
+    setFormCoverImage(isValidCover ? rawCover : '');
     setCoverFile(null);
-    setCoverPreview(book.cover_image || null);
+    setCoverPreview(isValidCover ? rawCover : null);
     setIsbnLookupSuccessInfo(null);
     setIsModalOpen(true);
   };
@@ -491,7 +501,7 @@ export const BooksManagementPage: React.FC = () => {
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
               <span>Quản lý Đầu sách</span>
             </h1>
@@ -503,7 +513,7 @@ export const BooksManagementPage: React.FC = () => {
 
         {/* Action Buttons: Clean & Outlined */}
         <div className="flex flex-wrap items-center gap-2">
-          {isAdmin && (
+          {isStaff && (
             <button
               onClick={handleOpenAddModal}
               className="inline-flex items-center justify-center text-xs font-semibold h-9 px-4 rounded-xl border border-brand text-brand hover:bg-teal-50/70 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
@@ -513,7 +523,7 @@ export const BooksManagementPage: React.FC = () => {
             </button>
           )}
 
-          {isAdmin && (
+          {isStaff && (
             <button
               onClick={() => setIsImportModalOpen(true)}
               className="inline-flex items-center justify-center text-xs font-medium h-9 px-3.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all bg-white shadow-2xs shrink-0 cursor-pointer"
@@ -686,19 +696,24 @@ export const BooksManagementPage: React.FC = () => {
                       <TableCell className="max-w-md">
                         <div className="flex items-start gap-3">
                           {/* Book Cover Thumbnail */}
-                          <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                          <div className="w-9 h-12 rounded bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs relative">
                             {book.cover_image ? (
                               <img
                                 src={book.cover_image}
                                 alt={book.title}
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  const fallback = target.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.classList.remove('hidden');
                                 }}
                               />
-                            ) : (
+                            ) : null}
+                            <div className={cn("flex items-center justify-center", book.cover_image ? "hidden" : "")}>
                               <BookOpen className="w-4 h-4 text-slate-300" />
-                            )}
+                            </div>
                           </div>
 
                           {/* Title & Info */}
@@ -772,7 +787,7 @@ export const BooksManagementPage: React.FC = () => {
                           statusDot={avail > 0 ? 'success' : 'warning'}
                           isNearBottom={index >= books.length - 2 && books.length > 2}
                           items={[
-                            ...(isAdmin
+                            ...(isStaff
                               ? [
                                   {
                                     label: 'Chỉnh sửa thông tin',
@@ -787,6 +802,12 @@ export const BooksManagementPage: React.FC = () => {
                               icon: <BookCopy className="w-3.5 h-3.5" />,
                               variant: 'info',
                               onClick: () => navigate(`/admin/copies?book_id=${book.id}`),
+                            },
+                            {
+                              label: 'Giáo trình số DRM',
+                              icon: <FileText className="w-3.5 h-3.5" />,
+                              variant: 'info',
+                              onClick: () => setDigitalResourceModalBook(book),
                             },
                             {
                               label: 'Xem trang OPAC',
@@ -876,19 +897,25 @@ export const BooksManagementPage: React.FC = () => {
                   </div>
 
                   {/* Cover Preview Box */}
-                  <div className="w-full h-48 bg-white border border-border rounded-lg shadow-2xs overflow-hidden flex items-center justify-center">
-                    {coverPreview ? (
+                  <div className="w-full h-48 bg-white border border-border rounded-lg shadow-2xs overflow-hidden flex items-center justify-center relative">
+                    {coverPreview && !coverPreview.toLowerCase().startsWith('khoa ') && !coverPreview.toLowerCase().startsWith('viện ') ? (
                       <img
                         src={coverPreview}
                         alt="Ảnh bìa sách"
+                        referrerPolicy="no-referrer"
                         className="w-full h-full object-contain bg-slate-100/50"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
                       />
-                    ) : (
-                      <div className="text-center p-3 text-textSecondary/50">
-                        <ImageIcon className="w-8 h-8 mx-auto mb-1 text-slate-300" />
-                        <span className="text-xs block font-medium">Chưa có ảnh bìa</span>
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={cn("text-center p-3 text-textSecondary/50 flex flex-col items-center justify-center", coverPreview && !coverPreview.toLowerCase().startsWith('khoa ') && !coverPreview.toLowerCase().startsWith('viện ') ? "hidden" : "")}>
+                      <ImageIcon className="w-8 h-8 mx-auto mb-1 text-slate-300" />
+                      <span className="text-xs block font-medium">Chưa có ảnh bìa</span>
+                    </div>
                   </div>
 
                   {/* File upload & URL input */}
@@ -1127,25 +1154,28 @@ export const BooksManagementPage: React.FC = () => {
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <ModalBody className="overflow-y-auto flex-1 min-h-0 p-5 space-y-3.5">
-            <div className="p-3 bg-slate-50 border border-border rounded-xl text-xs space-y-1.5 text-textSecondary">
-              <p className="font-semibold text-textPrimary flex items-center">
-                <Info className="w-3.5 h-3.5 mr-1 text-primary" />
-                Cấu trúc các cột chuẩn trong file CSV:
-              </p>
-              <p className="font-mono text-[11px] bg-white p-2 rounded border border-border overflow-x-auto text-primary">
-                Tên sách, Tác giả, ISBN, Mã khoa, Nhà xuất bản, Năm XB, Giá bìa, Số bản sao, Vị trí kệ
-              </p>
-              <div className="pt-1 flex items-center justify-between">
-                <span>Chưa có file mẫu?</span>
-                <button
-                  type="button"
-                  onClick={handleDownloadTemplate}
-                  className="text-primary hover:underline font-semibold flex items-center"
-                >
-                  <Download className="w-3.5 h-3.5 mr-1" />
-                  Tải file mẫu chuẩn (.csv)
-                </button>
+            <div className="p-4 bg-slate-50 border border-border rounded-xl flex items-center justify-between text-xs text-textSecondary">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-teal-50 text-primary flex items-center justify-center shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-textPrimary text-xs">Tải file CSV danh mục sách mẫu chuẩn UTH</p>
+                  <p className="text-[11px] text-textSecondary mt-0.5">
+                    Đã chuẩn hóa 11 cột: Tên sách, Tác giả, ISBN, Mã khoa, NXB, Năm XB, Giá bìa, Số bản sao, Vị trí kệ, Ảnh bìa, Tóm tắt
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+                className="text-xs h-8 px-3 shrink-0 flex items-center gap-1.5 font-semibold text-primary border-primary/30 hover:bg-teal-50"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Tải file mẫu (.csv)</span>
+              </Button>
             </div>
 
             <div>
@@ -1201,7 +1231,7 @@ export const BooksManagementPage: React.FC = () => {
       <ConfirmDialog
         isOpen={Boolean(deletingBook)}
         title="Xác nhận xóa đầu sách"
-        message={`Bạn có chắc chắn muốn xóa đầu sách "${deletingBook?.title}"? Thao tác này chỉ thực hiện được khi không có bản sao nào đang được mượn hoặc giữ chỗ.`}
+        message={`Bạn có chắc chắn muốn xóa đầu sách "${deletingBook?.title}"? Lưu ý: Theo quy định quản lý tài sản thư viện, hệ thống chỉ cho phép xóa đầu sách chưa từng tạo bản sao (nhập nhầm). Các đầu sách đã có bản sao vật lý hoặc có lịch sử lưu thông/thanh lý sẽ bị chặn xóa để bảo toàn số liệu kiểm toán.`}
         confirmText="Xóa đầu sách"
         cancelText="Hủy bỏ"
         variant="danger"
@@ -1218,6 +1248,27 @@ export const BooksManagementPage: React.FC = () => {
         title="Quét mã vạch ISBN trên bìa sau cuốn sách"
         description="Hướng Camera vào mã vạch EAN-13 / ISBN trên bìa sau của sách để nhận diện tự động"
       />
+
+      {/* Digital Resources Manager Modal */}
+      {digitalResourceModalBook && (
+        <DigitalResourcesModal
+          isOpen={Boolean(digitalResourceModalBook)}
+          bookId={digitalResourceModalBook.id}
+          bookTitle={digitalResourceModalBook.title}
+          bookCoverImage={digitalResourceModalBook.cover_image}
+          onClose={() => setDigitalResourceModalBook(null)}
+          onPreviewResource={(res) => setPreviewDigitalResource(res)}
+        />
+      )}
+
+      {/* PDF Reader Modal Preview */}
+      {previewDigitalResource && (
+        <PdfReaderModal
+          isOpen={Boolean(previewDigitalResource)}
+          resource={previewDigitalResource}
+          onClose={() => setPreviewDigitalResource(null)}
+        />
+      )}
     </div>
   );
 };

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.reports',
     'apps.audit',
     'apps.assistant',
+    'apps.digital_library',
 ]
 
 MIDDLEWARE = [
@@ -95,18 +96,7 @@ PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
 ]
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {'min_length': 8},
-    },
-    {
-        'NAME': 'apps.accounts.validators.LetterAndNumberPasswordValidator',
-    },
-    {
-        'NAME': 'apps.accounts.validators.CommonPasswordListValidator',
-    },
-]
+AUTH_PASSWORD_VALIDATORS = []
 
 # Localization
 LANGUAGE_CODE = 'vi'
@@ -154,9 +144,9 @@ CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins.split(',') if 
 
 # JWT Settings
 JWT_SECRET = os.getenv('JWT_SECRET', 'insecure-jwt-secret-replace-in-env-file')
-JWT_ACCESS_EXPIRATION_MINUTES = 15
-JWT_REFRESH_EXPIRATION_DAYS = 7
-JWT_IDLE_EXPIRATION_HOURS = 8
+JWT_ACCESS_EXPIRATION_MINUTES = int(os.getenv('JWT_ACCESS_EXPIRATION_MINUTES', 120))
+JWT_REFRESH_EXPIRATION_DAYS = int(os.getenv('JWT_REFRESH_EXPIRATION_DAYS', 30))
+JWT_IDLE_EXPIRATION_HOURS = int(os.getenv('JWT_IDLE_EXPIRATION_HOURS', 48))
 
 # Email Settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

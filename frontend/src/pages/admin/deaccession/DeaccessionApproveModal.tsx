@@ -61,7 +61,7 @@ export const DeaccessionApproveModal: React.FC<DeaccessionApproveModalProps> = (
       );
       setErrors({});
     }
-  }, [isOpen, batch]);
+  }, [isOpen, batch?.id]);
 
   if (!isOpen || !batch) return null;
 
@@ -264,7 +264,7 @@ export const DeaccessionApproveModal: React.FC<DeaccessionApproveModalProps> = (
             <div className="leading-relaxed text-[11.5px]">
               <strong>Lưu ý pháp lý:</strong> Sau khi xác nhận phê duyệt, tất cả{' '}
               <strong>{batch.total_copies} bản sao</strong> trong biên bản này sẽ chính thức bị xuất sổ
-              và chuyển vĩnh viễn sang trạng thái <strong>Đã thanh lý (Withdrawn)</strong>. Thao tác này có
+              và chuyển vĩnh viễn sang trạng thái <strong>Đã thanh lý</strong>. Thao tác này có
               hiệu lực trên toàn hệ thống và được lưu vết vào Nhật ký kiểm toán (Audit Logs).
             </div>
           </div>

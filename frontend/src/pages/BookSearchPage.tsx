@@ -455,9 +455,9 @@ export const BookSearchPage: React.FC = () => {
             <Search className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Tra cứu danh mục sách (OPAC)</span>
+              <span>Tra cứu danh mục sách</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Tìm kiếm tài liệu, giáo trình chuẩn đại học và kiểm tra số lượng bản sao còn sẵn tại thư viện UTH

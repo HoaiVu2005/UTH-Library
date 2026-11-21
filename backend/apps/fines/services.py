@@ -18,7 +18,7 @@ def check_auto_unlock_user(user: User):
             user.lock_reason = None
             user.save(update_fields=['is_locked', 'locked_until', 'lock_reason'])
 
-def collect_fine(fine_id: int, amount: int, collected_by: User, note: str = None, request=None) -> Fine:
+def collect_fine(fine_id: int, amount: int, collected_by: User, note: str | None = None, request=None) -> Fine:
     with transaction.atomic():
         fine = Fine.objects.select_for_update().select_related('user').filter(id=fine_id).first()
         if not fine:

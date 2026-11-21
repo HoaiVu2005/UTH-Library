@@ -16,6 +16,7 @@ export interface BookCardItem {
   available_copies?: number;
   total_copies?: number;
   only_reading_room?: boolean;
+  has_digital_resource?: boolean;
 }
 
 interface BookCardProps {
@@ -39,6 +40,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, className = '' }) => {
             <img
               src={book.cover_image}
               alt=""
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 (e.currentTarget as HTMLElement).style.display = 'none';
               }}
@@ -64,6 +66,12 @@ export const BookCard: React.FC<BookCardProps> = ({ book, className = '' }) => {
           {book.only_reading_room && (
             <span className="absolute top-2 right-2 bg-warning text-white text-[10px] font-medium px-1.5 py-0.5 rounded-md shadow-xs">
               Chỉ đọc tại chỗ
+            </span>
+          )}
+
+          {book.has_digital_resource && (
+            <span className="absolute bottom-2 right-2 bg-[#008B8B] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1">
+              <BookIcon className="w-2.5 h-2.5" /> Giáo trình số
             </span>
           )}
         </div>
@@ -130,6 +138,7 @@ export const BookHorizontalCard: React.FC<BookCardProps> = ({ book, className = 
             <img
               src={book.cover_image}
               alt=""
+              referrerPolicy="no-referrer"
               onError={(e) => {
                 (e.currentTarget as HTMLElement).style.display = 'none';
               }}
@@ -163,6 +172,11 @@ export const BookHorizontalCard: React.FC<BookCardProps> = ({ book, className = 
             {book.category_name && (
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200/60 font-semibold text-[11px] whitespace-nowrap">
                 {book.category_name}
+              </span>
+            )}
+            {book.has_digital_resource && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-semibold text-[11px] whitespace-nowrap">
+                ✓ Giáo trình số DRM
               </span>
             )}
             {book.year && (

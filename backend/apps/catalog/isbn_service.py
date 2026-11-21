@@ -316,7 +316,7 @@ def clean_isbn(raw_isbn: str) -> str:
     """Normalize raw ISBN string by removing hyphens, spaces and dots."""
     if not raw_isbn:
         return ''
-    cleaned = re.sub(r'[^0-9X]', '', str(raw_isbn).strip().upper())
+    cleaned = re.sub(r'[^0-9X]', '', raw_isbn.strip().upper())
     return cleaned
 
 def format_isbn13(digits: str) -> str:

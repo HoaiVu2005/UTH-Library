@@ -272,3 +272,22 @@ tbody:has(.action-menu-open) > tr:not(:has(.action-menu-open)) > td {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ==========================================================================
+   Full-Screen PDF Reader Strict Isolation & No-Bleed Overlay
+   ========================================================================== */
+body[data-pdf-reader-open="true"] {
+  overflow: hidden !important;
+}
+
+body[data-pdf-reader-open="true"] header.sticky,
+body[data-pdf-reader-open="true"] footer,
+body[data-pdf-reader-open="true"] #ai-chat-widget-root,
+body[data-pdf-reader-open="true"] .ai-chat-bubble,
+body[data-pdf-reader-open="true"] .ai-chat-widget {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
+}
+
+

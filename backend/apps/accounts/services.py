@@ -118,8 +118,24 @@ def rotate_refresh_token(raw_refresh_token: str, ip: str = None, user_agent: str
 
     now = timezone.now()
 
-    # Re-use of revoked token -> Compromised family! Revoke all tokens in family!
+    # Re-use of revoked token -> Check grace period (60s) for concurrent requests (F5 / React StrictMode / multi-tabs)
     if token_instance.revoked_at is not None:
+        time_since_revocation = (now - token_instance.revoked_at).total_seconds()
+        if time_since_revocation < 60:
+            latest_token = RefreshToken.objects.filter(
+                family_id=token_instance.family_id,
+                revoked_at__isnull=True
+            ).order_by('-created_at').first()
+            if latest_token and now <= latest_token.expires_at and now <= latest_token.idle_expires_at:
+                new_access_token = create_access_token(latest_token.user)
+                new_raw_refresh, _ = create_refresh_token(
+                    user=latest_token.user,
+                    family_id=token_instance.family_id,
+                    ip=ip,
+                    user_agent=user_agent
+                )
+                return latest_token.user, new_access_token, new_raw_refresh
+
         RefreshToken.objects.filter(family_id=token_instance.family_id).update(revoked_at=now)
         raise BusinessLogicError('AUTH_REFRESH_REVOKED')
 

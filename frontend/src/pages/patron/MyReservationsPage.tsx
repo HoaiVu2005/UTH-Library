@@ -27,6 +27,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Barcode } from '@/components/ui/Barcode';
+import { Pagination } from '@/components/ui/Pagination';
 import { formatDateVN, getRemainingDays, cn } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
 
@@ -41,6 +42,7 @@ interface ReservationItem {
   };
   book_title?: string;
   book_cover?: string;
+  book_isbn?: string;
   copy?: {
     id?: number;
     barcode: string;
@@ -86,6 +88,9 @@ export const MyReservationsPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [cancellingItem, setCancellingItem] = useState<ReservationItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<'ready' | 'pending' | 'history'>('ready');
+  const HISTORY_PAGE_SIZE = 5;
 
   const fetchReservations = useCallback(async (showSpinner = false, isBackground = false) => {
     try {
@@ -142,6 +147,11 @@ export const MyReservationsPage: React.FC = () => {
   const pastReservations = reservations.filter(
     (r) => r.status === 'fulfilled' || r.status === 'expired' || r.status === 'cancelled'
   );
+  const totalHistoryPages = Math.ceil(pastReservations.length / HISTORY_PAGE_SIZE) || 1;
+  const paginatedHistory = pastReservations.slice(
+    (historyPage - 1) * HISTORY_PAGE_SIZE,
+    historyPage * HISTORY_PAGE_SIZE
+  );
 
   return (
     <div className="space-y-6 w-full pb-16 animate-page-enter">
@@ -152,7 +162,7 @@ export const MyReservationsPage: React.FC = () => {
             <BookmarkCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
               <span>Đặt trước &amp; Giữ chỗ sách</span>
             </h1>
@@ -182,20 +192,36 @@ export const MyReservationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Metric Summary Badges */}
+      {/* Metric Summary Cards / Tab Switchers */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white border border-teal-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+        <div
+          onClick={() => setActiveTab('ready')}
+          className={cn(
+            'bg-white rounded-2xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all border',
+            activeTab === 'ready'
+              ? 'border-brand ring-2 ring-brand/20 bg-teal-50/20 shadow-sm'
+              : 'border-teal-200/80 hover:border-brand/60'
+          )}
+        >
           <div className="space-y-0.5">
             <span className="text-[11px] text-gray-500 font-medium block">Sẵn sàng nhận tại quầy</span>
             <span className="text-xl font-bold text-brand">{activeReady.length}</span>
-            <span className="text-[11px] text-gray-400 block">Sách đang giữ chỗ</span>
+            <span className="text-[11px] text-gray-400 block">Sách đang giữ chỗ 3 ngày</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-teal-50 text-brand flex items-center justify-center shrink-0 shadow-2xs">
             <BookmarkCheck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+        <div
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            'bg-white rounded-2xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all border',
+            activeTab === 'pending'
+              ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20 shadow-sm'
+              : 'border-gray-200/80 hover:border-amber-300'
+          )}
+        >
           <div className="space-y-0.5">
             <span className="text-[11px] text-gray-500 font-medium block">Hàng chờ đặt trước</span>
             <span className="text-xl font-bold text-amber-600">{activePending.length}</span>
@@ -206,7 +232,15 @@ export const MyReservationsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+        <div
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            'bg-white rounded-2xl p-4 shadow-xs flex items-center justify-between cursor-pointer transition-all border',
+            activeTab === 'history'
+              ? 'border-slate-500 ring-2 ring-slate-500/20 bg-slate-50/20 shadow-sm'
+              : 'border-gray-200/80 hover:border-slate-300'
+          )}
+        >
           <div className="space-y-0.5">
             <span className="text-[11px] text-gray-500 font-medium block">Lịch sử đặt trước</span>
             <span className="text-xl font-bold text-gray-700">{pastReservations.length}</span>
@@ -218,245 +252,272 @@ export const MyReservationsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Section 1: Sách sẵn sàng nhận tại quầy (Ready Passes) */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
+      {/* Segmented Navigation Tab Bar */}
+      <div className="flex border-b border-gray-200 bg-white rounded-xl px-2 shadow-2xs">
+        <button
+          onClick={() => setActiveTab('ready')}
+          className={cn(
+            'flex items-center gap-2 border-b-2 px-4 sm:px-6 py-3 text-xs font-semibold transition-all cursor-pointer',
+            activeTab === 'ready'
+              ? 'border-brand text-brand font-bold bg-teal-50/40'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          )}
+        >
           <BookmarkCheck className="w-4 h-4 text-brand" />
-          <h2 className="text-sm font-bold text-gray-800 tracking-tight flex items-center">
-            <span className="text-orange-500 font-bold mr-1.5 select-none">&gt;</span>
-            <span>Sách sẵn sàng nhận tại quầy ({activeReady.length})</span>
-          </h2>
-        </div>
+          <span>Sẵn sàng nhận tại quầy</span>
+          <span className={cn(
+            'ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+            activeTab === 'ready' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'
+          )}>
+            {activeReady.length}
+          </span>
+        </button>
 
-        {activeReady.length === 0 ? (
-          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
-            <EmptyState
-              title="Hiện không có sách nào đang chờ nhận tại quầy"
-              description="Khi sách bạn đặt trước được hoàn trả về thư viện, hệ thống sẽ tự động gán bản sao, giữ tại quầy 3 ngày và gửi thông báo cho bạn."
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {activeReady.map((res) => {
-              const daysLeft = getDaysLeft(res.hold_expires_at);
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={cn(
+            'flex items-center gap-2 border-b-2 px-4 sm:px-6 py-3 text-xs font-semibold transition-all cursor-pointer',
+            activeTab === 'pending'
+              ? 'border-amber-600 text-amber-700 font-bold bg-amber-50/40'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          )}
+        >
+          <Clock className="w-4 h-4 text-amber-600" />
+          <span>Hàng chờ đặt trước</span>
+          <span className={cn(
+            'ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+            activeTab === 'pending' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600'
+          )}>
+            {activePending.length}
+          </span>
+        </button>
 
-              const bookTitle = res.book?.title || res.book_title || 'Tài liệu Thư viện';
-              const bookCover = res.book?.cover_image || res.book_cover;
-              const bookCategory = res.book?.category?.name;
-              const copyBarcode = res.copy?.barcode || res.copy_barcode;
-              const shelfLoc =
-                res.copy?.shelf_location || res.shelf_location || 'Quầy thủ thư Cơ sở 1';
+        <button
+          onClick={() => setActiveTab('history')}
+          className={cn(
+            'flex items-center gap-2 border-b-2 px-4 sm:px-6 py-3 text-xs font-semibold transition-all cursor-pointer',
+            activeTab === 'history'
+              ? 'border-gray-700 text-gray-800 font-bold bg-gray-50'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          )}
+        >
+          <History className="w-4 h-4 text-gray-500" />
+          <span>Lịch sử đặt trước</span>
+          <span className={cn(
+            'ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+            activeTab === 'history' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'
+          )}>
+            {pastReservations.length}
+          </span>
+        </button>
+      </div>
 
-              return (
-                <div
-                  key={res.id}
-                  className="bg-white border border-teal-300 rounded-2xl shadow-card overflow-hidden hover:shadow-lg transition-all"
-                >
-                  {/* Digital Pass Header Strip */}
-                  <div className="bg-gradient-to-r from-teal-50 via-teal-100/40 to-slate-50 px-5 py-3 border-b border-teal-100 flex flex-wrap items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
-                        Sẵn sàng nhận tại quầy (Giữ 3 ngày)
-                      </span>
+      {/* Tab 1: Sách sẵn sàng nhận tại quầy (Compact Cards) */}
+      {activeTab === 'ready' && (
+        <div className="space-y-3">
+          {activeReady.length === 0 ? (
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
+              <EmptyState
+                title="Hiện không có sách nào đang chờ nhận tại quầy"
+                description="Khi sách bạn đặt trước được hoàn trả về thư viện, hệ thống sẽ tự động gán bản sao, giữ tại quầy 3 ngày và gửi thông báo cho bạn."
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeReady.map((res) => {
+                const daysLeft = getDaysLeft(res.hold_expires_at);
+                const bookTitle = res.book?.title || res.book_title || 'Tài liệu Thư viện';
+                const bookCover = res.book?.cover_image || res.book_cover;
+                const bookCategory = res.book?.category?.name;
+                const copyBarcode = res.copy?.barcode || res.copy_barcode;
+                const shelfLoc =
+                  res.copy?.shelf_location || res.shelf_location || 'Quầy thủ thư Cơ sở 1';
 
-                      <span className="text-[11px] font-semibold text-slate-600 bg-white/80 px-2 py-0.5 rounded border border-teal-200/80">
-                        Quầy thủ thư UTH
-                      </span>
+                return (
+                  <div
+                    key={res.id}
+                    className="bg-white border border-teal-200/90 rounded-xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row gap-4 items-center justify-between"
+                  >
+                    {/* Left: Cover & Details */}
+                    <div className="flex items-start space-x-3.5 flex-1 min-w-0 w-full">
+                      {/* Compact Book Cover */}
+                      <div className="w-16 h-22 sm:w-20 sm:h-26 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                        {bookCover ? (
+                          <img
+                            src={bookCover}
+                            alt={bookTitle}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <BookOpen className="w-7 h-7 text-slate-400" />
+                        )}
+                      </div>
+
+                      {/* Info & Shelf Location */}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse-dot" />
+                            Sẵn sàng nhận tại quầy (Giữ 3 ngày)
+                          </span>
+                          {daysLeft <= 1 ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <AlertTriangle className="w-3 h-3 text-rose-600" />
+                              Hạn chót hôm nay!
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-50 text-brand border border-teal-200">
+                              <Clock className="w-3 h-3 text-brand" />
+                              Còn {daysLeft} ngày
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="text-sm font-bold text-gray-800 line-clamp-1" title={bookTitle}>
+                          {bookTitle}
+                        </h3>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                          {bookCategory && (
+                            <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                              {bookCategory}
+                            </span>
+                          )}
+                          <span>
+                            Mã bản sao: <strong className="font-mono text-slate-800">{copyBarcode || 'Chưa gán'}</strong>
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-0.5 text-gray-600">
+                          <div className="flex items-center gap-1 text-[11px]">
+                            <MapPin className="w-3.5 h-3.5 text-brand shrink-0" />
+                            <span>Vị trí: <strong className="text-brand font-semibold">{shelfLoc}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1 text-[11px]">
+                            <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>Hạn lấy: <strong className="text-gray-800">{formatHoldExpiry(res.hold_expires_at)}</strong></span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
-                      {daysLeft <= 1 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                          Hạn chót hôm nay!
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100/70 text-brand border border-teal-200">
-                          <Clock className="w-3 h-3 text-brand" />
-                          Còn {daysLeft} ngày giữ
-                        </span>
-                      )}
+                    {/* Right: Barcode Pass Voucher & Cancel Action */}
+                    <div className="flex md:flex-col items-center justify-between md:justify-center gap-2.5 shrink-0 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-gray-100">
+                      {copyBarcode ? (
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-2 flex flex-col items-center">
+                          <span className="text-[10px] font-bold text-brand uppercase tracking-wider mb-1">
+                            Phiếu nhận sách
+                          </span>
+                          <Barcode
+                            value={copyBarcode}
+                            height={34}
+                            barWidth={1.5}
+                            showText={true}
+                          />
+                        </div>
+                      ) : null}
 
                       <Button
                         variant="ghost"
                         size="xs"
                         onClick={() => setCancellingItem(res)}
-                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 font-bold border border-transparent hover:border-rose-200"
+                        className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold"
                       >
                         Hủy giữ chỗ
                       </Button>
                     </div>
                   </div>
-
-                  {/* Digital Pass Body */}
-                  <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                    {/* Left: Book Information & Logistics */}
-                    <div className="lg:col-span-7 space-y-4">
-                      <div className="flex items-start space-x-4">
-                        {/* Book Thumbnail */}
-                        <div className="w-16 h-22 sm:w-20 sm:h-26 rounded-xl bg-slate-100 border border-border shadow-xs overflow-hidden shrink-0 flex items-center justify-center">
-                          {bookCover ? (
-                            <img
-                              src={bookCover}
-                              alt={bookTitle}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <BookOpen className="w-8 h-8 text-slate-400" />
-                          )}
-                        </div>
-
-                        {/* Title & Metadata */}
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          {bookCategory && (
-                            <span className="inline-block px-2 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                              {bookCategory}
-                            </span>
-                          )}
-
-                          <h3 className="text-base sm:text-lg font-bold text-textPrimary leading-snug line-clamp-2">
-                            {bookTitle}
-                          </h3>
-
-                          <div className="flex items-center gap-2 text-xs text-textSecondary">
-                            <span>Mã bản sao:</span>
-                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">
-                              {copyBarcode || 'Chưa gán'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Location & Deadline Box */}
-                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 text-brand shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-slate-500 block text-[11px]">Vị trí lưu kho & Nhận sách:</span>
-                            <strong className="text-brand text-xs sm:text-sm font-bold">
-                              {shelfLoc}
-                            </strong>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-2 pt-1.5 border-t border-slate-200/70">
-                          <Calendar className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-slate-500 block text-[11px]">Hạn chót đến lấy sách:</span>
-                            <strong className="text-slate-800 text-xs sm:text-sm font-bold">
-                              {formatHoldExpiry(res.hold_expires_at)}
-                            </strong>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Barcode Voucher Box */}
-                    <div className="lg:col-span-5 bg-gradient-to-b from-teal-50/50 to-white border border-teal-200 rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center text-center shadow-xs">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-brand mb-2">
-                        <BarcodeIcon className="w-4 h-4 text-brand" />
-                        <span>PHIẾU QUÉT NHẬN SÁCH TẠI QUẦY</span>
-                      </div>
-
-                      {copyBarcode ? (
-                        <div className="px-3 py-2 bg-white border border-slate-200 rounded-lg shadow-2xs inline-flex justify-center w-full max-w-[280px]">
-                          <Barcode
-                            value={copyBarcode}
-                            height={50}
-                            barWidth={1.8}
-                            showText={true}
-                          />
-                        </div>
-                      ) : (
-                        <div className="p-4 bg-white border border-slate-200 rounded-lg text-xs text-textSecondary">
-                          Mã vạch đang được đồng bộ...
-                        </div>
-                      )}
-
-                      <p className="text-[11px] text-textSecondary mt-2.5 leading-relaxed max-w-xs">
-                        Xuất trình mã vạch này cho Thủ thư quầy để quét bàn giao sách ngay tức thì.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Section 2: Hàng chờ đặt trước (Pending Queue) */}
-      <div className="space-y-4 pt-2">
-        <div className="flex items-center space-x-2">
-          <Clock className="w-4 h-4 text-amber-600" />
-          <h2 className="text-sm font-bold text-gray-800 tracking-tight flex items-center">
-            <span className="text-orange-500 font-bold mr-1.5 select-none">&gt;</span>
-            <span>Hàng chờ đặt trước ({activePending.length})</span>
-          </h2>
+                );
+              })}
+            </div>
+          )}
         </div>
+      )}
 
-        {activePending.length === 0 ? (
-          <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
-            <EmptyState
-              title="Không có tài liệu nào đang trong hàng chờ"
-              description="Khi cuốn giáo trình bạn cần đã được độc giả khác mượn hết, hãy nhấn 'Đặt trước' để được tự động xếp chỗ ưu tiên."
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {activePending.map((res) => (
-              <div
-                key={res.id}
-                className="bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs hover:shadow-card transition-all flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant="warning" size="sm" hasDot>
-                      Vị trí #{res.queue_position || 1} trong hàng chờ
-                    </Badge>
-                    <span className="text-[11px] text-gray-500">
-                      Đặt lúc: {formatDateVN(res.created_at)}
-                    </span>
-                  </div>
+      {/* Tab 2: Hàng chờ đặt trước (Compact Cards) */}
+      {activeTab === 'pending' && (
+        <div className="space-y-3">
+          {activePending.length === 0 ? (
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
+              <EmptyState
+                title="Không có tài liệu nào đang trong hàng chờ"
+                description="Khi cuốn giáo trình bạn cần đã được độc giả khác mượn hết, hãy nhấn 'Đặt trước' để được tự động xếp chỗ ưu tiên."
+              />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activePending.map((res) => {
+                const bookTitle = res.book?.title || res.book_title || 'Tài liệu Thư viện';
+                const bookCover = res.book?.cover_image || res.book_cover;
+                const bookCategory = res.book?.category?.name;
 
-                  <h3 className="font-bold text-sm text-gray-800 line-clamp-2">
-                    {res.book?.title || res.book_title || 'Tài liệu Thư viện'}
-                  </h3>
-
-                  <p className="text-xs text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                    💡 Khi có bạn đọc hoàn trả sách, hệ thống sẽ tự động gán bản sao này cho bạn đầu
-                    tiên và gửi thông báo chuông.
-                  </p>
-                </div>
-
-                <div className="pt-3 mt-3 border-t border-gray-100 flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    onClick={() => setCancellingItem(res)}
-                    className="h-7 px-2.5 text-xs border border-gray-200 text-gray-600 hover:text-danger hover:border-danger/40 rounded-lg font-medium transition-colors shadow-2xs"
+                return (
+                  <div
+                    key={res.id}
+                    className="bg-white border border-gray-200/80 rounded-xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row gap-4 items-center justify-between"
                   >
-                    Rút khỏi hàng chờ
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                    <div className="flex items-start space-x-3.5 flex-1 min-w-0 w-full">
+                      {/* Compact Book Cover */}
+                      <div className="w-16 h-22 sm:w-20 sm:h-26 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                        {bookCover ? (
+                          <img
+                            src={bookCover}
+                            alt={bookTitle}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <BookOpen className="w-7 h-7 text-slate-400" />
+                        )}
+                      </div>
 
-      {/* Section 3: Lịch sử đặt trước trước đây */}
-      {pastReservations.length > 0 && (
-        <div className="space-y-4 pt-4">
-          <div className="flex items-center space-x-2">
-            <History className="w-4 h-4 text-brand" />
-            <h2 className="text-sm font-bold text-gray-800 tracking-tight flex items-center">
-              <span className="text-orange-500 font-bold mr-1.5 select-none">&gt;</span>
-              <span>Lịch sử đặt trước &amp; giữ chỗ trước đây ({pastReservations.length})</span>
-            </h2>
-          </div>
+                      {/* Details & Queue status */}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="warning" size="sm" hasDot>
+                            Vị trí #{res.queue_position || 1} trong hàng chờ
+                          </Badge>
+                          <span className="text-[11px] text-gray-400">
+                            Đặt lúc: {formatDateVN(res.created_at)}
+                          </span>
+                        </div>
 
+                        <h3 className="text-sm font-bold text-gray-800 line-clamp-1" title={bookTitle}>
+                          {bookTitle}
+                        </h3>
+
+                        {bookCategory && (
+                          <span className="inline-block text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                            {bookCategory}
+                          </span>
+                        )}
+
+                        <p className="text-[11px] text-amber-800 bg-amber-50/70 border border-amber-200/70 p-2 rounded-lg leading-relaxed">
+                          💡 Khi có sách hoàn trả, hệ thống sẽ tự động gán bản sao này cho bạn đầu tiên, chuyển sang mục <strong>"Sẵn sàng nhận tại quầy"</strong> và giữ sách trong 3 ngày.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 w-full md:w-auto flex justify-end pt-2 md:pt-0">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setCancellingItem(res)}
+                        className="h-7 px-3 text-xs border border-gray-200 text-gray-600 hover:text-danger hover:border-danger/40 rounded-lg font-medium shadow-2xs"
+                      >
+                        Rút khỏi hàng chờ
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: Lịch sử đặt trước trước đây */}
+      {activeTab === 'history' && (
+        <div className="space-y-4">
           <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
             <Table>
               <TableHeader>
@@ -468,7 +529,7 @@ export const MyReservationsPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pastReservations.map((res) => {
+                {paginatedHistory.map((res) => {
                   const bookTitle = res.book?.title || res.book_title || 'Tài liệu Thư viện';
                   const bookCover = res.book?.cover_image || res.book_cover;
                   const categoryName = res.book?.category?.name;
@@ -497,9 +558,9 @@ export const MyReservationsPage: React.FC = () => {
                   return (
                     <TableRow key={res.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Book info with thumbnail */}
-                      <TableCell className="py-3.5 max-w-[320px]">
+                      <TableCell className="py-3 max-w-[320px]">
                         <div className="flex items-start space-x-3">
-                          <div className="w-9 h-12 rounded-lg bg-teal-50 border border-teal-200/80 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                          <div className="w-8 h-11 rounded bg-teal-50 border border-teal-200/80 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                             {bookCover ? (
                               <img
                                 src={bookCover}
@@ -516,7 +577,7 @@ export const MyReservationsPage: React.FC = () => {
                                 {categoryName}
                               </span>
                             )}
-                            <p className="font-bold text-textPrimary text-xs sm:text-sm line-clamp-2 leading-snug">
+                            <p className="font-bold text-textPrimary text-xs sm:text-sm line-clamp-1 leading-snug">
                               {bookTitle}
                             </p>
                             {res.copy_barcode && (
@@ -529,12 +590,12 @@ export const MyReservationsPage: React.FC = () => {
                       </TableCell>
 
                       {/* Request Date */}
-                      <TableCell className="text-xs text-textSecondary py-3.5 whitespace-nowrap">
+                      <TableCell className="text-xs text-textSecondary py-3 whitespace-nowrap">
                         {formatDateVN(res.created_at)}
                       </TableCell>
 
                       {/* Status Badge */}
-                      <TableCell className="py-3.5 whitespace-nowrap">
+                      <TableCell className="py-3 whitespace-nowrap">
                         {res.status === 'fulfilled' ? (
                           <Badge variant="fulfilled" size="sm" hasDot>
                             Đã nhận sách
@@ -551,7 +612,7 @@ export const MyReservationsPage: React.FC = () => {
                       </TableCell>
 
                       {/* Clean Note */}
-                      <TableCell className="text-xs text-slate-600 py-3.5">
+                      <TableCell className="text-xs text-slate-600 py-3">
                         <span className={cn(res.no_show_counted && 'text-danger font-semibold')}>
                           {noteDisplay}
                         </span>
@@ -561,6 +622,22 @@ export const MyReservationsPage: React.FC = () => {
                 })}
               </TableBody>
             </Table>
+
+            {totalHistoryPages > 1 && (
+              <div className="p-3.5 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  Hiển thị {(historyPage - 1) * HISTORY_PAGE_SIZE + 1} -{' '}
+                  {Math.min(historyPage * HISTORY_PAGE_SIZE, pastReservations.length)} trong tổng số{' '}
+                  {pastReservations.length} lượt
+                </span>
+                <Pagination
+                  currentPage={historyPage}
+                  totalPages={totalHistoryPages}
+                  onPageChange={setHistoryPage}
+                  totalRecords={pastReservations.length}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}

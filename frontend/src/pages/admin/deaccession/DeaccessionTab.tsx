@@ -10,9 +10,12 @@ import {
   Calendar,
   AlertTriangle,
   Clock,
+  Scan,
+  Layers,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
@@ -22,8 +25,9 @@ import { Pagination } from '@/components/ui/Pagination';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from '@/components/ui/Toast';
-import { formatCurrencyVND, formatDateVN } from '@/lib/utils';
+import { formatCurrencyVND, formatDateVN, cn } from '@/lib/utils';
 import { DeaccessionModal } from './DeaccessionModal';
+import { DeaccessionScanModal } from './DeaccessionScanModal';
 import { DeaccessionPrintModal } from './DeaccessionPrintModal';
 import { DeaccessionApproveModal } from './DeaccessionApproveModal';
 
@@ -63,6 +67,7 @@ export const DeaccessionTab: React.FC = () => {
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isScanModalOpen, setIsScanModalOpen] = useState<boolean>(false);
   const [printBatchId, setPrintBatchId] = useState<number | null>(null);
 
   // Actions confirmation
@@ -110,7 +115,7 @@ export const DeaccessionTab: React.FC = () => {
     try {
       await api.post(`/deaccession-batches/${approvingBatch.id}/approve`);
       toast.success(
-        `Đã phê duyệt biên bản ${approvingBatch.code}. Tất cả ${approvingBatch.total_copies} bản sao đã chuyển sang Đã thanh lý (Withdrawn).`
+        `Đã phê duyệt biên bản ${approvingBatch.code}. Tất cả ${approvingBatch.total_copies} bản sao đã chuyển sang Đã thanh lý.`
       );
       setApprovingBatch(null);
       fetchBatches();
@@ -151,67 +156,136 @@ export const DeaccessionTab: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {/* Top Filter and Actions Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <form onSubmit={handleSearchSubmit} className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm theo số QĐ, mã biên bản..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-1.5 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
-            />
+      {/* Filter and Search Bar */}
+      <Card className="shadow-xs border-gray-200/80">
+        <CardContent className="p-4 space-y-3">
+          {/* Segmented Status Filter Tabs: Soft Colored Pills */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 pb-3">
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                statusFilter === ''
+                  ? 'bg-slate-100 text-slate-800 border-slate-300 shadow-2xs'
+                  : 'bg-slate-50/70 text-slate-600 border-slate-200/80 hover:bg-slate-100/80'
+              )}
+            >
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              <span>Tất cả trạng thái</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('draft');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                statusFilter === 'draft'
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                  : 'bg-amber-50/60 text-amber-700 border-amber-200/80 hover:bg-amber-100/70'
+              )}
+            >
+              <span>Dự thảo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('approved');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                statusFilter === 'approved'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs'
+                  : 'bg-emerald-50/60 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/70'
+              )}
+            >
+              <span>Đã phê duyệt</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('cancelled');
+                setPage(1);
+              }}
+              className={cn(
+                'px-3.5 py-1.5 text-xs font-semibold rounded-full border transition-all duration-150 flex items-center gap-1.5',
+                statusFilter === 'cancelled'
+                  ? 'bg-gray-100 text-gray-800 border-gray-300 shadow-2xs'
+                  : 'bg-gray-50 text-gray-600 border-gray-200/80 hover:bg-gray-100'
+              )}
+            >
+              <span>Đã hủy</span>
+            </button>
           </div>
-          <Button type="submit" variant="secondary" size="sm" className="text-xs">
-            Tìm kiếm
-          </Button>
-        </form>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'Tất cả trạng thái' },
-              { value: 'draft', label: 'Dự thảo' },
-              { value: 'approved', label: 'Đã phê duyệt' },
-              { value: 'cancelled', label: 'Đã hủy' },
-            ]}
-            className="w-36 text-xs"
-          />
+          {/* Search Controls & Action Buttons */}
+          <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 pt-1">
+            <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  placeholder="Tìm theo số QĐ, mã biên bản..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-3 w-full text-xs h-9 rounded-xl border-gray-200 focus:border-brand bg-white"
+                />
+              </div>
+              <Button type="submit" variant="secondary" size="sm" className="h-9 px-4 text-xs font-semibold shrink-0">
+                Tìm kiếm
+              </Button>
+            </form>
 
-          <Select
-            value={reasonFilter}
-            onChange={(e) => {
-              setReasonFilter(e.target.value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'Tất cả lý do' },
-              { value: 'damaged', label: 'Hư hỏng' },
-              { value: 'outdated', label: 'Lạc hậu' },
-              { value: 'lost', label: 'Mất mát' },
-              { value: 'duplicate_surplus', label: 'Dư thừa' },
-            ]}
-            className="w-36 text-xs"
-          />
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="w-40 shrink-0">
+                <Select
+                  value={reasonFilter}
+                  onChange={(e) => {
+                    setReasonFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: '', label: 'Tất cả lý do' },
+                    { value: 'damaged', label: 'Hư hỏng' },
+                    { value: 'outdated', label: 'Lạc hậu' },
+                    { value: 'lost', label: 'Mất mát' },
+                    { value: 'duplicate_surplus', label: 'Dư thừa' },
+                  ]}
+                  className="text-xs h-9 rounded-xl border-gray-200"
+                />
+              </div>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs"
-          >
-            <Plus className="h-4 w-4" />
-            Lập biên bản mới
-          </Button>
-        </div>
-      </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsScanModalOpen(true)}
+                className="h-9 flex items-center gap-1.5 text-xs text-brand border-teal-300 hover:bg-teal-50 shadow-2xs font-bold rounded-xl shrink-0"
+              >
+                <Scan className="h-4 w-4 text-brand" />
+                <span>Quét thanh lý tự động</span>
+              </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="h-9 flex items-center gap-1.5 text-xs font-bold shadow-2xs rounded-xl shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Lập biên bản mới</span>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Batches Table */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -349,6 +423,15 @@ export const DeaccessionTab: React.FC = () => {
       <DeaccessionModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={() => {
+          fetchBatches();
+        }}
+      />
+
+      {/* Auto Deaccession Scan Modal */}
+      <DeaccessionScanModal
+        isOpen={isScanModalOpen}
+        onClose={() => setIsScanModalOpen(false)}
         onSuccess={() => {
           fetchBatches();
         }}

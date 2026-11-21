@@ -76,19 +76,20 @@ class LoginView(APIView):
         response = Response({
             'data': {
                 'access_token': access_token,
+                'refresh_token': refresh_token,
                 'user': UserSummarySerializer(user).data,
             }
         }, status=status.HTTP_200_OK)
 
-        # Set HttpOnly refresh token cookie
+        # Set HttpOnly refresh token cookie with root path
         response.set_cookie(
             key='refresh_token',
             value=refresh_token,
-            max_age=7 * 24 * 3600,
+            max_age=30 * 24 * 3600,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax' if settings.DEBUG else 'Strict',
-            path='/api/v1/auth/refresh'
+            samesite='Lax',
+            path='/'
         )
         return response
 
@@ -109,6 +110,7 @@ class RefreshTokenView(APIView):
         response = Response({
             'data': {
                 'access_token': new_access_token,
+                'refresh_token': new_refresh_token,
                 'user': UserSummarySerializer(user).data,
             }
         }, status=status.HTTP_200_OK)
@@ -116,11 +118,11 @@ class RefreshTokenView(APIView):
         response.set_cookie(
             key='refresh_token',
             value=new_refresh_token,
-            max_age=7 * 24 * 3600,
+            max_age=30 * 24 * 3600,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Lax' if settings.DEBUG else 'Strict',
-            path='/api/v1/auth/refresh'
+            samesite='Lax',
+            path='/'
         )
         return response
 
@@ -144,7 +146,7 @@ class LogoutView(APIView):
         response = Response({
             'detail': 'Đăng xuất thành công.'
         }, status=status.HTTP_200_OK)
-        response.delete_cookie('refresh_token', path='/api/v1/auth/refresh')
+        response.delete_cookie('refresh_token', path='/')
         return response
 
 class ForgotPasswordView(APIView):
@@ -383,7 +385,7 @@ class UserAdminListView(APIView):
             data.pop('avatar', None)
         serializer = UserCreateAdminSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user: User = serializer.save()
 
         avatar_file = request.FILES.get('avatar')
         if avatar_file:
@@ -437,9 +439,66 @@ class UserAdminDetailView(APIView):
         if target_role and request.user.role == UserRole.LIBRARIAN and target_role not in [UserRole.STUDENT, UserRole.LECTURER]:
             raise BusinessLogicError('FORBIDDEN', detail='Thủ thư không thể cấp quyền Quản trị viên hoặc Thủ thư.')
 
-        serializer = UserAdminSerializer(user, data=request.data, partial=True)
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if 'avatar' in request.FILES:
+            data.pop('avatar', None)
+        # Chuẩn hóa các trường rỗng sang None để tránh lỗi DateField / CharField
+        for date_or_nullable_field in ['card_expiry', 'dob', 'email', 'phone', 'department', 'address']:
+            if date_or_nullable_field in data and not data[date_or_nullable_field]:
+                data[date_or_nullable_field] = None
+
+        serializer = UserAdminSerializer(user, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
-        user = serializer.save()
+        user: User = serializer.save()
+
+        avatar_file = request.FILES.get('avatar')
+        if avatar_file:
+            header = avatar_file.read(12)
+            avatar_file.seek(0)
+            is_jpeg = header.startswith(b'\xff\xd8\xff')
+            is_png = header.startswith(b'\x89PNG\r\n\x1a\n')
+            is_webp = header.startswith(b'RIFF') and header[8:12] == b'WEBP'
+            ext = 'jpg' if is_jpeg else ('png' if is_png else 'webp')
+            filename = f"avatar_{user.id}_{secrets.token_hex(6)}.{ext}"
+            upload_dir = settings.MEDIA_ROOT / 'avatars'
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            file_path = upload_dir / filename
+            with open(file_path, 'wb+') as dest:
+                for chunk in avatar_file.chunks():
+                    dest.write(chunk)
+            user.avatar = f"{settings.MEDIA_URL}avatars/{filename}"
+            user.save(update_fields=['avatar'])
+        elif 'avatar' in request.data and not request.data.get('avatar'):
+            # Cho phép xóa ảnh thẻ
+            user.avatar = None
+            user.save(update_fields=['avatar'])
+
+        # Đồng bộ ngược sang StudentRoster nếu tài khoản liên kết sinh viên
+        roster = getattr(user, 'roster_entry', None) or StudentRoster.objects.filter(
+            Q(student_code__iexact=user.card_code) | Q(student_code__iexact=user.username)
+        ).first()
+        if roster:
+            roster_updates = []
+            if roster.avatar != user.avatar:
+                roster.avatar = user.avatar
+                roster_updates.append('avatar')
+            if user.full_name and roster.full_name != user.full_name:
+                roster.full_name = user.full_name
+                roster_updates.append('full_name')
+            if user.phone and roster.phone != user.phone:
+                roster.phone = user.phone
+                roster_updates.append('phone')
+            if user.department and roster.department != user.department:
+                roster.department = user.department
+                roster_updates.append('department')
+            if 'major' in request.data and request.data.get('major') != roster.major:
+                roster.major = request.data.get('major') or ''
+                roster_updates.append('major')
+            if 'class_name' in request.data and request.data.get('class_name') != roster.class_name:
+                roster.class_name = request.data.get('class_name') or ''
+                roster_updates.append('class_name')
+            if roster_updates:
+                roster.save(update_fields=roster_updates)
 
         log_action(
             user=request.user,
@@ -451,6 +510,9 @@ class UserAdminDetailView(APIView):
         )
 
         return Response({'data': UserAdminSerializer(user).data}, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        return self.put(request, pk)
 
     def delete(self, request, pk):
         if request.user.role != UserRole.ADMIN:
@@ -475,6 +537,15 @@ class UserAdminDetailView(APIView):
         user.deleted_at = timezone.now()
         user.is_active = False
         user.save(update_fields=['deleted_at', 'is_active'])
+
+        # Đồng bộ ngược sang StudentRoster: reset trạng thái cấp thẻ để danh sách sinh viên cập nhật đúng
+        roster = getattr(user, 'roster_entry', None) or StudentRoster.objects.filter(
+            Q(student_code__iexact=user.card_code) | Q(student_code__iexact=user.username)
+        ).first()
+        if roster:
+            roster.is_card_issued = False
+            roster.user = None
+            roster.save(update_fields=['is_card_issued', 'user'])
 
         log_action(
             user=request.user,
@@ -575,8 +646,7 @@ class UserResetPasswordAdminView(APIView):
         if request.user.role == UserRole.LIBRARIAN and user.role in [UserRole.ADMIN, UserRole.LIBRARIAN]:
             raise BusinessLogicError('FORBIDDEN', detail='Thủ thư không có quyền đặt lại mật khẩu cho Cán bộ / Quản trị viên.')
 
-        new_password = request.data.get('new_password', 'UthLibrary@123')
-        validate_password(new_password, user=user)
+        new_password = str(request.data.get('new_password') or 'UthLibrary@123').strip()
 
         user.set_password(new_password)
         user.must_change_password = True
@@ -685,8 +755,9 @@ class IssueStudentCardView(APIView):
             raise BusinessLogicError('INELIGIBLE', detail=f'Sinh viên đang trong tình trạng {roster.get_status_display()}, không đủ điều kiện mở thẻ.')
 
         # Check existing user
-        if User.objects.filter(Q(card_code__iexact=code) | Q(username__iexact=code), deleted_at__isnull=True).exists():
-            raise BusinessLogicError('CARD_EXISTS', detail=f'Sinh viên {roster.full_name} ({code}) đã có tài khoản thẻ thư viện.')
+        existing_user = User.objects.filter(Q(card_code__iexact=code) | Q(username__iexact=code)).first()
+        if existing_user and existing_user.deleted_at is None:
+            raise BusinessLogicError('CARD_EXISTS', detail=f'Sinh viên {roster.full_name} ({code}) đã có tài khoản thẻ thư viện đang hoạt động.')
 
         # Parameters
         card_expiry_str = request.data.get('card_expiry')
@@ -707,21 +778,40 @@ class IssueStudentCardView(APIView):
             payment_method = PaymentMethod.CASH
         note = request.data.get('note', '')
 
-        # Create user
+        # Create or reactivate user
         default_password = request.data.get('password') or 'Password123'
-        user = User(
-            username=code,
-            full_name=roster.full_name,
-            card_code=code,
-            email=email,
-            phone=phone,
-            department=roster.department,
-            role=UserRole.STUDENT,
-            card_expiry=card_expiry,
-            must_change_password=True,
-        )
-        user.set_password(default_password)
-        user.save()
+        if existing_user:
+            user = existing_user
+            user.deleted_at = None
+            user.is_active = True
+            user.is_locked = False
+            user.lock_reason = None
+            user.locked_until = None
+            user.full_name = roster.full_name
+            user.card_code = code
+            user.username = code
+            user.email = email
+            user.phone = phone
+            user.department = roster.department
+            user.role = UserRole.STUDENT
+            user.card_expiry = card_expiry
+            user.must_change_password = True
+            user.set_password(default_password)
+            user.save()
+        else:
+            user = User(
+                username=code,
+                full_name=roster.full_name,
+                card_code=code,
+                email=email,
+                phone=phone,
+                department=roster.department,
+                role=UserRole.STUDENT,
+                card_expiry=card_expiry,
+                must_change_password=True,
+            )
+            user.set_password(default_password)
+            user.save()
 
         # Handle avatar if uploaded
         avatar_file = request.FILES.get('avatar')
@@ -734,6 +824,9 @@ class IssueStudentCardView(APIView):
                 for chunk in avatar_file.chunks():
                     dest.write(chunk)
             user.avatar = f"{settings.MEDIA_URL}avatars/{filename}"
+            user.save(update_fields=['avatar'])
+        elif roster.avatar:
+            user.avatar = roster.avatar
             user.save(update_fields=['avatar'])
 
         # Update roster
@@ -828,12 +921,12 @@ class StudentRosterListView(APIView):
         card_issued = request.query_params.get('is_card_issued')
         if card_issued is not None:
             if card_issued.lower() == 'true':
-                queryset = queryset.filter(is_card_issued=True)
+                queryset = queryset.filter(is_card_issued=True, user__deleted_at__isnull=True)
             elif card_issued.lower() == 'false':
-                queryset = queryset.filter(is_card_issued=False)
+                queryset = queryset.filter(Q(is_card_issued=False) | Q(user__deleted_at__isnull=False))
 
         total_students = StudentRoster.objects.count()
-        issued_cards = StudentRoster.objects.filter(is_card_issued=True).count()
+        issued_cards = StudentRoster.objects.filter(is_card_issued=True, user__deleted_at__isnull=True).count()
         unissued_cards = total_students - issued_cards
 
         paginator = StandardPagination()
@@ -851,15 +944,17 @@ class StudentRosterTemplateView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        output = io.StringIO()
+        output.write('\ufeff')
+        writer = csv.writer(output)
+        writer.writerow(['MSSV', 'Họ và tên', 'Khoa', 'Ngành', 'Lớp', 'Email', 'Số điện thoại', 'Khóa học', 'Trạng thái', 'Ảnh thẻ (URL hoặc tên file ảnh)'])
+        writer.writerow(['22510091', 'Nguyễn Văn Hải', 'Khoa Công nghệ thông tin', 'Kỹ thuật phần mềm', 'CNTT-K22A', '22510091@sv.ut.edu.vn', '0901234567', 'K22 (2022 - 2026)', 'enrolled', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'])
+        writer.writerow(['22510092', 'Lê Thị Thu Thảo', 'Khoa Kinh tế vận tải', 'Logistics và Quản lý chuỗi cung ứng', 'LOG-K22B', '22510092@sv.ut.edu.vn', '0912345678', 'K22 (2022 - 2026)', 'enrolled', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80'])
+        writer.writerow(['22510093', 'Trần Quốc Đạt', 'Khoa Cơ khí', 'Kỹ thuật Ô tô', 'OTO-K22', '22510093@sv.ut.edu.vn', '0923456789', 'K22 (2022 - 2026)', 'enrolled', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80'])
+
+        csv_bytes = output.getvalue().encode('utf-8-sig')
+        response = HttpResponse(csv_bytes, content_type='text/csv; charset=utf-8-sig')
         response['Content-Disposition'] = 'attachment; filename="uth_danh_sach_sinh_vien_mau.csv"'
-        
-        response.write('\ufeff')
-        writer = csv.writer(response)
-        writer.writerow(['mssv', 'ho_ten', 'khoa', 'nganh', 'email', 'sdt', 'khoa_hoc', 'trang_thai'])
-        writer.writerow(['22510091', 'Nguyễn Văn Hải', 'Khoa Công nghệ thông tin', 'Kỹ thuật phần mềm', '22510091@sv.ut.edu.vn', '0901234567', 'K22 (2022 - 2026)', 'enrolled'])
-        writer.writerow(['22510092', 'Lê Thị Thu Thảo', 'Khoa Kinh tế vận tải', 'Logistics và Quản lý chuỗi cung ứng', '22510092@sv.ut.edu.vn', '0912345678', 'K22 (2022 - 2026)', 'enrolled'])
-        writer.writerow(['22510093', 'Trần Quốc Đạt', 'Khoa Cơ khí', 'Kỹ thuật Ô tô', '22510093@sv.ut.edu.vn', '0923456789', 'K22 (2022 - 2026)', 'enrolled'])
         return response
 
 class StudentRosterImportView(APIView):
@@ -867,30 +962,208 @@ class StudentRosterImportView(APIView):
 
     def post(self, request):
         file_obj = request.FILES.get('file')
+        csv_payload = request.data.get('csv_data') or request.data.get('csv_text') or request.data.get('csv')
+        if not file_obj and isinstance(request.data.get('file'), str):
+            csv_payload = request.data.get('file')
         json_items = request.data.get('students')
 
         rows_to_process = []
 
-        if file_obj:
+        if file_obj or csv_payload:
             try:
-                decoded_file = file_obj.read().decode('utf-8-sig')
-                io_string = io.StringIO(decoded_file)
-                reader = csv.DictReader(io_string)
-                for row in reader:
-                    cleaned = {k.strip().lower() if k else '': v.strip() if v else '' for k, v in row.items()}
-                    code = cleaned.get('mssv') or cleaned.get('student_code')
-                    name = cleaned.get('ho_ten') or cleaned.get('full_name') or cleaned.get('ten')
-                    if code and name:
-                        rows_to_process.append({
-                            'student_code': code,
-                            'full_name': name,
-                            'department': cleaned.get('khoa') or cleaned.get('department') or 'Khoa Công nghệ thông tin',
-                            'major': cleaned.get('nganh') or cleaned.get('major') or '',
-                            'email': cleaned.get('email') or f"{code}@sv.ut.edu.vn",
-                            'phone': cleaned.get('sdt') or cleaned.get('phone') or '',
-                            'academic_year': cleaned.get('khoa_hoc') or cleaned.get('academic_year') or 'K22 (2022 - 2026)',
-                            'status': cleaned.get('trang_thai') or cleaned.get('status') or StudentStatus.ENROLLED,
-                        })
+                decoded_file = None
+                if csv_payload:
+                    decoded_file = str(csv_payload)
+                elif file_obj:
+                    raw_bytes = file_obj.read()
+                    
+                    # 1. Safe decoding without accidental UTF-16 false positives
+                    if raw_bytes.startswith(b'\xef\xbb\xbf'):
+                        decoded_file = raw_bytes[3:].decode('utf-8', errors='replace')
+                    elif raw_bytes.startswith(b'\xff\xfe'):
+                        decoded_file = raw_bytes[2:].decode('utf-16-le', errors='replace')
+                    elif raw_bytes.startswith(b'\xfe\xff'):
+                        decoded_file = raw_bytes[2:].decode('utf-16-be', errors='replace')
+                    elif b'\x00' in raw_bytes[:100]:
+                        try:
+                            decoded_file = raw_bytes.decode('utf-16', errors='replace')
+                        except Exception:
+                            pass
+
+                    if not decoded_file:
+                        try:
+                            decoded_file = raw_bytes.decode('utf-8')
+                        except UnicodeDecodeError:
+                            for enc in ['cp1258', 'windows-1252', 'latin-1']:
+                                try:
+                                    decoded_file = raw_bytes.decode(enc)
+                                    break
+                                except (UnicodeDecodeError, LookupError):
+                                    continue
+
+                    if not decoded_file:
+                        decoded_file = raw_bytes.decode('utf-8', errors='ignore')
+
+                # Strip all invisible BOMs / zero-width characters across the entire file
+                decoded_file = decoded_file.replace('\ufeff', '').replace('\u200b', '').replace('\ufffd', '')
+
+                # Normalize line endings
+                text = decoded_file.replace('\r\n', '\n').replace('\r', '\n')
+                lines = [line.strip() for line in text.split('\n') if line.strip()]
+                if not lines:
+                    raise BusinessLogicError('EMPTY_FILE', detail='File tải lên không có nội dung văn bản.')
+
+                import unicodedata, re
+
+                def clean_str(val) -> str:
+                    if val is None:
+                        return ''
+                    return re.sub(r'[\ufeff\u200b\ufffd]', '', str(val)).strip()
+
+                def normalize_key(k: str) -> str:
+                    if not k:
+                        return ''
+                    original = clean_str(k)
+                    nfd = unicodedata.normalize('NFD', original.lower())
+                    # Disambiguate 'Khóa' (cohort / academic batch) vs 'Khoa' (faculty / department)
+                    if 'kho' in nfd and '\u0301' in nfd:
+                        return 'khoa_hoc'
+                    k = original.lower().replace('đ', 'd').replace('Đ', 'd')
+                    k = ''.join(c for c in unicodedata.normalize('NFD', k) if unicodedata.category(c) != 'Mn')
+                    return re.sub(r'[^a-z0-9]+', '_', k).strip('_')
+
+                delimiters = [';', ',', '\t', '|']
+                known_code_keys = {
+                    'mssv', 'ma_sv', 'masv', 'ma_so_sv', 'ma_sinh_vien',
+                    'ma_so_sinh_vien', 'student_code', 'student_id', 'code',
+                    'id', 'so_the', 'ma_the', 'mssv_sv'
+                }
+                known_name_keys = {
+                    'ho_ten', 'ho_va_ten', 'ho_ten_sinh_vien', 'ten_sinh_vien',
+                    'full_name', 'fullname', 'name'
+                }
+                known_avatar_keys = {
+                    'anh_the', 'avatar', 'anh', 'hinh_anh', 'photo', 'url_anh',
+                    'image', 'image_url', 'anh_dai_dien', 'avatar_url',
+                    'anh_the_url_hoac_ten_file_anh', 'anh_the_url_hoac_duong_dan_anh'
+                }
+
+                def is_avatar_key(k: str) -> bool:
+                    if not k:
+                        return False
+                    # Tuyệt đối không nhầm 'nganh' (ngành học / chuyên ngành) với 'anh' (ảnh thẻ)
+                    if 'nganh' in k:
+                        return False
+                    if k in known_avatar_keys:
+                        return True
+                    return any(sub in k for sub in ['avatar', 'anh_the', 'hinh_anh', 'anh_dai_dien', 'photo', 'image', 'url_anh']) or k.startswith('anh_') or k.endswith('_anh') or k == 'anh'
+
+                def is_valid_avatar_value(val: str) -> bool:
+                    if not val:
+                        return False
+                    v = str(val).strip().lower()
+                    if v.startswith(('http://', 'https://', '/media/', 'data:image/')):
+                        return True
+                    return any(v.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg'])
+
+                best_delimiter = ','
+                best_header_idx = -1
+                best_score = 0
+
+                # Detect header row among the first 15 lines (handles title/banner rows)
+                for line_idx in range(min(15, len(lines))):
+                    candidate = lines[line_idx]
+                    for d in delimiters:
+                        try:
+                            parts = [normalize_key(p) for p in next(csv.reader([candidate], delimiter=d), [])]
+                            has_code = any(p in known_code_keys for p in parts)
+                            has_name = any(p in known_name_keys or p == 'ten' for p in parts)
+                            score = sum(1 for p in parts if p in known_code_keys or p in known_name_keys or is_avatar_key(p) or p in {'khoa', 'nganh', 'lop', 'email', 'sdt', 'khoa_hoc', 'trang_thai'})
+                            if (has_code or has_name) and score > best_score:
+                                best_score = score
+                                best_delimiter = d
+                                best_header_idx = line_idx
+                        except Exception:
+                            continue
+
+                if best_header_idx >= 0:
+                    data_text = '\n'.join(lines[best_header_idx:])
+                    reader = csv.DictReader(io.StringIO(data_text), delimiter=best_delimiter)
+                    for row in reader:
+                        cleaned = {normalize_key(k): clean_str(v) for k, v in row.items()}
+                        code = next((cleaned[k] for k in cleaned if k in known_code_keys and cleaned[k]), '')
+                        name = next((cleaned[k] for k in cleaned if k in known_name_keys and cleaned[k]), '')
+                        if not name and ('ho' in cleaned or 'ho_lot' in cleaned or 'ho_va_ten_lot' in cleaned) and 'ten' in cleaned:
+                            ho = cleaned.get('ho') or cleaned.get('ho_lot') or cleaned.get('ho_va_ten_lot', '')
+                            ten = cleaned.get('ten', '')
+                            name = f'{ho} {ten}'.strip()
+
+                        avatar = ''
+                        for k, v in cleaned.items():
+                            if is_avatar_key(k) and v and is_valid_avatar_value(v):
+                                avatar = clean_str(v)
+                                break
+                        if not avatar:
+                            for k, v in cleaned.items():
+                                if k not in known_code_keys and k not in known_name_keys and 'email' not in k and is_valid_avatar_value(v):
+                                    avatar = clean_str(v)
+                                    break
+
+                        if code and name:
+                            rows_to_process.append({
+                                'student_code': clean_str(code),
+                                'full_name': clean_str(name),
+                                'department': cleaned.get('khoa') or cleaned.get('don_vi') or cleaned.get('khoa_don_vi') or 'Khoa Công nghệ thông tin',
+                                'major': cleaned.get('nganh') or cleaned.get('chuyen_nganh') or cleaned.get('major') or '',
+                                'class_name': cleaned.get('lop') or cleaned.get('lop_hoc') or cleaned.get('lop_sinh_hoat') or cleaned.get('class_name') or '',
+                                'email': cleaned.get('email') or cleaned.get('dia_chi_email') or f'{clean_str(code)}@sv.ut.edu.vn',
+                                'phone': cleaned.get('sdt') or cleaned.get('so_dien_thoai') or cleaned.get('dien_thoai') or cleaned.get('phone') or '',
+                                'academic_year': cleaned.get('khoa_hoc') or cleaned.get('nam_hoc') or 'K22 (2022 - 2026)',
+                                'status': cleaned.get('trang_thai') or cleaned.get('tinh_trang') or StudentStatus.ENROLLED,
+                                'avatar': clean_str(avatar),
+                            })
+
+                if not rows_to_process:
+                    # Positional fallback (handles raw CSV without headers)
+                    for d in delimiters:
+                        try:
+                            parts = next(csv.reader([lines[0]], delimiter=d), [])
+                            if len(parts) >= 2:
+                                best_delimiter = d
+                                break
+                        except Exception:
+                            continue
+                    reader = csv.reader(lines, delimiter=best_delimiter)
+                    for row in reader:
+                        if len(row) < 2:
+                            continue
+                        first, second = clean_str(row[0]), clean_str(row[1])
+                        code, name = '', ''
+                        if re.match(r'^[A-Za-z0-9_-]{5,20}$', first) and any(c.isalpha() for c in second):
+                            code, name = first, second
+                        elif re.match(r'^[A-Za-z0-9_-]{5,20}$', second) and any(c.isalpha() for c in first):
+                            name, code = first, second
+
+                        if code and name and code.lower() not in known_code_keys:
+                            pos_avatar = ''
+                            for col_idx in range(2, len(row)):
+                                f_val = clean_str(row[col_idx])
+                                if f_val.startswith(('http://', 'https://', '/media/')) or any(f_val.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                                    pos_avatar = f_val
+                                    break
+
+                            rows_to_process.append({
+                                'student_code': clean_str(code),
+                                'full_name': clean_str(name),
+                                'department': clean_str(row[2]) if len(row) > 2 else 'Khoa Công nghệ thông tin',
+                                'major': clean_str(row[3]) if len(row) > 3 else '',
+                                'class_name': clean_str(row[4]) if len(row) > 4 and not ('@' in row[4]) else '',
+                                'email': clean_str(row[4]) if len(row) > 4 and '@' in row[4] else (clean_str(row[5]) if len(row) > 5 and '@' in row[5] else f'{clean_str(code)}@sv.ut.edu.vn'),
+                                'phone': clean_str(row[5]) if len(row) > 5 and not ('@' in row[5]) else (clean_str(row[6]) if len(row) > 6 else ''),
+                                'academic_year': 'K22 (2022 - 2026)',
+                                'status': StudentStatus.ENROLLED,
+                                'avatar': pos_avatar,
+                            })
             except Exception as e:
                 raise BusinessLogicError('IMPORT_FAILED', detail=f'Lỗi đọc file CSV: {str(e)}')
         elif json_items and isinstance(json_items, list):
@@ -915,24 +1188,32 @@ class StudentRosterImportView(APIView):
                 status_val = StudentStatus.ENROLLED
 
             existing_user = User.objects.filter(
-                Q(card_code__iexact=code) | Q(username__iexact=code),
-                deleted_at__isnull=True
+                Q(card_code__iexact=code) | Q(username__iexact=code)
             ).first()
+
+            avatar_val = str(item.get('avatar', '') or '').strip()
+            defaults = {
+                'full_name': name,
+                'department': item.get('department', 'Khoa Công nghệ thông tin'),
+                'major': item.get('major', ''),
+                'class_name': item.get('class_name', ''),
+                'email': item.get('email') or f"{code}@sv.ut.edu.vn",
+                'phone': item.get('phone', ''),
+                'academic_year': item.get('academic_year', 'K22 (2022 - 2026)'),
+                'status': status_val,
+                'is_card_issued': bool(existing_user),
+                'user': existing_user,
+            }
+            if avatar_val:
+                defaults['avatar'] = avatar_val
 
             roster, created = StudentRoster.objects.update_or_create(
                 student_code=code,
-                defaults={
-                    'full_name': name,
-                    'department': item.get('department', 'Khoa Công nghệ thông tin'),
-                    'major': item.get('major', ''),
-                    'email': item.get('email') or f"{code}@sv.ut.edu.vn",
-                    'phone': item.get('phone', ''),
-                    'academic_year': item.get('academic_year', 'K22 (2022 - 2026)'),
-                    'status': status_val,
-                    'is_card_issued': bool(existing_user),
-                    'user': existing_user,
-                }
+                defaults=defaults
             )
+            if existing_user and avatar_val:
+                existing_user.avatar = avatar_val
+                existing_user.save(update_fields=['avatar'])
             if created:
                 created_count += 1
             else:
@@ -953,6 +1234,73 @@ class StudentRosterImportView(APIView):
             'updated_count': updated_count,
             'total': len(rows_to_process),
         }, status=status.HTTP_200_OK)
+
+
+class StudentRosterExportView(APIView):
+    permission_classes = [IsAdminUserRole]
+
+    def get(self, request):
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = 'attachment; filename="uth_danh_sach_sinh_vien_export.csv"'
+        response.write('\ufeff')
+
+        writer = csv.writer(response)
+        writer.writerow([
+            'MSSV',
+            'Họ và tên',
+            'Khoa / Viện',
+            'Chuyên ngành',
+            'Lớp',
+            'Email',
+            'Số điện thoại',
+            'Khóa học',
+            'Tình trạng đào tạo',
+            'Đã cấp thẻ',
+            'Mã thẻ thư viện',
+            'Ảnh thẻ (Avatar URL)',
+            'Ngày khởi tạo',
+        ])
+
+        queryset = StudentRoster.objects.select_related('user').order_by('student_code')
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(student_code__icontains=search) |
+                Q(full_name__icontains=search) |
+                Q(department__icontains=search) |
+                Q(email__icontains=search)
+            )
+
+        status_param = request.query_params.get('status')
+        if status_param and status_param != 'all':
+            queryset = queryset.filter(status=status_param)
+
+        card_issued = request.query_params.get('is_card_issued')
+        if card_issued is not None and card_issued != 'all':
+            if card_issued.lower() == 'true':
+                queryset = queryset.filter(is_card_issued=True)
+            elif card_issued.lower() == 'false':
+                queryset = queryset.filter(is_card_issued=False)
+
+        for s in queryset:
+            avatar_val = s.avatar or (s.user.avatar if s.user else '') or ''
+            writer.writerow([
+                s.student_code,
+                s.full_name,
+                s.department or '',
+                s.major or '',
+                s.class_name or '',
+                s.email or '',
+                s.phone or '',
+                s.academic_year or '',
+                s.get_status_display(),
+                'Đã có thẻ' if s.is_card_issued else 'Chưa cấp',
+                s.user.card_code if s.user else '',
+                avatar_val,
+                s.created_at.strftime('%d/%m/%Y %H:%M') if s.created_at else '',
+            ])
+
+        return response
 
 
 class PaymentTransactionListView(APIView):

@@ -11,6 +11,8 @@ import {
   Sparkles,
   ArrowRight,
   GraduationCap,
+  ShieldCheck,
+  CheckCircle2,
   Compass,
   Cpu,
   Ship,
@@ -318,6 +320,50 @@ export const HomePage: React.FC = () => {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      {/* Banner Cổng Tài nguyên & Học liệu điện tử UTH (University Portal Style) */}
+      <section className="bg-white border-l-4 border-l-[#008B8B] border border-gray-200/90 rounded-2xl p-6 sm:p-7 shadow-xs relative overflow-hidden flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+        <div className="space-y-3 z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 text-[#008B8B] border border-teal-200/70 text-xs font-bold">
+            <GraduationCap className="w-4 h-4 text-[#008B8B]" />
+            Học liệu điện tử chính khóa &bull; Trường Đại học Giao thông Vận tải TP.HCM
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            Cổng Tài nguyên & Học liệu điện tử UTH
+          </h2>
+          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+            Tra cứu và đọc toàn văn trực tuyến Giáo trình, Khóa luận tốt nghiệp, Đồ án môn học và Công trình nghiên cứu khoa học phục vụ học tập, nghiên cứu với Dynamic Watermark bảo vệ bản quyền tác giả.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-600 font-medium">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200/70">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#008B8B]" /> 10 loại học liệu số
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200/70">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#008B8B]" /> Dynamic Watermark bản quyền
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-50 border border-gray-200/70">
+              <Clock className="w-3.5 h-3.5 text-[#008B8B]" /> Phục vụ trực tuyến 24/7
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 z-10 shrink-0 w-full lg:w-auto">
+          <Link
+            to="/digital-library"
+            className="px-5 py-2.5 rounded-xl bg-[#008B8B] hover:bg-[#006F70] text-white font-bold text-xs inline-flex items-center justify-center gap-2 shadow-xs transition-colors"
+          >
+            <BookOpen className="w-4 h-4 text-white" />
+            Khám phá Thư viện số ngay
+          </Link>
+          <Link
+            to="/digital-library/my-history"
+            className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-[#008B8B] font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors bg-white shadow-2xs"
+          >
+            Lịch sử đọc của tôi &rarr;
+          </Link>
         </div>
       </section>
 

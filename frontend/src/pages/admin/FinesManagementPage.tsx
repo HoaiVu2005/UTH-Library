@@ -16,6 +16,7 @@ import {
   Sparkles,
   QrCode,
   BookOpen,
+  Printer,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +30,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
+import { ReceiptPrintModal, ReceiptData } from '@/pages/admin/students/ReceiptPrintModal';
 import { formatCurrencyVND, formatDateVN, isDateToday, cn } from '@/lib/utils';
 import { DateFilter, DatePreset } from '@/components/ui/DateFilter';
 import { toast } from '@/components/ui/Toast';
@@ -89,6 +91,37 @@ export const FinesManagementPage: React.FC = () => {
 
   // VietQR modal for librarian / desk
   const [qrTarget, setQrTarget] = useState<FineRecord | null>(null);
+
+  // Official Receipt Print Modal
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
+
+  const handleOpenReceipt = (f: FineRecord) => {
+    const typeDisplay =
+      f.type === 'overdue'
+        ? 'Phạt trễ hạn trả tài liệu'
+        : f.type === 'damage'
+        ? `Bồi thường hư hại tài liệu (${f.damage_level || 'Hư hỏng'})`
+        : 'Bồi thường làm mất tài liệu';
+
+    const data: ReceiptData = {
+      receipt_code: `BL-PHAT-${String(f.id).padStart(6, '0')}`,
+      transaction_code: `GD-FINE-${f.id}-${Date.now().toString().slice(-4)}`,
+      amount: f.paid_amount > 0 ? f.paid_amount : f.amount,
+      payment_method: 'cash',
+      payment_method_display: 'Tiền mặt tại Quầy lưu thông Thư viện UTH',
+      payer_name: f.patron_name,
+      student_code: f.patron_card_code,
+      department: 'Trường Đại học Giao thông Vận tải TP.HCM',
+      collected_by_name: 'Thủ thư Quầy Lưu thông UTH',
+      collected_at: f.created_at || new Date().toISOString(),
+      title: 'BIÊN LAI THU TIỀN PHẠT THƯ VIỆN',
+      fee_item_name: typeDisplay,
+      fee_item_detail: f.book_title
+        ? `Tài liệu: ${f.book_title}${f.copy_barcode ? ` (${f.copy_barcode})` : ''}`
+        : 'Vi phạm quy chế lưu thông Thư viện UTH',
+    };
+    setSelectedReceipt(data);
+  };
 
 
   const fetchFines = useCallback(async (isBackground = false) => {
@@ -167,8 +200,14 @@ export const FinesManagementPage: React.FC = () => {
         note: collectNote,
       });
       toast.success(`Đã thu ${formatCurrencyVND(amountVal)} thành công!`);
+      const targetCopy = {
+        ...collectTarget,
+        paid_amount: (collectTarget.paid_amount || 0) + amountVal,
+        remaining_amount: Math.max(0, collectTarget.remaining_amount - amountVal),
+      };
       setCollectTarget(null);
       fetchFines();
+      handleOpenReceipt(targetCopy);
       broadcastRealtimeSync('fines');
       broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
@@ -225,7 +264,7 @@ export const FinesManagementPage: React.FC = () => {
             <Receipt className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
               <span>Quản lý Tiền phạt & Công nợ</span>
             </h1>
@@ -458,7 +497,7 @@ export const FinesManagementPage: React.FC = () => {
                   <TableHead className="w-32">Đã nộp</TableHead>
                   <TableHead className="w-32">Còn nợ</TableHead>
                   <TableHead className="w-32 text-center">Trạng thái</TableHead>
-                  <TableHead className="w-20 text-center">Thao tác</TableHead>
+                  <TableHead className="w-32 text-center whitespace-nowrap">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -620,6 +659,16 @@ export const FinesManagementPage: React.FC = () => {
                                 variant: 'primary',
                                 onClick: () => handleOpenCollect(f),
                               },
+                              ...(f.paid_amount > 0
+                                ? [
+                                    {
+                                      label: 'In biên lai thu tiền',
+                                      icon: <Printer className="w-3.5 h-3.5" />,
+                                      variant: 'default' as const,
+                                      onClick: () => handleOpenReceipt(f),
+                                    },
+                                  ]
+                                : []),
                               {
                                 label: 'Miễn giảm khoản phạt',
                                 icon: <ShieldCheck className="w-3.5 h-3.5" />,
@@ -629,6 +678,16 @@ export const FinesManagementPage: React.FC = () => {
                               },
                             ]}
                           />
+                        ) : f.status === 'paid' || f.paid_amount > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReceipt(f)}
+                            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-[#008B8B] hover:text-[#006F70] bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-xl border border-teal-200 transition-colors shadow-2xs whitespace-nowrap"
+                            title="In biên lai thu tiền phạt cho bạn đọc"
+                          >
+                            <Printer className="w-3.5 h-3.5 text-[#008B8B] shrink-0" />
+                            <span className="whitespace-nowrap font-medium">In biên lai</span>
+                          </button>
                         ) : (
                           <span className="text-gray-300 select-none font-bold">—</span>
                         )}
@@ -797,6 +856,13 @@ export const FinesManagementPage: React.FC = () => {
         patronCardCode={qrTarget?.patron_card_code || ''}
         patronName={qrTarget?.patron_name}
         onSuccess={() => fetchFines(true)}
+      />
+
+      {/* Official Receipt Printable Modal for Staff / Desk */}
+      <ReceiptPrintModal
+        isOpen={Boolean(selectedReceipt)}
+        onClose={() => setSelectedReceipt(null)}
+        receipt={selectedReceipt}
       />
     </div>
   );

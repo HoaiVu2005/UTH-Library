@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 
 import { toast } from '@/components/ui/Toast';
 
-import { Users, Plus, Search, Lock, Unlock, Calendar, Key, Trash2, AlertCircle, CheckCircle2, Camera, Upload, Image as ImageIcon, X, RotateCw, ShieldAlert, GraduationCap, FileSpreadsheet } from 'lucide-react';
+import { Users, User, Plus, Search, Lock, Unlock, Calendar, Key, Trash2, AlertCircle, CheckCircle2, Camera, Upload, Image as ImageIcon, X, RotateCw, ShieldAlert, GraduationCap, FileSpreadsheet, Pencil } from 'lucide-react';
 
 import { IssueStudentCardModal } from './students/IssueStudentCardModal';
 
@@ -67,6 +67,14 @@ interface UserItem {
 
   department?: string;
 
+  major?: string;
+
+  class_name?: string;
+
+  dob?: string;
+
+  address?: string;
+
   card_expiry?: string;
 
   is_locked: boolean;
@@ -121,10 +129,9 @@ export const UsersManagementPage: React.FC = () => {
 
 
   // Student Roster modals
-
   const [isIssueCardModalOpen, setIsIssueCardModalOpen] = useState<boolean>(false);
-
   const [isImportRosterModalOpen, setIsImportRosterModalOpen] = useState<boolean>(false);
+  const [rosterRefreshKey, setRosterRefreshKey] = useState<number>(0);
 
 
 
@@ -180,13 +187,33 @@ export const UsersManagementPage: React.FC = () => {
 
   const [resettingUser, setResettingUser] = useState<UserItem | null>(null);
 
-  const [newPassword, setNewPassword] = useState<string>('UthLibrary@123');
+  const [newPassword, setNewPassword] = useState<string>('');
 
 
 
   // Delete User
 
   const [deletingUser, setDeletingUser] = useState<UserItem | null>(null);
+
+  // Edit User Modal
+  const [editingUser, setEditingUser] = useState<UserItem | null>(null);
+  const [editFullName, setEditFullName] = useState<string>('');
+  const [editEmail, setEditEmail] = useState<string>('');
+  const [editPhone, setEditPhone] = useState<string>('');
+  const [editDepartment, setEditDepartment] = useState<string>('');
+  const [editMajor, setEditMajor] = useState<string>('');
+  const [editClassName, setEditClassName] = useState<string>('');
+  const [editCardCode, setEditCardCode] = useState<string>('');
+  const [editDob, setEditDob] = useState<string>('');
+  const [editAddress, setEditAddress] = useState<string>('');
+  const [editCardExpiry, setEditCardExpiry] = useState<string>('');
+  const [editRole, setEditRole] = useState<string>('student');
+  const [editAvatar, setEditAvatar] = useState<string>('');
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string>('');
+  const [editSubmitting, setEditSubmitting] = useState<boolean>(false);
+  const [editModalError, setEditModalError] = useState<string | null>(null);
+  const editAvatarInputRef = useRef<HTMLInputElement>(null);
 
 
 
@@ -283,10 +310,10 @@ export const UsersManagementPage: React.FC = () => {
 
 
   useEffect(() => {
-
-    fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
-
-  }, [page, search, roleFilter, lockedFilter, pageSize]);
+    if (mainTab === 'users') {
+      fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
+    }
+  }, [page, search, roleFilter, lockedFilter, pageSize, mainTab]);
 
 
 
@@ -626,12 +653,11 @@ export const UsersManagementPage: React.FC = () => {
 
       toast.success(`Đã đặt lại mật khẩu cho bạn đọc ${resettingUser.full_name}.`);
 
+      setNewPassword('');
       setResettingUser(null);
-
     } catch (err: any) {
-
       toast.error(err.response?.data?.detail || 'Đặt lại mật khẩu thất bại.');
-
+      setNewPassword('');
       setResettingUser(null);
 
     } finally {
@@ -678,6 +704,123 @@ export const UsersManagementPage: React.FC = () => {
 
 
 
+  const handleOpenEditModal = (u: UserItem) => {
+    setEditingUser(u);
+    setEditFullName(u.full_name || '');
+    setEditEmail(u.email || '');
+    setEditPhone(u.phone || '');
+    setEditDepartment(u.department || '');
+    setEditMajor(u.major || '');
+    setEditClassName(u.class_name || '');
+    setEditCardCode(u.card_code || '');
+    setEditDob(u.dob || '');
+    setEditAddress(u.address || '');
+    setEditCardExpiry(u.card_expiry || '');
+    setEditRole(u.role || 'student');
+    setEditAvatar(u.avatar || '');
+    setEditAvatarFile(null);
+    setEditAvatarPreview(u.avatar || '');
+    setEditModalError(null);
+  };
+
+  const handleEditAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.warning('Dung lượng ảnh tối đa là 5MB.');
+        return;
+      }
+      setEditAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditRemoveAvatar = () => {
+    setEditAvatar('');
+    setEditAvatarFile(null);
+    setEditAvatarPreview('');
+    if (editAvatarInputRef.current) {
+      editAvatarInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    try {
+      setEditSubmitting(true);
+      setEditModalError(null);
+
+      if (editAvatarFile) {
+        const formData = new FormData();
+        formData.append('full_name', editFullName.trim());
+        formData.append('card_code', editCardCode.trim().toUpperCase());
+        if (editEmail.trim()) formData.append('email', editEmail.trim());
+        if (editPhone.trim()) formData.append('phone', editPhone.trim());
+        if (editDepartment.trim()) formData.append('department', editDepartment.trim());
+        if (editMajor.trim()) formData.append('major', editMajor.trim());
+        if (editClassName.trim()) formData.append('class_name', editClassName.trim());
+        if (editDob) formData.append('dob', editDob);
+        if (editAddress.trim()) formData.append('address', editAddress.trim());
+        if (editCardExpiry) formData.append('card_expiry', editCardExpiry);
+        if (isAdmin) formData.append('role', editRole);
+        formData.append('avatar', editAvatarFile);
+
+        await api.put(`/users/${editingUser.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        await api.put(`/users/${editingUser.id}`, {
+          full_name: editFullName.trim(),
+          card_code: editCardCode.trim().toUpperCase(),
+          email: editEmail.trim() || null,
+          phone: editPhone.trim() || null,
+          department: editDepartment.trim() || null,
+          major: editMajor.trim() || null,
+          class_name: editClassName.trim() || null,
+          dob: editDob || null,
+          address: editAddress.trim() || null,
+          card_expiry: editCardExpiry || null,
+          role: isAdmin ? editRole : undefined,
+          avatar: editAvatar.trim() || null,
+        });
+      }
+
+      toast.success(`Cập nhật thông tin bạn đọc "${editFullName}" thành công!`);
+      setEditingUser(null);
+      fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
+    } catch (err: any) {
+      const errRes = err.response?.data;
+      let errorMsg = errRes?.detail || 'Không thể cập nhật hồ sơ bạn đọc.';
+      if (errRes?.errors && Array.isArray(errRes.errors) && errRes.errors.length > 0) {
+        const fieldLabels: Record<string, string> = {
+          full_name: 'Họ và tên',
+          card_code: 'Mã thẻ',
+          email: 'Email',
+          phone: 'Số điện thoại',
+          department: 'Khoa / Đơn vị',
+          avatar: 'Ảnh thẻ',
+          dob: 'Ngày sinh',
+          card_expiry: 'Hạn thẻ',
+        };
+        const details = errRes.errors
+          .map((item: any) => {
+            const label = item.field ? (fieldLabels[item.field] || item.field) : '';
+            return label ? `• ${label}: ${item.detail}` : `• ${item.detail}`;
+          })
+          .join('\n');
+        errorMsg = `${errorMsg}\n${details}`;
+      }
+      setEditModalError(errorMsg);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const getRoleAbbr = (role?: string) => {
 
     if (!role) return 'SV';
@@ -714,12 +857,9 @@ export const UsersManagementPage: React.FC = () => {
 
           <div>
 
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
-
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-
               <span>Quản lý Bạn đọc & Thẻ</span>
-
             </h1>
 
             <p className="text-xs text-gray-500 mt-0.5">
@@ -752,7 +892,7 @@ export const UsersManagementPage: React.FC = () => {
 
               <FileSpreadsheet className="w-4 h-4 mr-1.5 text-emerald-600" />
 
-              <span>Nhập danh sách SV (Excel)</span>
+              <span>Nhập danh sách SV từ Excel</span>
 
             </button>
 
@@ -839,10 +979,11 @@ export const UsersManagementPage: React.FC = () => {
       <div className="flex items-center gap-1 border-b border-gray-200 bg-white px-2 pt-1 rounded-t-xl shadow-2xs">
 
         <button
-
           type="button"
-
-          onClick={() => setMainTab('users')}
+          onClick={() => {
+            setMainTab('users');
+            fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
+          }}
 
           className={cn(
 
@@ -884,7 +1025,7 @@ export const UsersManagementPage: React.FC = () => {
           )}
         >
           <GraduationCap className="h-4 w-4 text-brand" />
-          <span>Kho Dữ liệu Sinh viên (Registry)</span>
+          <span>Kho Dữ liệu Sinh viên</span>
         </button>
 
         <button
@@ -920,6 +1061,7 @@ export const UsersManagementPage: React.FC = () => {
       {mainTab === 'roster' ? (
         <StudentRosterTab
           isAdmin={isAdmin}
+          refreshKey={rosterRefreshKey}
           onOpenImportModal={() => setIsImportRosterModalOpen(true)}
           onIssueCard={(mssv) => {
             setInitialIssueMssv(mssv || '');
@@ -933,7 +1075,7 @@ export const UsersManagementPage: React.FC = () => {
           }}
         />
       ) : mainTab === 'transactions' ? (
-        <PaymentTransactionsTab isAdmin={isAdmin} />
+        <PaymentTransactionsTab isAdmin={isAdmin} refreshKey={rosterRefreshKey} />
       ) : (
 
         <>
@@ -1002,7 +1144,7 @@ export const UsersManagementPage: React.FC = () => {
 
             >
 
-              <span>Sinh viên (SV)</span>
+              <span>Sinh viên</span>
 
             </button>
 
@@ -1032,7 +1174,7 @@ export const UsersManagementPage: React.FC = () => {
 
             >
 
-              <span>Giảng viên (GV)</span>
+              <span>Giảng viên</span>
 
             </button>
 
@@ -1066,7 +1208,7 @@ export const UsersManagementPage: React.FC = () => {
 
                 >
 
-                  <span>Thủ thư (TT)</span>
+                  <span>Thủ thư</span>
 
                 </button>
 
@@ -1096,7 +1238,7 @@ export const UsersManagementPage: React.FC = () => {
 
                 >
 
-                  <span>Quản trị viên (AD)</span>
+                  <span>Quản trị viên</span>
 
                 </button>
 
@@ -1368,17 +1510,23 @@ export const UsersManagementPage: React.FC = () => {
 
                           <div className="flex items-center gap-2.5 min-w-0">
 
-                            <div className="w-8 h-8 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden shadow-2xs">
+                            <div className="w-8 h-8 rounded-full bg-teal-50 text-brand font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200/70 overflow-hidden shadow-2xs relative select-none">
 
                               {u.avatar ? (
 
-                                <img src={u.avatar} alt={u.full_name} className="w-full h-full object-cover" />
+                                <img
+                                  src={u.avatar}
+                                  alt={u.full_name}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover relative z-10"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLElement).style.display = 'none';
+                                  }}
+                                />
 
-                              ) : (
+                              ) : null}
 
-                                <span>{firstChar}</span>
-
-                              )}
+                              <span className="select-none absolute inset-0 flex items-center justify-center z-0">{firstChar}</span>
 
                             </div>
 
@@ -1562,6 +1710,18 @@ export const UsersManagementPage: React.FC = () => {
 
                               {
 
+                                label: 'Chỉnh sửa bạn đọc',
+
+                                icon: <Pencil className="w-3.5 h-3.5 text-brand" />,
+
+                                variant: 'primary',
+
+                                onClick: () => handleOpenEditModal(u),
+
+                              },
+
+                              {
+
                                 label: u.is_locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản',
 
                                 icon: u.is_locked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />,
@@ -1592,7 +1752,10 @@ export const UsersManagementPage: React.FC = () => {
 
                                 variant: 'default',
 
-                                onClick: () => setResettingUser(u),
+                                onClick: () => {
+                                  setNewPassword('');
+                                  setResettingUser(u);
+                                },
 
                               },
 
@@ -1690,7 +1853,7 @@ export const UsersManagementPage: React.FC = () => {
 
         size="xl"
 
-        className="max-w-2xl sm:max-w-3xl"
+        className="max-w-2xl sm:max-w-3xl flex flex-col max-h-[88vh]"
 
         title="Thêm mới Bạn đọc UTH"
 
@@ -1698,9 +1861,9 @@ export const UsersManagementPage: React.FC = () => {
 
       >
 
-        <form onSubmit={handleCreateUser}>
+        <form onSubmit={handleCreateUser} className="flex flex-col min-h-0 flex-1 overflow-hidden">
 
-          <ModalBody className="p-5 sm:p-6 space-y-4">
+          <ModalBody className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
 
             {modalError && (
 
@@ -2082,6 +2245,253 @@ export const UsersManagementPage: React.FC = () => {
 
       </Modal>
 
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={Boolean(editingUser)}
+        onClose={() => setEditingUser(null)}
+        size="xl"
+        className="max-w-2xl sm:max-w-3xl flex flex-col max-h-[88vh]"
+        title="Chỉnh sửa hồ sơ bạn đọc"
+        description={editingUser ? `Cập nhật thông tin tài khoản bạn đọc #${editingUser.id} - ${editingUser.card_code}` : undefined}
+      >
+        {editingUser && (
+          <form onSubmit={handleSaveEditUser} className="flex flex-col min-h-0 flex-1 overflow-hidden">
+            <ModalBody className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+              {editModalError && (
+                <Alert variant="danger" className="whitespace-pre-line text-xs">
+                  {editModalError}
+                </Alert>
+              )}
+
+              {/* Top Section: Avatar & Primary Identity */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+                {/* Avatar Frame Column */}
+                <div className="flex flex-col items-center shrink-0 w-[125px]">
+                  <div
+                    onClick={() => editAvatarInputRef.current?.click()}
+                    className="w-[115px] h-[145px] rounded-xl border-2 border-dashed border-teal-300 hover:border-brand bg-white overflow-hidden flex flex-col items-center justify-center relative shadow-xs cursor-pointer group transition-all"
+                    title="Nhấn để tải ảnh thẻ chân dung mới (3x4)"
+                  >
+                    {editAvatarPreview || editAvatar ? (
+                      <>
+                        <img
+                          src={editAvatarPreview || editAvatar}
+                          alt="Ảnh thẻ bạn đọc"
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] font-semibold transition-opacity gap-1">
+                          <Camera className="w-5 h-5 text-white" />
+                          <span>Đổi ảnh</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-2 text-center text-slate-400 group-hover:text-brand transition-colors">
+                        <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center mb-1.5 text-teal-600">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-700">Ảnh thẻ (3x4)</span>
+                        <span className="text-[9.5px] text-slate-400 mt-0.5">Bấm để tải ảnh</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-1 w-full">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => editAvatarInputRef.current?.click()}
+                      className="text-[11px] px-2 py-1 flex-1 justify-center"
+                    >
+                      <Upload className="w-3 h-3 mr-1 text-brand" />
+                      {editAvatarPreview || editAvatar ? 'Đổi ảnh' : 'Tải ảnh thẻ'}
+                    </Button>
+                    {(editAvatarPreview || editAvatar) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={handleEditRemoveAvatar}
+                        className="text-[11px] text-rose-500 hover:text-rose-700 px-1.5 py-1"
+                        title="Xóa ảnh"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Hoặc dán URL ảnh..."
+                    value={editAvatar}
+                    onChange={(e) => {
+                      setEditAvatar(e.target.value);
+                      if (!editAvatarFile) {
+                        setEditAvatarPreview(e.target.value);
+                      }
+                    }}
+                    className="w-full mt-1.5 px-2 py-1 text-[10.5px] rounded-lg border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:border-brand bg-white"
+                    title="Dán đường dẫn ảnh thẻ trực tiếp từ internet"
+                  />
+
+                  <input
+                    ref={editAvatarInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleEditAvatarChange}
+                  />
+                </div>
+
+                {/* Primary Credentials - Standard Format */}
+                <div className="flex-1 w-full space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      label="Tên đăng nhập (Username)"
+                      value={editingUser.username}
+                      disabled
+                      className="bg-slate-100 text-slate-500 cursor-not-allowed font-mono"
+                      helperText="Tên đăng nhập cố định không thể thay đổi"
+                    />
+                    <Input
+                      label="Mã thẻ thư viện *"
+                      value={editCardCode}
+                      onChange={(e) => setEditCardCode(e.target.value)}
+                      placeholder="VD: 052205006506"
+                      required
+                    />
+                  </div>
+
+                  <Input
+                    label="Họ và tên bạn đọc *"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="VD: Lê Hoài Vũ"
+                    required
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Select
+                      label="Đối tượng bạn đọc"
+                      value={editRole}
+                      disabled={!isAdmin && editingUser.role !== 'student' && editingUser.role !== 'lecturer'}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      options={
+                        isAdmin
+                          ? [
+                              { value: 'student', label: 'Sinh viên (Hạn mức 5 cuốn)' },
+                              { value: 'lecturer', label: 'Giảng viên (Hạn mức 10 cuốn)' },
+                              { value: 'librarian', label: 'Thủ thư (Trực quầy, lưu thông)' },
+                              { value: 'admin', label: 'Quản trị viên (Toàn quyền hệ thống)' },
+                            ]
+                          : [
+                              { value: 'student', label: 'Sinh viên' },
+                              { value: 'lecturer', label: 'Giảng viên' },
+                            ]
+                      }
+                    />
+
+                    <Input
+                      label="Khoa / Đơn vị"
+                      value={editDepartment}
+                      onChange={(e) => setEditDepartment(e.target.value)}
+                      placeholder="VD: Khoa Công nghệ thông tin"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Training and Contact Details Section */}
+              <div className="p-4 rounded-xl bg-white border border-gray-200/80 space-y-3">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-brand" />
+                  <span>{editRole === 'student' ? 'Thông tin Ngành học & Liên hệ' : 'Thông tin liên hệ & Hạn thẻ'}</span>
+                </h4>
+
+                {editRole === 'student' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-teal-50/40 p-3 rounded-xl border border-teal-100">
+                    <Input
+                      label="Ngành học / Chuyên ngành"
+                      value={editMajor}
+                      onChange={(e) => setEditMajor(e.target.value)}
+                      placeholder="VD: Hệ thống thông tin quản lý"
+                    />
+                    <Input
+                      label="Lớp học / Lớp sinh hoạt"
+                      value={editClassName}
+                      onChange={(e) => setEditClassName(e.target.value)}
+                      placeholder="VD: CNTT-K22A"
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Email liên lạc"
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="VD: vulh.6506@ut.edu.vn"
+                  />
+                  <Input
+                    label="Số điện thoại"
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="VD: 0338722349"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Hạn sử dụng thẻ thư viện"
+                    type="date"
+                    value={editCardExpiry}
+                    onChange={(e) => setEditCardExpiry(e.target.value)}
+                  />
+                  <Input
+                    label="Ngày sinh"
+                    type="date"
+                    value={editDob}
+                    onChange={(e) => setEditDob(e.target.value)}
+                  />
+                </div>
+
+                <Input
+                  label="Địa chỉ thường trú / liên hệ"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="VD: Số 2, Võ Oanh, P.25, Q.Bình Thạnh, TP.HCM"
+                />
+              </div>
+            </ModalBody>
+
+            <ModalFooter className="shrink-0 bg-slate-50/90 border-t border-border px-6 py-3.5 flex items-center justify-end space-x-2.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => setEditingUser(null)}
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={editSubmitting}
+              >
+                Lưu thay đổi
+              </Button>
+            </ModalFooter>
+          </form>
+        )}
+      </Modal>
+
 
 
       {/* Lock / Unlock Modal */}
@@ -2182,6 +2592,7 @@ export const UsersManagementPage: React.FC = () => {
 
 
 
+
       {/* Extend Card Modal */}
 
       <Modal
@@ -2252,13 +2663,17 @@ export const UsersManagementPage: React.FC = () => {
 
 
 
+
       {/* Reset Password Modal */}
 
       <Modal
 
         isOpen={Boolean(resettingUser)}
 
-        onClose={() => setResettingUser(null)}
+        onClose={() => {
+          setResettingUser(null);
+          setNewPassword('');
+        }}
 
         title="Đặt lại mật khẩu"
 
@@ -2296,7 +2711,10 @@ export const UsersManagementPage: React.FC = () => {
 
             <ModalFooter>
 
-              <Button variant="ghost" size="md" onClick={() => setResettingUser(null)}>
+              <Button variant="ghost" size="md" onClick={() => {
+                setResettingUser(null);
+                setNewPassword('');
+              }}>
 
                 Hủy
 
@@ -2315,6 +2733,7 @@ export const UsersManagementPage: React.FC = () => {
         )}
 
       </Modal>
+
 
 
 
@@ -2352,9 +2771,13 @@ export const UsersManagementPage: React.FC = () => {
         onClose={() => {
           setIsIssueCardModalOpen(false);
           setInitialIssueMssv('');
+          setRosterRefreshKey((k) => k + 1);
+          fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
         }}
-
-        onSuccess={() => fetchUsers(page, search, roleFilter, lockedFilter, pageSize)}
+        onSuccess={() => {
+          setRosterRefreshKey((k) => k + 1);
+          fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
+        }}
 
         onViewPatron={(code) => {
 
@@ -2373,15 +2796,13 @@ export const UsersManagementPage: React.FC = () => {
 
 
       {/* Import Student Roster CSV Modal */}
-
       <StudentRosterImportModal
-
         isOpen={isImportRosterModalOpen}
-
         onClose={() => setIsImportRosterModalOpen(false)}
-
-        onSuccess={() => fetchUsers(page, search, roleFilter, lockedFilter, pageSize)}
-
+        onSuccess={() => {
+          setRosterRefreshKey((k) => k + 1);
+          fetchUsers(page, search, roleFilter, lockedFilter, pageSize);
+        }}
       />
 
     </div>

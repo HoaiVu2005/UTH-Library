@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import QRCode from 'qrcode';
 import {
   Copy,
@@ -11,12 +12,14 @@ import {
   CreditCard,
   Receipt,
   ShieldCheck,
+  Printer,
 } from 'lucide-react';
 import { Button } from './Button';
 import { formatCurrencyVND, formatDateTimeVN } from '@/lib/utils';
 import { api, formatApiError } from '@/lib/api';
 import { toast } from './Toast';
 import { broadcastRealtimeSync } from '@/lib/realtime';
+import { ReceiptPrintModal, ReceiptData } from '@/pages/admin/students/ReceiptPrintModal';
 
 export interface QRFinePaymentModalProps {
   isOpen: boolean;
@@ -58,7 +61,25 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
   const [isPaidSuccess, setIsPaidSuccess] = useState<boolean>(false);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [transactionRef, setTransactionRef] = useState<string>('');
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [showReceiptModal, setShowReceiptModal] = useState<boolean>(false);
   const qrImageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   // Transfer description syntax: UTH <CARD_CODE> [NOP PHAT | PHAT <ID>]
   const transferContent = isPayAll
@@ -129,7 +150,23 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
     };
   }, [isOpen, isPayAll, fineId, isPaidSuccess]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
+
+  const fineReceiptData: ReceiptData = {
+    receipt_code: `BL-PHAT-${String(fineId || Date.now()).slice(-6)}`,
+    transaction_code: transactionRef || `GD-FINE-${Date.now().toString().slice(-6)}`,
+    amount: amount,
+    payment_method: 'transfer',
+    payment_method_display: 'Chuyển khoản VietQR Napas 24/7 (Sacombank)',
+    payer_name: patronName || 'Bạn đọc UTH',
+    student_code: patronCardCode,
+    department: 'Trường Đại học Giao thông Vận tải TP.HCM',
+    collected_by_name: 'Cổng thanh toán tự động VietQR / SePay UTH',
+    collected_at: new Date().toISOString(),
+    title: 'BIÊN LAI THU TIỀN PHẠT THƯ VIỆN ĐIỆN TỬ',
+    fee_item_name: isPayAll ? 'Nộp toàn bộ tiền phạt công nợ Thư viện UTH' : (fineTypeDisplay || 'Tiền phạt vi phạm lưu thông'),
+    fee_item_detail: bookTitle ? `Tài liệu: ${bookTitle}` : 'Vi phạm quy chế mượn trả tài liệu Thư viện UTH',
+  };
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -178,12 +215,13 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-900/50 backdrop-blur-2xs animate-in fade-in duration-150">
-      <div
-        className="w-full max-w-xl bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
+  return createPortal(
+    <>
+      <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150">
+        <div
+          className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col animate-in zoom-in-95 duration-150 my-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* =========================================================
             HEADER - Clean University Portal Style
             ========================================================= */}
@@ -269,14 +307,24 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
               </div>
             </div>
 
-            {/* Complete Action Button */}
-            <div className="w-full">
+            {/* Complete Action Buttons */}
+            <div className="w-full flex flex-col sm:flex-row items-center gap-2.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={() => setShowReceiptModal(true)}
+                className="w-full sm:flex-1 border-[#008B8B] text-[#008B8B] hover:bg-teal-50 font-semibold rounded-xl text-xs sm:text-sm py-2.5 flex items-center justify-center gap-1.5 shadow-2xs"
+              >
+                <Printer className="w-4 h-4" />
+                <span>In biên lai</span>
+              </Button>
               <Button
                 type="button"
                 variant="primary"
                 size="md"
                 onClick={handleFinish}
-                className="w-full bg-[#008B8B] hover:bg-[#007272] text-white font-medium rounded-xl text-xs sm:text-sm py-2.5 shadow-xs"
+                className="w-full sm:flex-1 bg-[#008B8B] hover:bg-[#007272] text-white font-semibold rounded-xl text-xs sm:text-sm py-2.5 shadow-xs"
               >
                 Hoàn tất &amp; Đóng
               </Button>
@@ -468,16 +516,6 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
 
             {/* Action buttons */}
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleSimulateBankWebhook}
-                disabled={isSimulating}
-                className="text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2 px-1.5 py-1 transition-colors disabled:opacity-50"
-                title="Mô phỏng khớp lệnh dành cho môi trường thử nghiệm"
-              >
-                {isSimulating ? 'Đang xử lý...' : 'Mô phỏng khớp lệnh'}
-              </button>
-
               <Button
                 type="button"
                 variant="outline"
@@ -492,5 +530,14 @@ export const QRFinePaymentModal: React.FC<QRFinePaymentModalProps> = ({
         )}
       </div>
     </div>
-  );
+
+    {/* Printable Official Receipt Modal */}
+    <ReceiptPrintModal
+      isOpen={showReceiptModal}
+      onClose={() => setShowReceiptModal(false)}
+      receipt={fineReceiptData}
+    />
+  </>,
+  document.body
+);
 };

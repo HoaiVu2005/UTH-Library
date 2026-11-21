@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { History, Eye, Terminal, RotateCcw } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/features/auth/AuthContext';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -30,6 +31,7 @@ interface AuditLogItem {
 }
 
 export const AuditLogsPage: React.FC = () => {
+  const { user } = useAuth();
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [actionFilter, setActionFilter] = useState<string>('');
   const [entityFilter, setEntityFilter] = useState<string>('');
@@ -76,12 +78,16 @@ export const AuditLogsPage: React.FC = () => {
             <History className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Nhật ký Kiểm toán Hệ thống</span>
+              <span>
+                {user?.role === 'librarian' ? 'Nhật ký Thao tác của Tôi' : 'Nhật ký Kiểm toán Hệ thống'}
+              </span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Ghi vết bất biến mọi thao tác lưu thông, mượn trả, thu phạt, thay đổi cấu hình và bảo mật tài khoản
+              {user?.role === 'librarian'
+                ? 'Theo dõi lịch sử các thao tác lưu thông, mượn trả, thu phạt do bạn thực hiện'
+                : 'Ghi vết bất biến mọi thao tác lưu thông, mượn trả, thu phạt, thay đổi cấu hình và bảo mật tài khoản'}
             </p>
           </div>
         </div>

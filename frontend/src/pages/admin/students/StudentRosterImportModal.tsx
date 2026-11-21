@@ -70,12 +70,32 @@ export const StudentRosterImportModal: React.FC<StudentRosterImportModalProps> =
 
     try {
       setIsUploading(true);
-      const formData = new FormData();
-      formData.append('file', selectedFile);
 
-      const res = await api.post('/students/import', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let csvText = '';
+      try {
+        csvText = await selectedFile.text();
+      } catch {
+        csvText = '';
+      }
+
+      let res;
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        if (csvText) {
+          formData.append('csv_data', csvText);
+        }
+        res = await api.post('/students/import', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } catch (uploadErr: any) {
+        // Fallback: send as JSON payload if multipart failed
+        if (csvText) {
+          res = await api.post('/students/import', { csv_data: csvText });
+        } else {
+          throw uploadErr;
+        }
+      }
 
       const data = res.data;
       setImportSummary({
@@ -83,6 +103,12 @@ export const StudentRosterImportModal: React.FC<StudentRosterImportModalProps> =
         updated_count: data.updated_count || 0,
         total: data.total || 0,
       });
+
+      // Làm mới ô upload sau khi nạp thành công
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
       toast.success(data.detail || 'Import danh sách sinh viên thành công!');
       onSuccess();
@@ -111,17 +137,17 @@ export const StudentRosterImportModal: React.FC<StudentRosterImportModalProps> =
       title="Nhập danh sách sinh viên chính khóa từ Phòng Đào tạo"
       size="md"
     >
-      <ModalBody className="p-6 space-y-5">
+      <ModalBody className="p-6 space-y-4">
         {/* Step 1: Download Template */}
-        <div className="bg-slate-50 border border-border rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-slate-50 border border-border rounded-xl p-4 flex items-center justify-between text-xs">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 rounded-lg bg-teal-50 text-brand flex items-center justify-center shrink-0">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs font-bold text-textPrimary">File CSV danh sách sinh viên mẫu</p>
+              <p className="text-xs font-bold text-textPrimary">File CSV danh sách sinh viên mẫu chuẩn UTH</p>
               <p className="text-[11px] text-textSecondary mt-0.5">
-                Cột chuẩn: MSSV, Họ tên, Khoa, Ngành, Email, SĐT, Khóa, Trạng thái
+                Đã kèm sẵn cột Ảnh thẻ, MSSV, Họ tên, Khoa, Ngành, Lớp, Email, SĐT, Khóa, Trạng thái
               </p>
             </div>
           </div>
@@ -130,10 +156,10 @@ export const StudentRosterImportModal: React.FC<StudentRosterImportModalProps> =
             variant="outline"
             size="sm"
             onClick={handleDownloadTemplate}
-            className="text-xs h-8 px-3 shrink-0 flex items-center gap-1.5"
+            className="text-xs h-8 px-3 shrink-0 flex items-center gap-1.5 font-semibold text-primary border-primary/30 hover:bg-teal-50"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Tải file mẫu</span>
+            <span>Tải file mẫu (.csv)</span>
           </Button>
         </div>
 

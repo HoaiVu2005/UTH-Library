@@ -14,14 +14,15 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   helperText?: string;
   options?: SelectOption[];
   isRequired?: boolean;
+  containerClassName?: string;
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, helperText, options, isRequired, children, className = '', id, ...props }, ref) => {
+  ({ label, error, helperText, options, isRequired, containerClassName, children, className = '', id, ...props }, ref) => {
     const selectId = id || props.name || Math.random().toString(36).substring(7);
 
     return (
-      <div className="w-full">
+      <div className={cn('w-full', containerClassName)}>
         {label && (
           <label htmlFor={selectId} className="block text-[13.5px] font-medium text-textPrimary mb-1.5">
             {label}

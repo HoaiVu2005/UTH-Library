@@ -91,7 +91,10 @@ class DeaccessionBatch(BaseModel):
 
     STATUS_CHOICES = [
         ('draft', 'Dự thảo'),
-        ('approved', 'Đã duyệt thanh lý'),
+        ('pending_approval', 'Chờ duyệt'),
+        ('approved', 'Đã duyệt'),
+        ('executed', 'Đã thực hiện'),
+        ('rejected', 'Từ chối'),
         ('cancelled', 'Đã hủy'),
     ]
 
@@ -171,4 +174,52 @@ class Copy(BaseModel):
 
     def __str__(self):
         return f"{self.barcode} ({self.book.title})"
+
+
+class DigitalResource(BaseModel):
+    ACCESS_LEVEL_CHOICES = [
+        ('all_active', 'Tất cả bạn đọc có thẻ hợp lệ'),
+        ('students_only', 'Chỉ Sinh viên chính khóa'),
+        ('lecturers_only', 'Chỉ Giảng viên & Nghiên cứu sinh'),
+    ]
+
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='digital_resources')
+    title = models.CharField(max_length=255, help_text="Tên tài liệu số (VD: Giáo trình chính thức PDF)")
+    file = models.FileField(upload_to='digital_resources/%Y/%m/', help_text="Tập tin PDF tài liệu số")
+    file_size_bytes = models.BigIntegerField(default=0)
+    page_count = models.PositiveIntegerField(default=0)
+    allow_download = models.BooleanField(default=False, help_text="Cho phép tải về hoặc chỉ đọc bảo mật trực tuyến")
+    access_level = models.CharField(max_length=30, choices=ACCESS_LEVEL_CHOICES, default='all_active')
+    view_count = models.PositiveIntegerField(default=0)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='uploaded_digital_resources')
+
+    class Meta:
+        db_table = 'digital_resources'
+        verbose_name = 'Tài liệu / Giáo trình Số'
+        verbose_name_plural = 'Tài liệu / Giáo trình Số'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.book.title}"
+
+
+class ReadingSession(BaseModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='reading_sessions')
+    digital_resource = models.ForeignKey(DigitalResource, on_delete=models.CASCADE, related_name='sessions')
+    current_page = models.PositiveIntegerField(default=1)
+    max_page_reached = models.PositiveIntegerField(default=1)
+    total_seconds_spent = models.PositiveIntegerField(default=0)
+    last_accessed = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'reading_sessions'
+        verbose_name = 'Phiên đọc sách số'
+        verbose_name_plural = 'Phiên đọc sách số'
+        unique_together = ('user', 'digital_resource')
+        ordering = ['-last_accessed']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.digital_resource.title} (Trang {self.current_page})"
 

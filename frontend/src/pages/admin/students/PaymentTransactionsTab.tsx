@@ -57,9 +57,10 @@ interface TransactionsSummary {
 
 interface PaymentTransactionsTabProps {
   isAdmin: boolean;
+  refreshKey?: number;
 }
 
-export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ isAdmin }) => {
+export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ isAdmin, refreshKey }) => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [summary, setSummary] = useState<TransactionsSummary>({
     total_revenue: 0,
@@ -108,7 +109,7 @@ export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ 
 
   useEffect(() => {
     fetchTransactions();
-  }, [page, pageSize, appliedSearch, paymentMethod, dateFrom, dateTo]);
+  }, [page, pageSize, appliedSearch, paymentMethod, dateFrom, dateTo, refreshKey]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,14 +369,14 @@ export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ 
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/80">
-                <TableHead className="w-32">Mã biên lai</TableHead>
-                <TableHead className="w-32">Mã GD (PAY)</TableHead>
-                <TableHead>Người nộp tiền (Bạn đọc)</TableHead>
-                <TableHead className="text-right">Số tiền (VND)</TableHead>
-                <TableHead className="text-center">Phương thức</TableHead>
-                <TableHead>Thủ thư thu tiền</TableHead>
-                <TableHead>Thời gian thu</TableHead>
-                <TableHead className="text-center w-28">Thao tác</TableHead>
+                <TableHead className="whitespace-nowrap min-w-[130px]">Mã biên lai</TableHead>
+                <TableHead className="whitespace-nowrap min-w-[130px]">Mã GD (PAY)</TableHead>
+                <TableHead className="min-w-[200px]">Người nộp tiền (Bạn đọc)</TableHead>
+                <TableHead className="text-right whitespace-nowrap min-w-[120px]">Số tiền (VND)</TableHead>
+                <TableHead className="text-center whitespace-nowrap min-w-[110px]">Phương thức</TableHead>
+                <TableHead className="whitespace-nowrap min-w-[150px]">Thủ thư thu tiền</TableHead>
+                <TableHead className="whitespace-nowrap min-w-[130px]">Thời gian thu</TableHead>
+                <TableHead className="text-center whitespace-nowrap min-w-[130px]">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -401,15 +402,15 @@ export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ 
                 transactions.map((tx) => (
                   <TableRow key={tx.id} className="hover:bg-teal-50/25 transition-colors">
                     {/* Mã Biên Lai */}
-                    <TableCell>
-                      <strong className="font-mono text-xs text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    <TableCell className="whitespace-nowrap">
+                      <strong className="font-mono text-xs text-teal-800 font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-200 whitespace-nowrap inline-block">
                         {tx.receipt_code}
                       </strong>
                     </TableCell>
 
                     {/* Mã Giao Dịch */}
-                    <TableCell>
-                      <span className="font-mono text-[11px] text-gray-600">{tx.transaction_code}</span>
+                    <TableCell className="whitespace-nowrap">
+                      <span className="font-mono text-xs text-gray-600 whitespace-nowrap inline-block">{tx.transaction_code}</span>
                     </TableCell>
 
                     {/* Bạn đọc */}
@@ -422,52 +423,52 @@ export const PaymentTransactionsTab: React.FC<PaymentTransactionsTabProps> = ({ 
                     </TableCell>
 
                     {/* Số tiền */}
-                    <TableCell className="text-right">
-                      <strong className="text-xs font-bold text-orange-600 font-mono">
+                    <TableCell className="text-right whitespace-nowrap">
+                      <strong className="text-xs font-bold text-orange-600 font-mono whitespace-nowrap inline-block">
                         {formatCurrencyVND(tx.amount)}
                       </strong>
                     </TableCell>
 
                     {/* Phương thức */}
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       {tx.payment_method === 'transfer' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-                          <QrCode className="w-3 h-3 text-purple-600" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
+                          <QrCode className="w-3 h-3 text-purple-600 shrink-0" />
                           <span>VietQR</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          <Banknote className="w-3 h-3 text-emerald-600" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                          <Banknote className="w-3 h-3 text-emerald-600 shrink-0" />
                           <span>Tiền mặt</span>
                         </span>
                       )}
                     </TableCell>
 
                     {/* Thủ thư thu */}
-                    <TableCell>
-                      <span className="text-xs text-gray-700 font-medium">{tx.collected_by_name}</span>
+                    <TableCell className="whitespace-nowrap">
+                      <span className="text-xs text-gray-700 font-medium whitespace-nowrap inline-block">{tx.collected_by_name}</span>
                     </TableCell>
 
                     {/* Thời gian */}
-                    <TableCell>
-                      <span className="text-[11px] text-gray-500 block">
+                    <TableCell className="whitespace-nowrap">
+                      <span className="text-[11px] text-gray-500 block whitespace-nowrap">
                         {new Date(tx.collected_at).toLocaleDateString('vi-VN')}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono">
+                      <span className="text-[10px] text-gray-400 font-mono whitespace-nowrap">
                         {new Date(tx.collected_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </TableCell>
 
                     {/* Thao tác In Biên Lai */}
-                    <TableCell className="text-center">
+                    <TableCell className="text-center whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => handleOpenReceiptPrint(tx)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg border border-teal-200 text-brand bg-teal-50/60 hover:bg-teal-100 transition-colors shadow-2xs cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg border border-teal-200 text-brand bg-teal-50/70 hover:bg-teal-100 hover:border-brand/40 transition-colors shadow-2xs cursor-pointer whitespace-nowrap"
                         title="In lại biên lai chứng từ thu tiền"
                       >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>In biên lai</span>
+                        <Printer className="w-3.5 h-3.5 shrink-0" />
+                        <span className="whitespace-nowrap">In biên lai</span>
                       </button>
                     </TableCell>
                   </TableRow>

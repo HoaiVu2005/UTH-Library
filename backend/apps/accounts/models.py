@@ -157,6 +157,7 @@ class StudentRoster(BaseModel):
         db_index=True,
         verbose_name='Tình trạng đào tạo'
     )
+    avatar = models.CharField(max_length=500, blank=True, null=True, verbose_name='Ảnh thẻ sinh viên')
     is_card_issued = models.BooleanField(default=False, db_index=True, verbose_name='Đã cấp thẻ thư viện')
     user = models.OneToOneField(
         User,

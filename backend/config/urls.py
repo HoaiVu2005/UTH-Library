@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/v1/', include('apps.reports.urls')),
     path('api/v1/', include('apps.audit.urls')),
     path('api/v1/ai/', include('apps.assistant.urls')),
+    path('api/v1/', include('apps.digital_library.urls')),
 ]
 
 if settings.DEBUG:

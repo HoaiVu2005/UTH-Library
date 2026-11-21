@@ -61,6 +61,15 @@ class FineListView(APIView):
         if card_code:
             queryset = queryset.filter(user__card_code__iexact=card_code.strip())
 
+        search_q = request.query_params.get('search', '').strip()
+        if search_q:
+            queryset = queryset.filter(
+                Q(user__card_code__icontains=search_q)
+                | Q(user__full_name__icontains=search_q)
+                | Q(loan__copy__barcode__icontains=search_q)
+                | Q(loan__book__title__icontains=search_q)
+            ).distinct()
+
         # Date filtering (actions: fine created or paid)
         date_preset = request.query_params.get('date_preset')
         date_exact = request.query_params.get('date')
@@ -69,22 +78,21 @@ class FineListView(APIView):
 
         now = timezone.now()
         today = now.date()
-        from django.db.models import Q
         if date_preset == 'today' or request.query_params.get('today') in ('true', '1', 'True'):
-            queryset = queryset.filter(Q(created_at__date=today) | Q(payments__payment_date__date=today)).distinct()
+            queryset = queryset.filter(Q(created_at__date=today) | Q(payments__collected_at__date=today)).distinct()
         elif date_preset == 'week':
             week_ago = today - timezone.timedelta(days=7)
-            queryset = queryset.filter(Q(created_at__date__gte=week_ago) | Q(payments__payment_date__date__gte=week_ago)).distinct()
+            queryset = queryset.filter(Q(created_at__date__gte=week_ago) | Q(payments__collected_at__date__gte=week_ago)).distinct()
         elif date_preset == 'month':
             month_start = today.replace(day=1)
-            queryset = queryset.filter(Q(created_at__date__gte=month_start) | Q(payments__payment_date__date__gte=month_start)).distinct()
+            queryset = queryset.filter(Q(created_at__date__gte=month_start) | Q(payments__collected_at__date__gte=month_start)).distinct()
         elif date_exact:
-            queryset = queryset.filter(Q(created_at__date=date_exact) | Q(payments__payment_date__date=date_exact)).distinct()
+            queryset = queryset.filter(Q(created_at__date=date_exact) | Q(payments__collected_at__date=date_exact)).distinct()
         else:
             if from_date:
-                queryset = queryset.filter(Q(created_at__date__gte=from_date) | Q(payments__payment_date__date__gte=from_date)).distinct()
+                queryset = queryset.filter(Q(created_at__date__gte=from_date) | Q(payments__collected_at__date__gte=from_date)).distinct()
             if to_date:
-                queryset = queryset.filter(Q(created_at__date__lte=to_date) | Q(payments__payment_date__date__lte=to_date)).distinct()
+                queryset = queryset.filter(Q(created_at__date__lte=to_date) | Q(payments__collected_at__date__lte=to_date)).distinct()
 
         paginator = StandardPagination()
         page_records = paginator.paginate_queryset(queryset, request)
@@ -99,7 +107,7 @@ class CollectFineView(APIView):
         serializer.is_valid(raise_exception=True)
 
         amount = serializer.validated_data['amount']
-        note = serializer.validated_data.get('note')
+        note: str = str(serializer.validated_data.get('note') or '')
 
         fine = collect_fine(
             fine_id=pk,
@@ -376,6 +384,7 @@ class BankWebhookView(APIView):
                         department=department,
                         role=UserRole.STUDENT,
                         card_expiry=card_expiry,
+                        avatar=roster.avatar if roster else None,
                         must_change_password=True,
                     )
                     user.set_password('Password123')
@@ -384,10 +393,16 @@ class BankWebhookView(APIView):
                     current_exp = user.card_expiry or today
                     start_d = max(current_exp, today)
                     user.card_expiry = start_d + timedelta(days=365)
+                    user.deleted_at = None
+                    user.is_active = True
                     user.is_locked = False
                     user.locked_until = None
                     user.lock_reason = None
-                    user.save(update_fields=['card_expiry', 'is_locked', 'locked_until', 'lock_reason'])
+                    update_fields = ['card_expiry', 'deleted_at', 'is_active', 'is_locked', 'locked_until', 'lock_reason']
+                    if roster and roster.avatar and not user.avatar:
+                        user.avatar = roster.avatar
+                        update_fields.append('avatar')
+                    user.save(update_fields=update_fields)
 
                 if roster:
                     roster.is_card_issued = True

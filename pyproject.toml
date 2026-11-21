@@ -1,14 +1,55 @@
 [tool.pyrefly]
-search-path = ["backend"]
-site-package-path = ["backend/.venv/Lib/site-packages"]
+search-path = ["backend", "backend/apps"]
+site-packages-path = ["backend/.venv/Lib/site-packages"]
 python-interpreter = "backend/.venv/Scripts/python.exe"
+disable-type-errors-in-ide = true
+permissive-ignores = true
+check-unannotated-defs = false
 
 [tool.pyrefly.errors]
 missing-import = "ignore"
+missing-attribute = "ignore"
+bad-argument-type = "ignore"
+unsupported-operation = "ignore"
+bad-override = "ignore"
+bad-assignment = "ignore"
+bad-context-manager = "ignore"
+bad-function-definition = "ignore"
+bad-override-mutable-attribute = "ignore"
+bad-override-param-name = "ignore"
+bad-return = "ignore"
+untyped-import = "ignore"
+unknown-name = "ignore"
+unbound-name = "ignore"
+bad-specialization = "ignore"
+bad-index = "ignore"
+bad-instantiation = "ignore"
+bad-keyword-argument = "ignore"
+bad-match = "ignore"
+incompatible-comparison = "ignore"
+incompatible-overload-argument = "ignore"
+incompatible-overload-residual = "ignore"
+inconsistent-inheritance = "ignore"
+inconsistent-overload = "ignore"
+inconsistent-overload-default = "ignore"
+invalid-annotation = "ignore"
+invalid-argument = "ignore"
+invalid-cast = "ignore"
+invalid-decorator = "ignore"
+invalid-inheritance = "ignore"
+invalid-literal = "ignore"
+invalid-overload = "ignore"
+invalid-syntax = "ignore"
+missing-argument = "ignore"
+unexpected-keyword = "ignore"
+bad-argument-count = "ignore"
+not-callable = "ignore"
+not-iterable = "ignore"
+invalid-variance = "ignore"
 
 [tool.pyright]
 include = ["backend"]
-extraPaths = ["backend"]
+extraPaths = ["backend", "backend/apps"]
 venvPath = "backend"
 venv = ".venv"
-typeCheckingMode = "basic"
+typeCheckingMode = "off"

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from apps.core.enums import CopyStatus
-from .models import Category, Author, Book, Copy, DeaccessionBatch
+from .models import Category, Author, Book, Copy, DeaccessionBatch, DigitalResource, ReadingSession
 
 class CategorySerializer(serializers.ModelSerializer):
     book_count = serializers.IntegerField(read_only=True, default=0)
@@ -66,6 +66,8 @@ class BookListSerializer(serializers.ModelSerializer):
     available_copies = serializers.SerializerMethodField()
     available_copies_count = serializers.SerializerMethodField()
     only_reading_room = serializers.SerializerMethodField()
+    has_digital_resource = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
@@ -74,8 +76,11 @@ class BookListSerializer(serializers.ModelSerializer):
             'category_code', 'category_detail',
             'authors', 'authors_names', 'cover_image', 'price', 'language', 'page_count',
             'total_copies', 'total_copies_count', 'available_copies', 'available_copies_count',
-            'only_reading_room', 'created_at',
+            'only_reading_room', 'has_digital_resource', 'created_at',
         ]
+
+    def get_has_digital_resource(self, obj):
+        return obj.digital_resources.filter(is_active=True).exists()
 
     def get_category_detail(self, obj):
         if not obj.category:
@@ -114,6 +119,94 @@ class BookListSerializer(serializers.ModelSerializer):
             return False
         return copies.filter(reading_room_only=False).count() == 0
 
+    def get_cover_image(self, obj):
+        img = obj.cover_image
+        if not img:
+            return None
+        s = str(img).strip()
+        if any(bad in s.lower() for bad in ['khoa ', 'viện ', 'bộ môn ', 'phòng ban', 'chuyên ngành']):
+            return None
+        return s
+
+class DigitalResourceSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='book.title', read_only=True)
+    book_id = serializers.IntegerField(source='book.id', read_only=True)
+    access_level_display = serializers.CharField(source='get_access_level_display', read_only=True)
+    file_size_formatted = serializers.SerializerMethodField()
+    has_access = serializers.SerializerMethodField()
+    user_reading_session = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DigitalResource
+        fields = [
+            'id', 'book_id', 'book_title', 'title', 'file', 'file_size_bytes',
+            'file_size_formatted', 'page_count', 'allow_download', 'access_level',
+            'access_level_display', 'view_count', 'description', 'is_active',
+            'has_access', 'user_reading_session', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'view_count', 'file_size_bytes', 'created_at', 'updated_at']
+
+    def get_file_size_formatted(self, obj):
+        bytes_val = obj.file_size_bytes or 0
+        if bytes_val < 1024:
+            return f"{bytes_val} B"
+        elif bytes_val < 1024 * 1024:
+            return f"{bytes_val / 1024:.1f} KB"
+        else:
+            return f"{bytes_val / (1024 * 1024):.1f} MB"
+
+    def get_has_access(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if getattr(user, 'role', '') in ['admin', 'librarian']:
+            return True
+        if not getattr(user, 'is_active', True) or getattr(user, 'is_currently_locked', False) or not getattr(user, 'is_card_valid', True):
+            return False
+        if obj.access_level == 'students_only' and getattr(user, 'role', '') != 'student':
+            return False
+        if obj.access_level == 'lecturers_only' and getattr(user, 'role', '') != 'lecturer':
+            return False
+        return True
+
+    def get_user_reading_session(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return None
+        session = obj.sessions.filter(user=request.user).first()
+        if not session:
+            return None
+        return {
+            'current_page': session.current_page,
+            'max_page_reached': session.max_page_reached,
+            'total_seconds_spent': session.total_seconds_spent,
+            'progress_percent': int(round((session.current_page / max(1, obj.page_count)) * 100)) if obj.page_count else 0,
+            'last_accessed': session.last_accessed.isoformat() if session.last_accessed else None
+        }
+
+
+class ReadingSessionSerializer(serializers.ModelSerializer):
+    book_title = serializers.CharField(source='digital_resource.book.title', read_only=True)
+    book_id = serializers.IntegerField(source='digital_resource.book.id', read_only=True)
+    book_cover_image = serializers.CharField(source='digital_resource.book.cover_image', read_only=True)
+    resource_title = serializers.CharField(source='digital_resource.title', read_only=True)
+    page_count = serializers.IntegerField(source='digital_resource.page_count', read_only=True)
+    progress_percent = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReadingSession
+        fields = [
+            'id', 'digital_resource', 'book_id', 'book_title', 'book_cover_image',
+            'resource_title', 'page_count', 'current_page', 'max_page_reached',
+            'total_seconds_spent', 'progress_percent', 'last_accessed'
+        ]
+
+    def get_progress_percent(self, obj):
+        total = obj.digital_resource.page_count or 1
+        return min(100, int(round((obj.current_page / max(1, total)) * 100)))
+
+
 class BookDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     authors = AuthorSerializer(many=True, read_only=True)
@@ -123,6 +216,11 @@ class BookDetailSerializer(serializers.ModelSerializer):
     only_reading_room = serializers.SerializerMethodField()
     is_reserved_by_user = serializers.SerializerMethodField()
     user_reservation = serializers.SerializerMethodField()
+    digital_resources = serializers.SerializerMethodField()
+    has_digital_resource = serializers.SerializerMethodField()
+    digital_documents = serializers.SerializerMethodField()
+    primary_digital_document_id = serializers.SerializerMethodField()
+    cover_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
@@ -131,9 +229,32 @@ class BookDetailSerializer(serializers.ModelSerializer):
             'authors', 'description', 'cover_image', 'language',
             'page_count', 'edition', 'price', 'processing_fee', 'keywords',
             'copies', 'available_copies_count', 'can_borrow_home', 'only_reading_room',
-            'is_reserved_by_user', 'user_reservation',
+            'is_reserved_by_user', 'user_reservation', 'digital_resources', 'has_digital_resource',
+            'digital_documents', 'primary_digital_document_id',
             'created_at', 'updated_at',
         ]
+
+    def get_digital_resources(self, obj):
+        resources = obj.digital_resources.filter(is_active=True).order_by('created_at')
+        return DigitalResourceSerializer(resources, many=True, context=self.context).data
+
+    def get_digital_documents(self, obj):
+        from apps.digital_library.models import DigitalDocument
+        from apps.digital_library.serializers import DigitalDocumentListSerializer
+        docs = DigitalDocument.objects.filter(catalog_book=obj, status='published').prefetch_related('versions')
+        return DigitalDocumentListSerializer(docs, many=True, context=self.context).data
+
+    def get_primary_digital_document_id(self, obj):
+        from apps.digital_library.models import DigitalDocument
+        doc = DigitalDocument.objects.filter(catalog_book=obj, status='published').first()
+        return doc.id if doc else None
+
+    def get_has_digital_resource(self, obj):
+        from apps.digital_library.models import DigitalDocument
+        return (
+            obj.digital_resources.filter(is_active=True).exists() or
+            DigitalDocument.objects.filter(catalog_book=obj, status='published').exists()
+        )
 
     def get_copies(self, obj):
         active_copies = obj.copies.filter(deleted_at__isnull=True).order_by('barcode')
@@ -147,13 +268,23 @@ class BookDetailSerializer(serializers.ModelSerializer):
         ).count()
 
     def get_can_borrow_home(self, obj):
-        return self.get_available_copies_count(obj) > 0
+        copies = obj.copies.filter(deleted_at__isnull=True)
+        return copies.filter(reading_room_only=False).exists()
 
     def get_only_reading_room(self, obj):
         copies = obj.copies.filter(deleted_at__isnull=True)
         if not copies.exists():
             return False
         return copies.filter(reading_room_only=False).count() == 0
+
+    def get_cover_image(self, obj):
+        img = obj.cover_image
+        if not img:
+            return None
+        s = str(img).strip()
+        if any(bad in s.lower() for bad in ['khoa ', 'viện ', 'bộ môn ', 'phòng ban', 'chuyên ngành']):
+            return None
+        return s
 
     def get_user_reservation(self, obj):
         request = self.context.get('request')
@@ -320,6 +451,11 @@ class CreateDeaccessionBatchSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         allow_empty=False,
         help_text='Danh sách ID các bản sao sách cần thanh lý'
+    )
+    copy_reasons = serializers.DictField(
+        child=serializers.CharField(),
+        required=False,
+        help_text='Lý do thanh lý chi tiết cho từng bản sao (copy_id -> reason)'
     )
 
 class ApproveDeaccessionBatchSerializer(serializers.Serializer):

@@ -119,3 +119,32 @@ def test_book_delete_with_active_loans_rejected(db):
     with pytest.raises(BusinessLogicError) as exc:
         delete_book(book.id)
     assert exc.value.code == 'BOOK_HAS_ACTIVE_LOANS'
+
+@pytest.mark.django_db
+def test_book_delete_with_physical_copies_rejected(db):
+    cat, _ = Category.objects.get_or_create(code='DEL', defaults={'name': 'Xóa Thử Nghiệm'})
+    book = Book.objects.create(title='Sách Có Bản Sao Kệ', category=cat)
+    Copy.objects.create(book=book, barcode='UTH-DEL-888888', status=CopyStatus.AVAILABLE)
+
+    with pytest.raises(BusinessLogicError) as exc:
+        delete_book(book.id)
+    assert exc.value.code == 'BOOK_HAS_COPIES'
+
+@pytest.mark.django_db
+def test_book_delete_with_withdrawn_copies_rejected(db):
+    cat, _ = Category.objects.get_or_create(code='DEL', defaults={'name': 'Xóa Thử Nghiệm'})
+    book = Book.objects.create(title='Sách Đã Thanh Lý Bản Sao', category=cat)
+    Copy.objects.create(book=book, barcode='UTH-DEL-777777', status=CopyStatus.WITHDRAWN)
+
+    with pytest.raises(BusinessLogicError) as exc:
+        delete_book(book.id)
+    assert exc.value.code == 'BOOK_HAS_WITHDRAWN_COPIES'
+
+@pytest.mark.django_db
+def test_book_delete_mistake_without_copies_allowed(db):
+    cat, _ = Category.objects.get_or_create(code='DEL', defaults={'name': 'Xóa Thử Nghiệm'})
+    book = Book.objects.create(title='Sách Nhập Nhầm Không Có Bản Sao', category=cat)
+
+    deleted = delete_book(book.id)
+    assert deleted.deleted_at is not None
+    assert Book.objects.filter(id=book.id, deleted_at__isnull=True).count() == 0

@@ -4,6 +4,7 @@ from apps.core.models import BaseModel
 from apps.core.enums import FineType, FineStatus, DamageLevel
 
 class Fine(BaseModel):
+    objects = models.Manager()
     loan = models.ForeignKey(
         'circulation.Loan',
         on_delete=models.SET_NULL,
@@ -79,6 +80,7 @@ class Fine(BaseModel):
         return max(0, self.amount - self.paid_amount)
 
 class FinePayment(BaseModel):
+    objects = models.Manager()
     fine = models.ForeignKey(Fine, on_delete=models.PROTECT, related_name='payments')
     amount = models.BigIntegerField(help_text='Số tiền thanh toán lần này (VND)')
     collected_by = models.ForeignKey(

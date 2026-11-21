@@ -26,6 +26,12 @@ from .views import (
     DeaccessionBatchListCreateView,
     DeaccessionBatchDetailView,
     ApproveDeaccessionBatchView,
+    DeaccessionCandidatesView,
+    DigitalResourceListCreateView,
+    DigitalResourceDetailView,
+    DigitalResourceStreamView,
+    ReadingProgressView,
+    PatronRecentReadingListView,
 )
 
 urlpatterns = [
@@ -68,6 +74,9 @@ urlpatterns = [
     path('catalog/copies/<int:pk>/withdraw', CopyWithdrawView.as_view()),
 
     # Deaccession Batches
+    path('deaccession-candidates', DeaccessionCandidatesView.as_view(), name='deaccession-candidates'),
+    path('catalog/deaccession-candidates', DeaccessionCandidatesView.as_view()),
+    path('copies/deaccession-candidates', DeaccessionCandidatesView.as_view()),
     path('deaccession-batches', DeaccessionBatchListCreateView.as_view(), name='deaccession-batch-list-create'),
     path('deaccession-batches/<int:pk>', DeaccessionBatchDetailView.as_view(), name='deaccession-batch-detail'),
     path('deaccession-batches/<int:pk>/approve', ApproveDeaccessionBatchView.as_view(), name='deaccession-batch-approve'),
@@ -88,4 +97,11 @@ urlpatterns = [
     # Authors
     path('authors', AuthorListCreateView.as_view(), name='author-list-create'),
     path('authors/<int:pk>', AuthorDetailView.as_view(), name='author-detail'),
+
+    # Giáo trình Số & Tài liệu Điện tử (Digital Resources & E-Books DRM)
+    path('digital-resources', DigitalResourceListCreateView.as_view(), name='digital-resource-list-create'),
+    path('digital-resources/<int:pk>', DigitalResourceDetailView.as_view(), name='digital-resource-detail'),
+    path('digital-resources/<int:pk>/stream', DigitalResourceStreamView.as_view(), name='digital-resource-stream'),
+    path('digital-resources/<int:pk>/progress', ReadingProgressView.as_view(), name='reading-progress'),
+    path('patron/reading-sessions', PatronRecentReadingListView.as_view(), name='patron-reading-sessions'),
 ]

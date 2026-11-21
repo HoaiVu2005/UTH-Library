@@ -51,6 +51,7 @@ interface PatronInfo {
     id: number;
     book_id: number;
     book_title: string;
+    book_cover?: string;
     barcode: string;
     shelf_location?: string;
     hold_expires_at?: string;
@@ -63,13 +64,20 @@ interface CartItem {
   category: string;
   shelf_location: string;
   reading_room_only: boolean;
+  cover_image?: string;
+  authors?: string;
 }
 
 interface ReturnLookupResult {
   loan_id: number;
   patron_name: string;
   patron_card_code: string;
+  patron_avatar?: string;
+  patron_department?: string;
+  patron_role?: string;
   book_title: string;
+  book_cover_image?: string;
+  book_authors?: string;
   barcode: string;
   shelf_location: string;
   borrowed_at: string;
@@ -278,14 +286,35 @@ export const CirculationDeskPage: React.FC = () => {
       return;
     }
 
-    if (patron && cart.length >= patron.remaining_quota) {
-      if (patron.remaining_quota === 0) {
-        setCartError(`Bạn đọc đã hết hạn mức mượn (đang mượn ${patron.active_loans_count} cuốn, đang giữ chỗ ${patron.ready_reservations?.length || 0} cuốn đặt trước / tối đa ${patron.max_loans} cuốn).`);
+    if (patron) {
+      const isReservedForPatron = Boolean(
+        patron.ready_reservations?.some((r) => r.barcode === bc)
+      );
+
+      if (isReservedForPatron) {
+        if (patron.active_loans_count + cart.length >= patron.max_loans) {
+          setCartError(`Tổng số sách mượn sẽ vượt quá hạn mức tối đa ${patron.max_loans} cuốn.`);
+          setBookScanInput('');
+          return;
+        }
       } else {
-        setCartError(`Bạn đọc chỉ còn được mượn thêm tối đa ${patron.remaining_quota} cuốn (đang mượn ${patron.active_loans_count} cuốn, đang giữ ${patron.ready_reservations?.length || 0} cuốn đặt trước / tối đa ${patron.max_loans} cuốn).`);
+        const nonReservedInCart = cart.filter(
+          (c) => !patron.ready_reservations?.some((r) => r.barcode === c.barcode)
+        ).length;
+        if (nonReservedInCart >= patron.remaining_quota) {
+          if (patron.remaining_quota === 0) {
+            setCartError(
+              `Bạn đọc chỉ có thể mượn các cuốn sách đã đặt trước tại quầy (đang mượn: ${patron.active_loans_count}, đang giữ: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
+            );
+          } else {
+            setCartError(
+              `Bạn đọc chỉ còn được mượn thêm tối đa ${patron.remaining_quota} cuốn ngoài danh sách đặt trước (đang mượn: ${patron.active_loans_count}, đang giữ: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
+            );
+          }
+          setBookScanInput('');
+          return;
+        }
       }
-      setBookScanInput('');
-      return;
     }
 
     try {
@@ -312,6 +341,8 @@ export const CirculationDeskPage: React.FC = () => {
           category: copyData.category_name,
           shelf_location: copyData.shelf_location,
           reading_room_only: copyData.reading_room_only,
+          cover_image: copyData.book_cover_image || copyData.book?.cover_image,
+          authors: copyData.book?.authors || copyData.authors,
         },
       ]);
 
@@ -459,7 +490,7 @@ export const CirculationDeskPage: React.FC = () => {
               <ScanLine className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+              <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
                 <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
                 <span>Quầy Lưu thông Mượn & Trả sách</span>
               </h1>
@@ -505,7 +536,7 @@ export const CirculationDeskPage: React.FC = () => {
       {activeTab === 'borrow' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Patron card scan + Patron details */}
-          <div className="lg:col-span-5 space-y-5">
+          <div className="lg:col-span-5 xl:col-span-4 space-y-5">
             {/* Patron Scan Box */}
             <Card>
               <CardHeader className="pb-3">
@@ -662,7 +693,7 @@ export const CirculationDeskPage: React.FC = () => {
           </div>
 
           {/* Right Column: Scan Books into Cart & Confirm */}
-          <div className="lg:col-span-7 space-y-5">
+          <div className="lg:col-span-7 xl:col-span-8 space-y-5">
             <Card>
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <div>
@@ -690,21 +721,43 @@ export const CirculationDeskPage: React.FC = () => {
                     {patron.ready_reservations.map((res) => (
                       <div
                         key={res.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-white rounded-lg border border-teal-100 text-xs shadow-2xs"
+                        className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl border border-teal-100 text-xs shadow-2xs hover:border-teal-200 transition-colors"
                       >
-                        <div>
-                          <strong className="text-gray-900">{res.book_title}</strong>
-                          <span className="block font-mono text-[11px] text-teal-700 mt-0.5">
-                            Mã vạch: <strong>{res.barcode}</strong> {res.shelf_location ? `• Vị trí: ${res.shelf_location}` : ''}
-                          </span>
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {/* Ảnh bìa sách bên trái */}
+                          <div className="w-11 h-14 sm:w-12 sm:h-16 rounded-md bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                            {res.book_cover ? (
+                              <img
+                                src={res.book_cover}
+                                alt={res.book_title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <BookOpen className="w-5 h-5 text-slate-400" />
+                            )}
+                          </div>
+
+                          {/* Thông tin sách bên phải */}
+                          <div className="min-w-0 flex-1">
+                            <strong className="text-gray-900 block truncate text-xs sm:text-sm font-semibold">{res.book_title}</strong>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-teal-800">
+                              <span className="font-mono bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200 font-bold">
+                                {res.barcode}
+                              </span>
+                              {res.shelf_location && (
+                                <span className="text-gray-500">• {res.shelf_location}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
+
                         <Button
                           type="button"
-                          variant="secondary"
+                          variant={cart.some((c) => c.barcode === res.barcode) ? 'ghost' : 'primary'}
                           size="xs"
                           onClick={() => addBarcode(res.barcode)}
                           disabled={cart.some((c) => c.barcode === res.barcode)}
-                          className="shrink-0"
+                          className="shrink-0 font-medium"
                         >
                           {cart.some((c) => c.barcode === res.barcode) ? 'Đã trong giỏ' : 'Thêm vào giỏ'}
                         </Button>
@@ -752,14 +805,14 @@ export const CirculationDeskPage: React.FC = () => {
                 )}
 
                 {/* Cart Table */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs">
+                <div className="border border-gray-200 rounded-xl overflow-hidden shadow-xs bg-white">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
-                        <TableHead className="w-32">Mã vạch</TableHead>
-                        <TableHead>Tên sách</TableHead>
-                        <TableHead className="w-36">Vị trí kệ</TableHead>
-                        <TableHead className="w-16 text-right">Xóa</TableHead>
+                        <TableHead className="w-36">Mã vạch</TableHead>
+                        <TableHead>Tài liệu / Sách mượn</TableHead>
+                        <TableHead className="w-40">Vị trí kệ</TableHead>
+                        <TableHead className="w-16 text-center">Xóa</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -767,20 +820,55 @@ export const CirculationDeskPage: React.FC = () => {
                         <TableEmpty colSpan={4} message="Chưa có sách nào trong giỏ mượn. Quét mã vạch để thêm." />
                       ) : (
                         cart.map((item, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="font-mono font-bold text-brand">
-                              {item.barcode}
+                          <TableRow key={idx} className="hover:bg-teal-50/15 transition-colors">
+                            <TableCell className="font-mono font-bold text-[#008B8B]">
+                              <span className="bg-teal-50 px-2.5 py-1 rounded-md border border-teal-200/80 text-xs inline-block whitespace-nowrap">
+                                {item.barcode}
+                              </span>
                             </TableCell>
-                            <TableCell className="font-semibold text-gray-900 line-clamp-1">
-                              {item.title}
+                            <TableCell>
+                              <div className="flex items-center gap-3.5 py-1">
+                                {/* Book Cover Thumbnail */}
+                                <div className="w-11 h-15 sm:w-12 sm:h-16 rounded-md bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                                  {item.cover_image ? (
+                                    <img
+                                      src={item.cover_image}
+                                      alt={item.title}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        (e.currentTarget as HTMLElement).style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <BookOpen className="w-5 h-5 text-slate-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="font-bold text-gray-900 text-xs sm:text-sm leading-snug line-clamp-2" title={item.title}>
+                                    {item.title}
+                                  </h4>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500">
+                                    {item.category && (
+                                      <span className="text-teal-700 font-medium bg-teal-50/80 px-1.5 py-0.5 rounded border border-teal-100">
+                                        {item.category}
+                                      </span>
+                                    )}
+                                    {item.authors && (
+                                      <span className="truncate max-w-[220px]">TG: {item.authors}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </TableCell>
-                            <TableCell className="text-gray-600 text-xs">
-                              {item.shelf_location || '—'}
+                            <TableCell className="text-gray-600 text-xs font-medium">
+                              <span className="bg-slate-50 px-2 py-1 rounded border border-slate-200 font-mono text-[11px]">
+                                {item.shelf_location || '—'}
+                              </span>
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-center">
                               <button
                                 onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
-                                className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg transition-colors hover:bg-red-50"
+                                className="text-gray-400 hover:text-red-600 p-2 rounded-lg transition-colors hover:bg-red-50"
                                 title="Xóa khỏi giỏ"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -814,7 +902,7 @@ export const CirculationDeskPage: React.FC = () => {
 
       {/* ===================== TAB 2: TRẢ SÁCH ===================== */}
       {activeTab === 'return' && (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           {/* Scan Barcode to Return */}
           <Card>
             <CardHeader className="pb-3">
@@ -871,39 +959,102 @@ export const CirculationDeskPage: React.FC = () => {
           {/* Return Confirmation Card */}
           {returnLookup && (
             <Card className="border-teal-200 shadow-sm animate-page-enter">
-              <CardHeader className="border-b border-gray-100 pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900">{returnLookup.book_title}</h3>
-                    <p className="text-xs font-mono font-bold text-brand mt-0.5">
-                      Mã vạch: {returnLookup.barcode} | Vị trí: {returnLookup.shelf_location}
-                    </p>
+              <CardHeader className="border-b border-gray-100 pb-4">
+                <div className="flex items-start gap-4">
+                  {/* Book Cover Image Thumbnail */}
+                  <div className="w-14 h-20 sm:w-16 sm:h-22 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+                    {returnLookup.book_cover_image ? (
+                      <img
+                        src={returnLookup.book_cover_image}
+                        alt={returnLookup.book_title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <BookOpen className="w-6 h-6 text-slate-400" />
+                    )}
                   </div>
-                  <Badge variant={returnLookup.is_overdue ? 'danger' : 'success'}>
-                    {returnLookup.is_overdue ? `Trễ ${returnLookup.days_late} ngày` : 'Đúng hạn'}
-                  </Badge>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-snug">
+                          {returnLookup.book_title}
+                        </h3>
+                        {returnLookup.book_authors && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Tác giả: <span className="text-gray-700 font-medium">{returnLookup.book_authors}</span>
+                          </p>
+                        )}
+                        <p className="text-xs font-mono font-bold text-[#008B8B] mt-1.5 flex flex-wrap items-center gap-2">
+                          <span className="bg-teal-50 px-2 py-0.5 rounded border border-teal-200 font-bold">
+                            {returnLookup.barcode}
+                          </span>
+                          <span className="text-gray-500 font-normal">
+                            • Vị trí kệ: <strong className="text-gray-700">{returnLookup.shelf_location}</strong>
+                          </span>
+                        </p>
+                      </div>
+                      <Badge variant={returnLookup.is_overdue ? 'danger' : 'success'} size="md" hasDot>
+                        {returnLookup.is_overdue ? `Trễ ${returnLookup.days_late} ngày` : 'Đúng hạn'}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-5 pt-4">
-                {/* Patron & Due Info */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-gray-50/80 p-3.5 rounded-xl border border-gray-200/80">
-                  <div>
-                    <span className="text-gray-500 block text-[11px] mb-0.5">Bạn đọc mượn:</span>
-                    <span className="font-bold text-gray-900">{returnLookup.patron_name}</span>
-                    <span className="text-gray-500 block font-mono text-[11px]">({returnLookup.patron_card_code})</span>
+                {/* Patron Avatar & Loan Due Info Card */}
+                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Student Avatar + Info */}
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-teal-50 text-brand font-bold text-base flex items-center justify-center shrink-0 border-2 border-teal-200 overflow-hidden shadow-2xs">
+                      {returnLookup.patron_avatar ? (
+                        <img
+                          src={returnLookup.patron_avatar}
+                          alt={returnLookup.patron_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span>{returnLookup.patron_name?.charAt(0)?.toUpperCase() || 'SV'}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide block">
+                        Bạn đọc đang trả sách:
+                      </span>
+                      <span className="font-bold text-gray-900 text-sm sm:text-base block truncate">
+                        {returnLookup.patron_name}
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-600">
+                        <span className="font-mono font-bold text-[#008B8B] bg-teal-50 px-1.5 py-0.5 rounded border border-teal-200">
+                          {returnLookup.patron_card_code}
+                        </span>
+                        {returnLookup.patron_department && (
+                          <span className="truncate max-w-[220px] text-gray-500">• {returnLookup.patron_department}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-500 block text-[11px] mb-0.5">Ngày mượn:</span>
-                    <span className="font-semibold text-gray-800">
-                      {formatDateVN(returnLookup.borrowed_at)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block text-[11px] mb-0.5">Hạn trả:</span>
-                    <span className={`font-semibold ${returnLookup.is_overdue ? 'text-red-600 font-bold' : 'text-gray-800'}`}>
-                      {formatDateVN(returnLookup.due_at)}
-                    </span>
+
+                  {/* Borrow Date & Due Date */}
+                  <div className="flex items-center gap-4 text-xs shrink-0 bg-white px-3.5 py-2.5 rounded-xl border border-gray-200/90 shadow-2xs self-stretch sm:self-auto justify-around sm:justify-start">
+                    <div>
+                      <span className="text-gray-400 block text-[10.5px]">Ngày mượn:</span>
+                      <span className="font-semibold text-gray-800">{formatDateVN(returnLookup.borrowed_at)}</span>
+                    </div>
+                    <div className="h-7 w-[1px] bg-gray-200" />
+                    <div>
+                      <span className="text-gray-400 block text-[10.5px]">Hạn trả:</span>
+                      <span className={`font-bold ${returnLookup.is_overdue ? 'text-red-600' : 'text-gray-800'}`}>
+                        {formatDateVN(returnLookup.due_at)}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

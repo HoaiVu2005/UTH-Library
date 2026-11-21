@@ -597,7 +597,7 @@ export const ReportsPage: React.FC = () => {
             <BarChart3 className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-textPrimary tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-accent font-bold mr-2 select-none">&gt;</span>
               <span>Báo cáo & Thống kê Lưu thông</span>
             </h1>

@@ -74,7 +74,7 @@ export const Footer: React.FC = () => {
           {/* Liên kết nhanh & Bản quyền */}
           <div className="flex flex-col sm:flex-row md:flex-col items-start md:items-end justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-textSecondary text-xs">
-              <Link to="/search" className="hover:text-primary transition-colors">Tra cứu OPAC</Link>
+              <Link to="/search" className="hover:text-primary transition-colors">Tra cứu sách</Link>
               <Link to="/loans" className="hover:text-primary transition-colors">Mượn trả & Gia hạn</Link>
               <Link to="/reservations" className="hover:text-primary transition-colors">Đặt trước</Link>
               <Link to="/fines" className="hover:text-primary transition-colors">Nộp phạt VietQR</Link>

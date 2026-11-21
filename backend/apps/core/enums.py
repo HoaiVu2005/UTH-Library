@@ -13,6 +13,7 @@ class CopyStatus(models.TextChoices):
     READING_ROOM = 'reading_room', 'Đọc tại chỗ'
     DAMAGED = 'damaged', 'Bị hỏng'
     LOST = 'lost', 'Đã mất'
+    PENDING_DEACCESSION = 'pending_deaccession', 'Chờ thanh lý'
     WITHDRAWN = 'withdrawn', 'Đã thanh lý'
 
 class LoanStatus(models.TextChoices):
@@ -70,6 +71,12 @@ class SuggestionStatus(models.TextChoices):
     APPROVED = 'approved', 'Đã duyệt'
     REJECTED = 'rejected', 'Từ chối'
     RECEIVED = 'received', 'Đã nhập kho'
+
+class CampaignStatus(models.TextChoices):
+    UPCOMING = 'upcoming', 'Sắp diễn ra'
+    OPEN = 'open', 'Đang mở'
+    CLOSED = 'closed', 'Đã đóng / Đang thẩm định'
+    COMPLETED = 'completed', 'Đã hoàn thành'
 
 class LockReason(models.TextChoices):
     MANUAL = 'manual', 'Khóa thủ công'

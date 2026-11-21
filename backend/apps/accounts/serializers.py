@@ -58,21 +58,65 @@ class UserAdminSerializer(serializers.ModelSerializer):
     active_loans_count = serializers.IntegerField(read_only=True, default=0)
     unpaid_fines_count = serializers.IntegerField(read_only=True, default=0)
     reservations_count = serializers.IntegerField(read_only=True, default=0)
+    major = serializers.SerializerMethodField()
+    class_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'full_name', 'email', 'phone', 'avatar',
-            'dob', 'address', 'role', 'card_code', 'department',
+            'dob', 'address', 'role', 'card_code', 'department', 'major', 'class_name',
             'card_expiry', 'is_locked', 'lock_reason', 'locked_until',
             'is_card_valid', 'is_currently_locked', 'reservation_locked_until',
             'must_change_password', 'created_at', 'deleted_at',
             'active_loans_count', 'unpaid_fines_count', 'reservations_count',
         ]
-        read_only_fields = ['id', 'created_at', 'deleted_at']
+        read_only_fields = ['id', 'created_at', 'deleted_at', 'major', 'class_name']
+
+    def get_major(self, obj):
+        roster = getattr(obj, 'roster_entry', None)
+        if roster and roster.major:
+            return roster.major
+        from apps.accounts.models import StudentRoster
+        r = StudentRoster.objects.filter(student_code__iexact=obj.username).first()
+        return r.major if r else None
+
+    def get_class_name(self, obj):
+        roster = getattr(obj, 'roster_entry', None)
+        if roster and roster.class_name:
+            return roster.class_name
+        from apps.accounts.models import StudentRoster
+        r = StudentRoster.objects.filter(student_code__iexact=obj.username).first()
+        return r.class_name if r else None
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Đảm bảo avatar luôn đồng bộ với StudentRoster nếu avatar của User bị trống hoặc không hợp lệ
+        raw_avatar = ret.get('avatar')
+        is_valid = False
+        if raw_avatar:
+            v = str(raw_avatar).strip().lower()
+            if v.startswith(('http://', 'https://', '/media/', 'data:image/')) or any(
+                v.endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg']
+            ):
+                is_valid = True
+
+        if not is_valid:
+            roster = getattr(instance, 'roster_entry', None)
+            if roster and roster.avatar:
+                ret['avatar'] = roster.avatar
+            else:
+                from apps.accounts.models import StudentRoster
+                from django.db.models import Q
+                r = StudentRoster.objects.filter(
+                    Q(student_code__iexact=instance.card_code) | Q(student_code__iexact=instance.username)
+                ).first()
+                if r and r.avatar:
+                    ret['avatar'] = r.avatar
+        return ret
 
 class UserCreateAdminSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(required=True, write_only=True, min_length=8)
+    password = serializers.CharField(required=True, write_only=True)
     avatar = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
@@ -101,16 +145,42 @@ class UserCreateAdminSerializer(serializers.ModelSerializer):
 
 class StudentRosterSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
-    card_code = serializers.CharField(source='user.card_code', read_only=True)
-    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    card_code = serializers.SerializerMethodField()
+    user_id = serializers.SerializerMethodField()
+    is_card_issued = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentRoster
         fields = [
             'id', 'student_code', 'full_name', 'department', 'major', 'class_name',
             'email', 'phone', 'academic_year', 'status', 'status_display',
-            'is_card_issued', 'card_code', 'user_id', 'created_at',
+            'is_card_issued', 'card_code', 'user_id', 'avatar', 'created_at',
         ]
+
+    def get_is_card_issued(self, obj):
+        if not obj.is_card_issued:
+            return False
+        if obj.user and obj.user.deleted_at is not None:
+            return False
+        return bool(obj.user or obj.is_card_issued)
+
+    def get_card_code(self, obj):
+        if obj.user and obj.user.deleted_at is None:
+            return obj.user.card_code
+        return None
+
+    def get_user_id(self, obj):
+        if obj.user and obj.user.deleted_at is None:
+            return obj.user.id
+        return None
+
+    def get_avatar(self, obj):
+        if obj.avatar:
+            return obj.avatar
+        if obj.user and obj.user.avatar:
+            return obj.user.avatar
+        return None
 
 class PaymentTransactionSerializer(serializers.ModelSerializer):
     payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)

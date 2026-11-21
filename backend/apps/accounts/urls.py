@@ -19,6 +19,7 @@ from .views import (
     StudentRosterListView,
     StudentRosterTemplateView,
     StudentRosterImportView,
+    StudentRosterExportView,
     PaymentTransactionListView,
     PaymentTransactionExportView,
     CheckStudentCardPaymentStatusView,
@@ -41,6 +42,7 @@ urlpatterns = [
     # Admin User Management endpoints
     path('users/auto-suspend-check', AutoSuspendCheckView.as_view(), name='user-auto-suspend-check'),
     path('users', UserAdminListView.as_view(), name='user-admin-list'),
+    path('users/', UserAdminListView.as_view(), name='user-admin-list-slash'),
     path('users/<int:pk>', UserAdminDetailView.as_view(), name='user-admin-detail'),
     path('users/<int:pk>/lock', UserLockToggleView.as_view(), name='user-admin-lock'),
     path('users/<int:pk>/unlock', UserLockToggleView.as_view(), name='user-admin-unlock'),
@@ -54,6 +56,7 @@ urlpatterns = [
     path('students/simulate-sepay-transfer', SimulateSepayCardPaymentView.as_view(), name='student-simulate-sepay-transfer'),
     path('students/template', StudentRosterTemplateView.as_view(), name='student-roster-template'),
     path('students/import', StudentRosterImportView.as_view(), name='student-roster-import'),
+    path('students/export', StudentRosterExportView.as_view(), name='student-roster-export'),
     path('students', StudentRosterListView.as_view(), name='student-roster-list'),
 
     # Financial Transactions & Receipts Reconciliation

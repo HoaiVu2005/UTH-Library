@@ -2,15 +2,18 @@ from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from apps.accounts.permissions import IsAdminOnlyRole
+from apps.accounts.permissions import IsAdminUserRole
+from apps.core.enums import UserRole
 from .models import AuditLog
 from .serializers import AuditLogSerializer
 
 class AuditLogListView(APIView):
-    permission_classes = [IsAdminOnlyRole]
+    permission_classes = [IsAdminUserRole]
 
     def get(self, request):
         queryset = AuditLog.objects.select_related('user').all()
+        if request.user.role == UserRole.LIBRARIAN:
+            queryset = queryset.filter(user=request.user)
 
         action = request.query_params.get('action')
         if action:

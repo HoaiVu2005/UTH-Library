@@ -12,6 +12,7 @@ import {
   Sparkles,
   ShieldCheck,
   BookOpen,
+  Printer,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -20,7 +21,9 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { Pagination } from '@/components/ui/Pagination';
 import { QRFinePaymentModal } from '@/components/ui/QRFinePaymentModal';
+import { ReceiptPrintModal, ReceiptData } from '@/pages/admin/students/ReceiptPrintModal';
 import { formatDateVN, formatCurrencyVND } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
@@ -51,6 +54,42 @@ export const MyFinesPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [showQRGuide, setShowQRGuide] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const [selectedReceipt, setSelectedReceipt] = useState<ReceiptData | null>(null);
+  const PAGE_SIZE = 5;
+
+  const handleOpenReceipt = (fine: FineItem) => {
+    const bookTitle = fine.book_title || (typeof fine.loan === 'object' && fine.loan?.book_title) || '';
+    const barcode = fine.copy_barcode || (typeof fine.loan === 'object' && fine.loan?.barcode) || '';
+    const typeDisplay =
+      fine.type_display ||
+      (fine.type === 'overdue'
+        ? 'Phạt quá hạn trả tài liệu'
+        : fine.type === 'damage'
+        ? 'Bồi thường hư hỏng tài liệu'
+        : fine.type === 'lost'
+        ? 'Bồi thường làm mất tài liệu'
+        : 'Khoản phạt vi phạm lưu thông');
+
+    const data: ReceiptData = {
+      receipt_code: `BL-PHAT-${String(fine.id).padStart(6, '0')}`,
+      transaction_code: `GD-FINE-${fine.id}-${new Date(fine.created_at).getTime().toString().slice(-4)}`,
+      amount: fine.paid_amount > 0 ? fine.paid_amount : fine.amount,
+      payment_method: 'transfer',
+      payment_method_display: 'Chuyển khoản VietQR Napas 24/7 (Sacombank)',
+      payer_name: user?.full_name || 'Bạn đọc Thư viện UTH',
+      student_code: user?.card_code || user?.username || 'SV20260001',
+      department: user?.department || 'Trường Đại học Giao thông Vận tải TP.HCM',
+      collected_by_name: 'Cổng thanh toán tự động VietQR / SePay UTH',
+      collected_at: fine.created_at || new Date().toISOString(),
+      title: 'BIÊN LAI THU TIỀN PHẠT THƯ VIỆN ĐIỆN TỬ',
+      fee_item_name: typeDisplay,
+      fee_item_detail: bookTitle
+        ? `Tài liệu: ${bookTitle}${barcode ? ` (${barcode})` : ''}`
+        : 'Vi phạm quy chế lưu thông Thư viện UTH',
+    };
+    setSelectedReceipt(data);
+  };
 
   // QR Modal state for paying online from home
   const [qrModalData, setQrModalData] = useState<{
@@ -100,6 +139,8 @@ export const MyFinesPage: React.FC = () => {
     .reduce((sum, f) => sum + f.remaining_amount, 0);
 
   const totalPaid = fines.reduce((sum, f) => sum + f.paid_amount, 0);
+  const totalPages = Math.ceil(fines.length / PAGE_SIZE) || 1;
+  const paginatedFines = fines.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-5 w-full pb-16 animate-page-enter">
@@ -110,7 +151,7 @@ export const MyFinesPage: React.FC = () => {
             <Receipt className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800 tracking-tight flex items-center">
+            <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
               <span>Tiền phạt & Công nợ</span>
             </h1>
@@ -311,7 +352,7 @@ export const MyFinesPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fines.map((fine) => {
+                {paginatedFines.map((fine) => {
                   const bookTitle = fine.book_title || (typeof fine.loan === 'object' && fine.loan?.book_title) || '';
                   const barcode = fine.copy_barcode || (typeof fine.loan === 'object' && fine.loan?.barcode) || '';
                   const typeDisplay =
@@ -404,13 +445,26 @@ export const MyFinesPage: React.FC = () => {
                         </Badge>
                       </TableCell>
 
-                      {/* Notes */}
+                      {/* Notes & Receipt */}
                       <TableCell className="text-xs text-gray-500">
-                        {fine.waive_reason ? (
-                          <span className="text-purple-700 italic">Miễn giảm: {fine.waive_reason}</span>
-                        ) : (
-                          fine.note || '—'
-                        )}
+                        <div className="space-y-1">
+                          {fine.waive_reason ? (
+                            <span className="text-purple-700 italic block">Miễn giảm: {fine.waive_reason}</span>
+                          ) : (
+                            fine.note && <span className="block">{fine.note}</span>
+                          )}
+                          {(fine.status === 'paid' || fine.paid_amount > 0) && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenReceipt(fine)}
+                              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#008B8B] hover:text-[#006F70] bg-teal-50 hover:bg-teal-100/80 px-2.5 py-1 rounded-lg border border-teal-200 transition-colors shadow-2xs whitespace-nowrap"
+                              title="Bấm để xem và in biên lai thu tiền phạt"
+                            >
+                              <Printer className="w-3.5 h-3.5 text-[#008B8B] shrink-0" />
+                              <span className="whitespace-nowrap">In biên lai</span>
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
 
                       {/* Pay Button via VietQR */}
@@ -436,10 +490,15 @@ export const MyFinesPage: React.FC = () => {
                             <span>Quét mã</span>
                           </Button>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReceipt(fine)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-colors shadow-2xs"
+                            title="Đã thanh toán - Bấm để in biên lai"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>Đã nộp</span>
-                          </span>
+                          </button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -447,6 +506,21 @@ export const MyFinesPage: React.FC = () => {
                 })}
               </TableBody>
             </Table>
+
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  Hiển thị {(page - 1) * PAGE_SIZE + 1} -{' '}
+                  {Math.min(page * PAGE_SIZE, fines.length)} trong tổng số {fines.length} khoản phạt
+                </span>
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  totalRecords={fines.length}
+                />
+              </div>
+            )}
           </Card>
         )}
       </div>
@@ -463,6 +537,13 @@ export const MyFinesPage: React.FC = () => {
         patronCardCode={user?.card_code || 'SV20260001'}
         patronName={user?.full_name}
         onSuccess={() => fetchFines(true)}
+      />
+
+      {/* Official Fine Receipt Printable Modal */}
+      <ReceiptPrintModal
+        isOpen={Boolean(selectedReceipt)}
+        onClose={() => setSelectedReceipt(null)}
+        receipt={selectedReceipt}
       />
     </div>
   );

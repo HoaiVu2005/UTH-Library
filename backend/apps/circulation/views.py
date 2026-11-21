@@ -110,7 +110,6 @@ class LoanListView(APIView):
         search_q = request.query_params.get('search') or request.query_params.get('q')
         if search_q:
             sq = search_q.strip()
-            from django.db.models import Q
             queryset = queryset.filter(
                 Q(user__card_code__icontains=sq) |
                 Q(user__full_name__icontains=sq) |
@@ -276,6 +275,7 @@ class DeskPatronView(APIView):
                 'id': r.id,
                 'book_id': r.book.id,
                 'book_title': r.book.title,
+                'book_cover': r.book.cover_image if r.book.cover_image else None,
                 'barcode': r.copy.barcode if r.copy else '',
                 'shelf_location': r.copy.shelf_location if r.copy else '',
                 'hold_expires_at': r.hold_expires_at.isoformat() if r.hold_expires_at else None,
@@ -315,42 +315,85 @@ class DeskReturnLookupView(APIView):
             return Response({'detail': 'Vui lòng cung cấp mã vạch sách.'}, status=status.HTTP_400_BAD_REQUEST)
 
         bc_clean = barcode.strip().upper()
-        loan = Loan.objects.filter(
-            copy__barcode__iexact=bc_clean,
-            status=LoanStatus.ACTIVE
-        ).select_related('user', 'copy', 'book').first()
+        try:
+            loan = Loan.objects.filter(
+                copy__barcode__iexact=bc_clean,
+                status=LoanStatus.ACTIVE
+            ).select_related('user', 'copy', 'book').prefetch_related('book__authors').first()
 
-        if not loan:
+            if not loan:
+                # Kiểm tra trạng thái thực tế của cuốn sách để báo rõ ràng cho thủ thư
+                copy_obj = Copy.objects.filter(barcode__iexact=bc_clean).select_related('book').first()
+                if not copy_obj:
+                    return Response({
+                        'detail': f'Không tìm thấy bản sao với mã vạch "{bc_clean}" trong hệ thống Thư viện UTH.'
+                    }, status=status.HTTP_404_NOT_FOUND)
+
+                book_title = copy_obj.book.title if copy_obj.book else 'Tài liệu Thư viện'
+                if copy_obj.status == 'withdrawn' or copy_obj.deleted_at is not None:
+                    return Response({
+                        'detail': f'Bản sao "{bc_clean}" ({book_title}) đã được thanh lý khỏi thư viện qua biên bản thanh lý tài sản.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                elif copy_obj.status == 'available':
+                    return Response({
+                        'detail': f'Bản sao "{bc_clean}" ({book_title}) hiện đang ở trạng thái "Sẵn sàng trên kệ" (không có phiếu mượn nào chưa trả).'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                elif copy_obj.status in ('reserved', 'reserved_hold'):
+                    return Response({
+                        'detail': f'Bản sao "{bc_clean}" ({book_title}) hiện đang được giữ chỗ theo phiếu đặt trước của bạn đọc.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Kiểm tra xem sách đã từng được hoàn trả gần đây chưa
+                last_loan = Loan.objects.filter(copy=copy_obj).order_by('-returned_at', '-id').first()
+                if last_loan and last_loan.status == LoanStatus.RETURNED:
+                    ret_str = last_loan.returned_at.strftime("%d/%m/%Y %H:%M") if last_loan.returned_at else ""
+                    return Response({
+                        'detail': f'Bản sao "{bc_clean}" ({book_title}) đã được bạn đọc {last_loan.user.full_name} ({last_loan.user.card_code}) hoàn trả trước đó{f" vào lúc {ret_str}" if ret_str else ""}.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                return Response({
+                    'detail': f'Không tìm thấy lượt mượn đang kích hoạt cho mã vạch "{bc_clean}" ({book_title}).'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            now = timezone.now()
+            is_overdue = loan.due_at < now
+            days_late = max(0, (now.date() - loan.due_at.date()).days) if is_overdue else 0
+            policy = Policy.objects.filter(role=loan.user.role).first()
+            fine_rate = policy.fine_per_day if policy else 2000
+            estimated_fine = days_late * fine_rate
+
+            book_price = loan.book_price_snapshot or (loan.book.price if loan.book else 100000) or 100000
+
+            book_authors_str = ''
+            if loan.book:
+                book_authors_str = ', '.join([a.name for a in loan.book.authors.all()])
+
             return Response({
-                'detail': f'Không tìm thấy lượt mượn đang kích hoạt cho mã vạch "{bc_clean}".'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        now = timezone.now()
-        is_overdue = loan.due_at < now
-        days_late = max(0, (now.date() - loan.due_at.date()).days) if is_overdue else 0
-        policy = Policy.objects.filter(role=loan.user.role).first()
-        fine_rate = policy.fine_per_day if policy else 2000
-        estimated_fine = days_late * fine_rate
-
-        book_price = loan.book_price_snapshot or (loan.book.price if loan.book else 100000) or 100000
-
-        return Response({
-            'data': {
-                'loan_id': loan.id,
-                'patron_name': loan.user.full_name,
-                'patron_card_code': loan.user.card_code,
-                'book_title': loan.book.title if loan.book else 'Tài liệu Thư viện',
-                'barcode': loan.copy.barcode,
-                'shelf_location': loan.copy.shelf_location or 'Quầy kho A',
-                'borrowed_at': loan.borrowed_at.isoformat(),
-                'due_at': loan.due_at.isoformat(),
-                'is_overdue': is_overdue,
-                'days_late': days_late,
-                'estimated_fine': estimated_fine,
-                'book_price': book_price,
-                'processing_fee': 20000,
-            }
-        }, status=status.HTTP_200_OK)
+                'data': {
+                    'loan_id': loan.id,
+                    'patron_name': loan.user.full_name,
+                    'patron_card_code': loan.user.card_code,
+                    'patron_avatar': str(loan.user.avatar or ''),
+                    'patron_department': loan.user.department or '',
+                    'patron_role': loan.user.role or '',
+                    'book_title': loan.book.title if loan.book else 'Tài liệu Thư viện',
+                    'book_cover_image': str(loan.book.cover_image or '') if loan.book else '',
+                    'book_authors': book_authors_str,
+                    'barcode': loan.copy.barcode,
+                    'shelf_location': loan.copy.shelf_location or 'Quầy kho A',
+                    'borrowed_at': loan.borrowed_at.isoformat(),
+                    'due_at': loan.due_at.isoformat(),
+                    'is_overdue': is_overdue,
+                    'days_late': days_late,
+                    'estimated_fine': estimated_fine,
+                    'book_price': book_price,
+                    'processing_fee': 20000,
+                }
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'detail': f'Lỗi hệ thống khi tra cứu mã vạch "{bc_clean}": {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class BatchCheckoutView(APIView):
     permission_classes = [IsAdminUserRole]
@@ -382,15 +425,30 @@ class BatchCheckoutView(APIView):
         ready_reservations_count = Reservation.objects.filter(user=patron, status=ReservationStatus.READY).count()
         remaining_quota = max(0, policy.max_loans - (active_loans_count + ready_reservations_count))
 
-        if len(barcodes) > remaining_quota:
+        # Check which barcodes correspond to patron's ready reservations
+        ready_barcodes = set(
+            Reservation.objects.filter(
+                user=patron,
+                status=ReservationStatus.READY,
+                copy__barcode__in=barcodes
+            ).values_list('copy__barcode', flat=True)
+        )
+        non_reserved_barcodes = [bc for bc in barcodes if bc not in ready_barcodes]
+
+        if len(non_reserved_barcodes) > remaining_quota:
             if remaining_quota == 0:
                 return Response({
-                    'detail': f'Bạn đọc đã đạt giới hạn tối đa {policy.max_loans} cuốn (hiện đang mượn {active_loans_count} cuốn và có {ready_reservations_count} cuốn đặt trước đang giữ tại quầy). Không thể mượn thêm.'
+                    'detail': f'Bạn đọc đã đạt giới hạn tối đa {policy.max_loans} cuốn (hiện đang mượn {active_loans_count} cuốn và có {ready_reservations_count} cuốn đặt trước đang giữ tại quầy). Chỉ có thể mượn sách đã đặt trước.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({
-                    'detail': f'Bạn đọc chỉ còn được mượn thêm {remaining_quota} cuốn (hiện đang mượn: {active_loans_count}, đang giữ chỗ: {ready_reservations_count} / tối đa: {policy.max_loans} cuốn). Giỏ hàng đang có {len(barcodes)} cuốn, vui lòng bớt ra.'
+                    'detail': f'Bạn đọc chỉ còn được mượn thêm {remaining_quota} cuốn ngoài danh sách đặt trước (hiện đang mượn: {active_loans_count}, đang giữ chỗ: {ready_reservations_count} / tối đa: {policy.max_loans} cuốn).'
                 }, status=status.HTTP_400_BAD_REQUEST)
+
+        if active_loans_count + len(barcodes) > policy.max_loans:
+            return Response({
+                'detail': f'Tổng số sách mượn ({active_loans_count + len(barcodes)}) sẽ vượt quá hạn mức tối đa {policy.max_loans} cuốn.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         created_loans = []
         with transaction.atomic():

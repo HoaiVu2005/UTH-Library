@@ -24,7 +24,6 @@ import {
   ExternalLink,
   Copy,
   Check,
-  Zap,
   ShieldCheck,
 } from 'lucide-react';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
@@ -69,6 +68,7 @@ interface LookupResult {
     status: string;
     status_display: string;
     is_card_issued: boolean;
+    avatar?: string;
   };
 }
 
@@ -108,7 +108,6 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSimulatingSepay, setIsSimulatingSepay] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Success state & Print Modals
@@ -163,6 +162,11 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
 
       if (result.found && result.eligible && !result.already_has_card) {
         setPhone(result.data?.phone || '');
+        if (result.data?.avatar) {
+          setAvatarPreview(result.data.avatar);
+        } else {
+          setAvatarPreview('');
+        }
         if (result.suggested_expiry) {
           setCardExpiry(result.suggested_expiry);
         } else {
@@ -231,44 +235,6 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
     }
   };
 
-  // Kích hoạt mô phỏng SePay Webhook thực tế gửi payload về Backend
-  const handleSimulateSepayWebhook = async () => {
-    if (!lookupResult?.data) return;
-    try {
-      setIsSimulatingSepay(true);
-      const res = await api.post('/students/simulate-sepay-transfer', {
-        student_code: lookupResult.data.student_code,
-        amount: feeCollected,
-      });
-
-      if (res.data?.success) {
-        toast.success(`Khớp lệnh SePay thành công! Giao dịch ${res.data.transaction_code}`);
-        setIssuedSuccessData({
-          transaction_code: res.data.transaction_code,
-          receipt_code: res.data.receipt_code,
-          amount: res.data.amount_paid || feeCollected,
-          payment_method: 'transfer',
-          payment_method_display: 'Chuyển khoản (SePay Sacombank)',
-          payer_name: lookupResult.data.full_name,
-          student_code: lookupResult.data.student_code,
-          department: lookupResult.data.department,
-          class_name: lookupResult.data.class_name,
-          collected_by_name: 'Cổng thanh toán tự động SePay (Sacombank)',
-          collected_at: new Date().toISOString(),
-          card_code: res.data.card_code || lookupResult.data.student_code,
-          card_expiry: cardExpiry,
-        });
-        onSuccess();
-      } else {
-        toast.error(res.data?.detail || 'Lỗi khi kích hoạt SePay webhook.');
-      }
-    } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Không thể mô phỏng SePay.');
-    } finally {
-      setIsSimulatingSepay(false);
-    }
-  };
-
   const handleReset = () => {
     setSearchMssv('');
     setLookupResult(null);
@@ -280,11 +246,6 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
     setIssuedSuccessData(null);
     setIsReceiptModalOpen(false);
     setIsCardModalOpen(false);
-  };
-
-  const handleQuickFill = (code: string) => {
-    setSearchMssv(code);
-    handleSearch(code);
   };
 
   // Cú pháp chuyển khoản SePay: UTH <MSSV> DKTHE
@@ -501,32 +462,6 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
                     <span>Tra cứu</span>
                   </Button>
                 </div>
-
-                {/* Demo fast-fill pills */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-textSecondary">
-                  <span className="font-semibold text-gray-500">Mẫu demo:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('22510001')}
-                    className="px-2 py-0.5 rounded-md bg-teal-50 hover:bg-teal-100 text-brand border border-teal-200 transition-colors font-mono"
-                  >
-                    22510001 (CNTT)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('22510002')}
-                    className="px-2 py-0.5 rounded-md bg-teal-50 hover:bg-teal-100 text-brand border border-teal-200 transition-colors font-mono"
-                  >
-                    22510002 (Logistics)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('20510099')}
-                    className="px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors font-mono"
-                  >
-                    20510099 (Tốt nghiệp)
-                  </button>
-                </div>
               </div>
 
               {/* Status views */}
@@ -598,7 +533,12 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
                         <div className="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-border text-center">
                           <div className="w-24 h-32 rounded-lg bg-slate-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden relative group">
                             {avatarPreview ? (
-                              <img src={avatarPreview} alt="Ảnh thẻ" className="w-full h-full object-cover" />
+                              <img
+                                src={avatarPreview}
+                                alt="Ảnh thẻ"
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
                               <div className="flex flex-col items-center text-gray-400">
                                 <User className="w-8 h-8 mb-1" />
@@ -813,18 +753,8 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
                                   </div>
                                 </div>
 
-                                <div className="flex items-center justify-between text-[11px] text-gray-500 pt-0.5">
+                                <div className="text-[11px] text-gray-500 pt-0.5">
                                   <span>Số tiền chính xác: <strong className="text-orange-600 font-bold font-mono">100.000 đ</strong></span>
-                                  <button
-                                    type="button"
-                                    onClick={handleSimulateSepayWebhook}
-                                    disabled={isSimulatingSepay}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors font-semibold shadow-2xs text-[11px] disabled:opacity-50 cursor-pointer"
-                                    title="Kích hoạt Webhook SePay thật gửi về máy chủ để kiểm tra"
-                                  >
-                                    <Zap className={cn('w-3.5 h-3.5 text-amber-500', isSimulatingSepay && 'animate-spin')} />
-                                    <span>{isSimulatingSepay ? 'Đang gửi...' : '⚡ Mô phỏng SePay Webhook'}</span>
-                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -854,19 +784,6 @@ export const IssueStudentCardModal: React.FC<IssueStudentCardModalProps> = ({
 
           {!issuedSuccessData && lookupResult?.found && lookupResult?.eligible && !lookupResult?.already_has_card && (
             <div className="flex items-center gap-2">
-              {paymentMethod === 'transfer' && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleSimulateSepayWebhook}
-                  disabled={isSimulatingSepay}
-                  className="border-purple-300 text-purple-800 bg-purple-50 hover:bg-purple-100 font-semibold"
-                >
-                  <Zap className="w-4 h-4 mr-1 text-amber-500" />
-                  <span>{isSimulatingSepay ? 'Đang test...' : 'Test SePay Webhook'}</span>
-                </Button>
-              )}
-
               <Button
                 type="button"
                 onClick={handleConfirmIssue}

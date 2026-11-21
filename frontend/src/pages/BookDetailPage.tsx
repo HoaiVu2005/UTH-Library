@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
@@ -14,6 +14,9 @@ import {
   Check,
   ChevronRight,
   Ban,
+  ShieldCheck,
+  FileText,
+  GraduationCap,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -30,6 +33,9 @@ import { toast } from '@/components/ui/Toast';
 import { Barcode } from '@/components/ui/Barcode';
 import { formatCurrencyVND } from '@/lib/utils';
 import { useRealtimeSync, broadcastRealtimeSync } from '@/lib/realtime';
+import { PdfReaderModal, DigitalResourceItem } from '@/features/ebook/PdfReaderModal';
+
+const DigitalPdfReaderModal = lazy(() => import('@/features/ebook/DigitalPdfReaderModal'));
 
 interface CopyItem {
   id: number;
@@ -70,6 +76,10 @@ interface BookDetail {
     queue_position?: number;
     hold_expires_at?: string;
   } | null;
+  digital_resources?: DigitalResourceItem[];
+  has_digital_resource?: boolean;
+  digital_documents?: any[];
+  primary_digital_document_id?: number | null;
 }
 
 export const BookDetailPage: React.FC = () => {
@@ -80,6 +90,8 @@ export const BookDetailPage: React.FC = () => {
   const [book, setBook] = useState<BookDetail | null>(null);
   const [relatedBooks, setRelatedBooks] = useState<BookCardItem[]>([]);
   const [barcodeModalCopy, setBarcodeModalCopy] = useState<CopyItem | null>(null);
+  const [selectedDigitalResource, setSelectedDigitalResource] = useState<DigitalResourceItem | null>(null);
+  const [readingDigitalDocId, setReadingDigitalDocId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -297,7 +309,15 @@ export const BookDetailPage: React.FC = () => {
           <div className="md:col-span-4 flex flex-col items-center">
             <div className="w-full max-w-[240px] aspect-[3/4] bg-slate-50 rounded-xl border border-border overflow-hidden shadow-card flex items-center justify-center relative">
               {book.cover_image ? (
-                <img src={book.cover_image} alt={book.title} className="w-full h-full object-cover" />
+                <img
+                  src={book.cover_image}
+                  alt={book.title}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center text-center p-4">
                   <BookOpen className="w-16 h-16 text-primary/40 mb-2" />
@@ -415,7 +435,22 @@ export const BookDetailPage: React.FC = () => {
                       </Link>
                     </div>
                   </div>
-                ) : book.can_borrow_home ? (
+                ) : book.copies.length === 0 ? (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      disabled
+                      className="bg-slate-100 text-slate-500 border-slate-200 font-semibold cursor-not-allowed opacity-100"
+                      leftIcon={<Ban className="w-4 h-4 text-slate-400" />}
+                    >
+                      Chưa có bản sao
+                    </Button>
+                    <span className="text-xs text-textSecondary">
+                      Tài liệu này hiện chưa có bản sao vật lý trong kho thư viện.
+                    </span>
+                  </div>
+                ) : book.available_copies_count > 0 ? (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <Button
                       variant="primary"
@@ -424,33 +459,219 @@ export const BookDetailPage: React.FC = () => {
                       isLoading={actionLoading}
                       leftIcon={<Bookmark className="w-4 h-4" />}
                     >
-                      Đặt trước
+                      Đặt giữ chỗ tại quầy
                     </Button>
                     <span className="text-xs text-success font-medium">
-                      ✓ Đang có sách sẵn sàng tại quầy, bấm để đặt giữ trong 3 ngày.
+                      ✓ Đang có {book.available_copies_count} cuốn sẵn sàng, bấm để giữ chỗ 3 ngày tại quầy.
                     </span>
                   </div>
                 ) : (
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="lg"
-                      disabled
-                      className="bg-rose-50 text-rose-700 border-rose-200 font-semibold cursor-not-allowed hover:bg-rose-50 opacity-100"
-                      leftIcon={<Ban className="w-4 h-4 text-rose-500" />}
+                      onClick={handleReserve}
+                      isLoading={actionLoading}
+                      leftIcon={<Bookmark className="w-4 h-4" />}
+                      className="bg-amber-600 hover:bg-amber-700 text-white border-amber-600 focus:ring-amber-500 shadow-sm"
                     >
-                      Đã hết
+                      Xếp hàng đặt trước
                     </Button>
-                    <span className="text-xs text-textSecondary">
-                      Hiện tại tất cả bản sao đã được mượn hết. Vui lòng quay lại sau khi có bạn đọc trả sách.
+                    <span className="text-xs text-amber-700 font-medium">
+                      Tất cả bản sao đang được mượn. Bấm để xếp vào hàng chờ ưu tiên (tự động giữ chỗ 3 ngày khi có sách trả).
                     </span>
                   </div>
+                )}
+
+                {/* Primary Digital E-Book Button if available */}
+                {(book.primary_digital_document_id || (book.digital_resources && book.digital_resources.length > 0)) && (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => {
+                      if (book.primary_digital_document_id) {
+                        setReadingDigitalDocId(book.primary_digital_document_id);
+                      } else if (book.digital_resources && book.digital_resources.length > 0) {
+                        setSelectedDigitalResource(book.digital_resources[0]);
+                      }
+                    }}
+                    className="bg-[#008B8B] hover:bg-[#007070] text-white font-bold shadow-md shadow-teal-700/20 cursor-pointer"
+                    leftIcon={<BookOpen className="w-4 h-4 text-white" />}
+                  >
+                    Đọc Giáo trình Số Trực Tuyến
+                  </Button>
                 )}
               </div>
             </div>
           </div>
         </div>
       </Card>
+
+      {/* Kho Giáo trình Số & Tài liệu Điện tử (Digital Resources Section) */}
+      {((book.digital_documents && book.digital_documents.length > 0) || (book.digital_resources && book.digital_resources.length > 0)) && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <BookOpen className="w-5 h-5 text-brand" />
+              <h3 className="text-base font-bold text-gray-800 tracking-tight flex items-center">
+                <span className="text-orange-500 font-bold mr-1.5 select-none">&gt;</span>
+                <span>
+                  Kho Giáo trình Số & Tài liệu Điện tử (
+                  {(book.digital_documents?.length || 0) +
+                    (book.digital_resources?.filter(
+                      (res) =>
+                        !book.digital_documents?.some(
+                          (d: any) => d.title.trim().toLowerCase() === res.title.trim().toLowerCase()
+                        )
+                    ).length || 0)}
+                  )
+                </span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-brand font-semibold bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
+              <ShieldCheck className="w-4 h-4 text-brand" />
+              <span>Bảo vệ bản quyền số DRM Sinh viên UTH</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 1. Ưu tiên hiển thị Digital Documents từ Thư viện số UTH */}
+            {book.digital_documents && book.digital_documents.length > 0 &&
+              book.digital_documents.map((doc: any) => (
+                <div
+                  key={`digital-doc-${doc.id}`}
+                  className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-16 rounded-xl bg-gradient-to-b from-teal-50 to-slate-100 border border-teal-200 flex flex-col items-center justify-between p-1.5 text-center shrink-0 shadow-2xs">
+                          <span className="text-[7.5px] font-bold text-brand uppercase">UTH</span>
+                          <GraduationCap className="w-5 h-5 text-brand my-auto" />
+                          <span className="text-[7px] font-bold px-1 rounded-sm bg-teal-600 text-white">
+                            v{doc.current_version_number || 1}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="px-2 py-0.5 rounded-md bg-teal-50 text-brand text-[10px] font-bold border border-teal-200 uppercase">
+                              {doc.document_type_display || 'Giáo trình trường'}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+                              ✓ {doc.status_display || 'Đã xuất bản'}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-slate-800 hover:text-brand transition-colors line-clamp-1">
+                            {doc.title}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-500">
+                            <span>{doc.file_size_formatted || '12.5 MB'}</span>
+                            <span>•</span>
+                            <span>{doc.page_count || 0} trang</span>
+                            <span>•</span>
+                            <span className="text-slate-600 font-medium">
+                              {doc.access_scope_display || 'Toàn trường'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant="teal" size="sm">
+                        DRM UTH
+                      </Badge>
+                    </div>
+
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed pt-1">
+                      {doc.abstract || `Giáo trình chính thức đào tạo tại Trường ĐH Giao thông Vận tải TP.HCM. Bảo vệ bản quyền bằng Watermark định danh người học.`}
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                      <ShieldCheck className="w-3.5 h-3.5 text-brand" />
+                      <span>Lượt đọc: <strong className="text-slate-700">{doc.total_views || 0}</strong></span>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setReadingDigitalDocId(doc.id)}
+                      className="bg-brand hover:bg-[#006F70] text-white font-semibold text-xs px-4 rounded-xl shadow-2xs cursor-pointer"
+                      leftIcon={<BookOpen className="w-3.5 h-3.5" />}
+                    >
+                      Đọc trực tuyến
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+            {/* 2. Fallback hiển thị tài liệu Legacy nếu có */}
+            {book.digital_resources &&
+              book.digital_resources
+                .filter((res) => !book.digital_documents?.some((d: any) => d.title.trim().toLowerCase() === res.title.trim().toLowerCase()))
+                .map((res) => {
+                  const session = res.user_reading_session;
+                  const hasProgress = session && session.current_page > 1;
+
+                  return (
+                    <div
+                      key={`legacy-res-${res.id}`}
+                      className="bg-white border border-slate-200/90 hover:border-teal-400 rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-teal-50 text-brand flex items-center justify-center shrink-0 border border-teal-100">
+                              <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-800 hover:text-brand transition-colors line-clamp-1">
+                                {res.title}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-500">
+                                <span>{res.file_size_formatted || 'PDF'}</span>
+                                <span>•</span>
+                                <span>{res.page_count} trang</span>
+                                <span>•</span>
+                                <span className="text-slate-600 font-medium">
+                                  {res.access_level_display || 'Bạn đọc có thẻ hợp lệ'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <Badge variant="teal" size="sm">
+                            PDF
+                          </Badge>
+                        </div>
+
+                        {res.description && (
+                          <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed pt-1">
+                            {res.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                          <ShieldCheck className="w-3.5 h-3.5 text-brand" />
+                          <span>In chìm Watermark MSSV khi đọc</span>
+                        </div>
+
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setSelectedDigitalResource(res)}
+                          className="bg-brand hover:bg-[#006F70] text-white font-semibold text-xs px-4 rounded-xl shadow-2xs cursor-pointer"
+                          leftIcon={<BookOpen className="w-3.5 h-3.5" />}
+                        >
+                          {hasProgress ? `Đọc tiếp (Trang ${session.current_page})` : 'Mở đọc trực tuyến'}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+          </div>
+        </section>
+      )}
 
       {/* Copies Table using Table primitive */}
       <section className="space-y-3">
@@ -466,7 +687,7 @@ export const BookDetailPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50/90 text-gray-500 text-[11px] font-semibold uppercase tracking-wider">
-                <TableHead>Mã vạch (Barcode)</TableHead>
+                <TableHead>Mã vạch</TableHead>
                 <TableHead>Vị trí lưu kho</TableHead>
                 <TableHead>Hình thức phục vụ</TableHead>
                 <TableHead>Trạng thái bản sao</TableHead>
@@ -630,6 +851,56 @@ export const BookDetailPage: React.FC = () => {
           </>
         )}
       </Modal>
+
+      {/* Modern DRM Watermark Reader Modal of Digital Library */}
+      {readingDigitalDocId && (
+        <Suspense fallback={null}>
+          <DigitalPdfReaderModal
+            documentId={readingDigitalDocId}
+            isOpen={Boolean(readingDigitalDocId)}
+            onClose={() => {
+              setReadingDigitalDocId(null);
+              loadBookDetail();
+            }}
+            onProgressUpdated={() => {
+              loadBookDetail();
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* In-App DRM PDF Reader Modal (Legacy Fallback) */}
+      {selectedDigitalResource && !readingDigitalDocId && (
+        <PdfReaderModal
+          resource={selectedDigitalResource}
+          isOpen={Boolean(selectedDigitalResource)}
+          onClose={() => {
+            setSelectedDigitalResource(null);
+            loadBookDetail();
+          }}
+          onProgressUpdated={(page, pct) => {
+            setBook((prev) => {
+              if (!prev || !prev.digital_resources) return prev;
+              const updated = prev.digital_resources.map((r) => {
+                if (r.id === selectedDigitalResource.id) {
+                  return {
+                    ...r,
+                    user_reading_session: {
+                      current_page: page,
+                      max_page_reached: Math.max(page, r.user_reading_session?.max_page_reached || page),
+                      total_seconds_spent: (r.user_reading_session?.total_seconds_spent || 0) + 15,
+                      progress_percent: pct,
+                      last_accessed: new Date().toISOString(),
+                    },
+                  };
+                }
+                return r;
+              });
+              return { ...prev, digital_resources: updated };
+            });
+          }}
+        />
+      )}
     </div>
   );
 };

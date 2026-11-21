@@ -99,12 +99,10 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
             newBadges['/admin/reservations'] = { count: resvCount };
           }
 
-          // Suggestions: pending suggestions count (Admin only)
-          if (user?.role === 'admin') {
-            const suggCount = d.pending_suggestions || d.today_suggestions || 0;
-            if (suggCount > 0) {
-              newBadges['/admin/suggestions'] = { count: suggCount };
-            }
+          // Suggestions: pending suggestions count (Staff: Admin & Librarian)
+          const suggCount = d.pending_suggestions || d.today_suggestions || 0;
+          if (suggCount > 0) {
+            newBadges['/admin/suggestions'] = { count: suggCount };
           }
         } catch {
           // ignore
@@ -139,6 +137,16 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
             if (overdue > 0) {
               newBadges['/loans'] = { count: overdue };
             }
+          }
+
+          // Kiểm tra xem có đợt khảo sát đề xuất sách nào đang mở không
+          try {
+            const resCamp = await api.get('/suggestions/campaigns/active');
+            if (resCamp.data?.has_active_campaign && resCamp.data?.campaign?.is_active) {
+              newBadges['/suggestions'] = { count: 1 };
+            }
+          } catch {
+            // ignore
           }
         } catch {
           // ignore
@@ -232,9 +240,16 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
       ],
     },
     {
+      title: 'Thư viện số & Học liệu',
+      items: [
+        { label: 'Thư viện số UTH', path: '/digital-library', icon: <FileText className="w-4 h-4 text-[#008B8B]" /> },
+        { label: 'Lịch sử đọc số & Tiến độ', path: '/digital-library/my-history', icon: <History className="w-4 h-4 text-emerald-600" /> },
+      ],
+    },
+    {
       title: 'Thông tin & Dịch vụ',
       items: [
-        { label: 'Tra cứu danh mục sách (OPAC)', path: '/search', icon: <Search className="w-4 h-4 text-blue-600" /> },
+        { label: 'Tra cứu danh mục sách', path: '/search', icon: <Search className="w-4 h-4 text-blue-600" /> },
         { label: 'Đề xuất mua sách mới', path: '/suggestions', icon: <Lightbulb className="w-4 h-4 text-purple-600" /> },
         { label: 'Hộp thư thông báo', path: '/notifications', icon: <Bell className="w-4 h-4 text-rose-500" /> },
       ],
@@ -263,6 +278,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
       items: [
         { label: 'Quản lý Đầu sách', path: '/admin/books', icon: <BookOpen className="w-4 h-4 text-blue-600" /> },
         { label: 'Quản lý Bản sao & Mã vạch', path: '/admin/copies', icon: <Layers className="w-4 h-4 text-indigo-600" /> },
+        { label: 'Quản lý Thư viện số UTH', path: '/admin/digital-library', icon: <FileText className="w-4 h-4 text-[#008B8B]" /> },
         { label: 'Duyệt Đề xuất mua sách', path: '/admin/suggestions', icon: <Lightbulb className="w-4 h-4 text-purple-600" /> },
       ],
     },
@@ -286,10 +302,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
 
   const ADMIN_ONLY_PATHS = [
     '/admin/dashboard',
-    '/admin/suggestions',
     '/admin/settings',
-    '/admin/audit',
-    '/admin/reports',
   ];
 
   const currentGroups = isStaff
@@ -297,8 +310,14 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
       ? adminGroups
           .map((g) => ({
             ...g,
-            title: g.title === 'Hệ thống & Báo cáo' ? 'Báo cáo & Thống kê' : g.title,
-            items: g.items.filter((item) => !ADMIN_ONLY_PATHS.includes(item.path)),
+            title: g.title === 'Hệ thống & Báo cáo' ? 'Báo cáo & Thao tác' : g.title,
+            items: g.items
+              .filter((item) => !ADMIN_ONLY_PATHS.includes(item.path))
+              .map((item) =>
+                item.path === '/admin/audit'
+                  ? { ...item, label: 'Nhật ký Thao tác của Tôi' }
+                  : item
+              ),
           }))
           .filter((g) => g.items.length > 0)
       : adminGroups

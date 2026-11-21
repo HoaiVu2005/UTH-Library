@@ -48,6 +48,7 @@ export interface StudentRosterItem {
   is_card_issued: boolean;
   card_code?: string;
   user_id?: number;
+  avatar?: string;
   created_at: string;
 }
 
@@ -62,6 +63,7 @@ interface StudentRosterTabProps {
   onOpenImportModal: () => void;
   onIssueCard: (studentCode?: string) => void;
   onViewPatron: (searchQuery: string) => void;
+  refreshKey?: number;
 }
 
 export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
@@ -69,6 +71,7 @@ export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
   onOpenImportModal,
   onIssueCard,
   onViewPatron,
+  refreshKey,
 }) => {
   const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [summary, setSummary] = useState<RosterSummary>({
@@ -123,7 +126,13 @@ export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
 
   useEffect(() => {
     fetchStudents();
-  }, [page, pageSize, appliedSearch, cardFilter, statusFilter]);
+  }, [page, pageSize, appliedSearch, cardFilter, statusFilter, refreshKey]);
+
+  useEffect(() => {
+    if (refreshKey !== undefined && refreshKey > 0) {
+      setPage(1);
+    }
+  }, [refreshKey]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +184,7 @@ export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
       'Trạng thái học tập',
       'Trạng thái thẻ',
       'Mã thẻ thư viện',
+      'Ảnh thẻ (Avatar)',
       'Ngày đồng bộ',
     ];
 
@@ -190,6 +200,7 @@ export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
       `"${s.status_display || s.status}"`,
       `"${s.is_card_issued ? 'Đã có thẻ' : 'Chưa có thẻ'}"`,
       `"${s.card_code || ''}"`,
+      `"${s.avatar || ''}"`,
       `"${formatDateVN(s.created_at)}"`,
     ]);
 
@@ -443,17 +454,35 @@ export const StudentRosterTab: React.FC<StudentRosterTabProps> = ({
                       </span>
                     </TableCell>
 
-                    {/* Họ tên + Contact */}
-                    <TableCell className="py-3.5 px-4">
-                      <div className="font-semibold text-gray-900">{student.full_name}</div>
-                      <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
-                        {student.email && <span>{student.email}</span>}
-                        {student.phone && (
-                          <>
-                            <span>•</span>
-                            <span>{student.phone}</span>
-                          </>
-                        )}
+                    {/* Họ tên + Avatar + Contact */}
+                    <TableCell className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 bg-teal-50 text-[#008B8B] flex items-center justify-center shrink-0 shadow-2xs font-bold text-xs select-none relative">
+                          {student.avatar ? (
+                            <img
+                              src={student.avatar}
+                              alt={student.full_name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover relative z-10"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : null}
+                          <span className="select-none absolute inset-0 flex items-center justify-center z-0">{student.full_name?.charAt(0) || 'SV'}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-gray-900 truncate">{student.full_name}</div>
+                          <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5 truncate">
+                            {student.email && <span>{student.email}</span>}
+                            {student.phone && (
+                              <>
+                                <span>•</span>
+                                <span>{student.phone}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
 

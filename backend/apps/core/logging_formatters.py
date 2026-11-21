@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 EMAIL_REGEX = re.compile(r'([a-zA-Z0-9_.+-])[a-zA-Z0-9_.+-]*@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
 PHONE_REGEX = re.compile(r'(\d{3})\d{4}(\d{3,4})')
@@ -18,7 +18,7 @@ def mask_sensitive_data(text: str) -> str:
 class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_record = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'level': record.levelname,
             'name': record.name,
             'message': mask_sensitive_data(record.getMessage()),
