@@ -37,6 +37,8 @@ import {
   Trash2,
   PanelLeft,
   PanelLeftClose,
+  PanelRight,
+  PanelRightClose,
   Compass,
   Lightbulb,
   GripHorizontal,
@@ -312,6 +314,9 @@ export const AIChatWidget: React.FC = () => {
   // Quản lý tab thống kê bên phải (mở rộng đầy đủ danh mục dữ liệu bao gồm Giảng viên)
   const [sideTab, setSideTab] = useState<'overdue' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview'>('overdue');
   const [latestAdminStats, setLatestAdminStats] = useState<AdminStats | null>(null);
+  // Bảng điều phối nghiệp vụ bên phải cho thủ thư: mặc định ẩn để khung chat rộng rãi, thoáng đãng,
+  // khi hỏi nghiệp vụ mới tự động mở lên hoặc chủ động bật tắt qua nút header.
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -777,8 +782,12 @@ export const AIChatWidget: React.FC = () => {
       }
       if (data.suggested_tab) {
         setSideTab(data.suggested_tab);
+        if (isAdmin) setIsAdminPanelOpen(true);
       } else if (overdueList.length > 0) {
         setSideTab('overdue');
+        if (isAdmin) setIsAdminPanelOpen(true);
+      } else if (data.admin_stats && isAdmin) {
+        setIsAdminPanelOpen(true);
       }
 
       const aiReply: Message = {
@@ -1686,6 +1695,26 @@ export const AIChatWidget: React.FC = () => {
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                     </button>
+                    {isFullscreen && isAdmin && (
+                      <button
+                        onClick={() => setIsAdminPanelOpen(!isAdminPanelOpen)}
+                        className={`p-1 rounded-lg transition-all active:scale-90 flex items-center gap-1 ${
+                          isAdminPanelOpen
+                            ? 'bg-white/25 text-white'
+                            : 'hover:bg-white/15 text-teal-100 hover:text-white'
+                        }`}
+                        title={isAdminPanelOpen ? 'Thu gọn bảng điều phối' : 'Mở bảng điều phối nghiệp vụ'}
+                      >
+                        {isAdminPanelOpen ? (
+                          <PanelRightClose className="w-3.5 h-3.5" />
+                        ) : (
+                          <PanelRight className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden xl:inline text-[11px] font-semibold">
+                          {isAdminPanelOpen ? 'Thu gọn bảng' : 'Bảng nghiệp vụ'}
+                        </span>
+                      </button>
+                    )}
                     <button
                       onClick={() => setIsFullscreen(!isFullscreen)}
                       className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-colors active:scale-90"
@@ -1793,9 +1822,9 @@ export const AIChatWidget: React.FC = () => {
 
                 {/* ── CỘT 2: VÙNG TRÒ CHUYỆN VÀ NHẬP LIỆU ── */}
                 <div
-                  className={`flex flex-col flex-1 h-full overflow-hidden ${
-                    isFullscreen && isAdmin
-                      ? 'md:max-w-[480px] lg:max-w-[560px] border-r border-gray-200'
+                  className={`flex flex-col flex-1 h-full overflow-hidden transition-all duration-300 ${
+                    isFullscreen && isAdmin && isAdminPanelOpen
+                      ? 'md:max-w-[480px] lg:max-w-[560px] xl:max-w-[620px] border-r border-gray-200'
                       : 'w-full'
                   }`}
                 >
@@ -2152,12 +2181,12 @@ export const AIChatWidget: React.FC = () => {
                   )}
                 </div>
 
-                {/* ── CỘT 2: BẢNG ĐIỀU PHỐI ĐA NĂNG CHO THỦ THƯ (FULLSCREEN MODE DÀNH RIÊNG CHO ADMIN) ── */}
-                {isFullscreen && isAdmin && (
-                  <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden">
+                {/* ── CỘT 3: BẢNG ĐIỀU PHỐI ĐA NĂNG CHO THỦ THƯ (FULLSCREEN MODE DÀNH RIÊNG CHO ADMIN) ── */}
+                {isFullscreen && isAdmin && isAdminPanelOpen && (
+                  <div className="flex-1 bg-slate-50 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 border-l border-gray-200">
                     {/* Header Tabs: Đầy đủ 8 Danh Mục Thống Kê */}
                     <div className="p-2.5 bg-white border-b border-gray-200 flex items-center justify-between gap-2 shrink-0 shadow-xs">
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
                         <button
                           onClick={() => setSideTab('overdue')}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
@@ -2290,15 +2319,24 @@ export const AIChatWidget: React.FC = () => {
                         </button>
                       </div>
 
-                      {sideTab === 'overdue' && latestOverdueStudents.length > 0 && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {sideTab === 'overdue' && latestOverdueStudents.length > 0 && (
+                          <button
+                            onClick={() => handleSendAllOverdue(latestOverdueStudents)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                          >
+                            <Bell className="w-3 h-3 fill-current" />
+                            <span>Nhắc tất cả</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleSendAllOverdue(latestOverdueStudents)}
-                          className="px-3 py-1.5 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white rounded-xl text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                          onClick={() => setIsAdminPanelOpen(false)}
+                          className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg transition-colors ml-0.5 shrink-0"
+                          title="Thu gọn bảng điều phối (để mở rộng khung chat)"
                         >
-                          <Bell className="w-3 h-3 fill-current" />
-                          <span>Nhắc tất cả</span>
+                          <PanelRightClose className="w-4 h-4" />
                         </button>
-                      )}
+                      </div>
                     </div>
 
                     {/* Nội dung render theo tab đang chọn */}
