@@ -18,6 +18,7 @@ from apps.assistant.AI import (
     record_conversation_turn,
     remember_explicit_user_facts,
     get_fine_workflow_action,
+    get_reservation_workflow_action,
 )
 from apps.assistant.models import AssistantConversation, AssistantMemoryEntry
 
@@ -92,6 +93,16 @@ class AIChatView(APIView):
             if is_book_query_intent(message) and not workflow
             else []
         )
+
+        # Nếu không phải quy trình tiền phạt, kiểm tra quy trình đặt trước / giữ chỗ
+        if not workflow:
+            workflow = get_reservation_workflow_action(
+                message,
+                is_admin=is_admin,
+                patron_context=patron_context,
+                relevant_books=relevant_books,
+            )
+
         memory_context = build_long_term_memory_context(current_user, message)
 
         # 3. Nghiệp vụ có đích thao tác rõ ràng dùng phản hồi tất định; các câu hỏi

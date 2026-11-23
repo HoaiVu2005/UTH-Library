@@ -5,7 +5,7 @@ Implementation is split by responsibility so callers can keep importing from
 """
 
 from .fallback import generate_smart_fallback
-from .actions import get_fine_workflow_action
+from .actions import get_fine_workflow_action, get_reservation_workflow_action
 from .gemini import call_gemini_api
 from .books import query_relevant_books
 from .memory import (
@@ -31,6 +31,7 @@ __all__ = [
     'compact_simple_reply',
     'generate_smart_fallback',
     'get_fine_workflow_action',
+    'get_reservation_workflow_action',
     'get_admin_library_statistics',
     'get_ai_role_profile',
     'get_conversation_tone',

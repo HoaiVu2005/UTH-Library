@@ -353,6 +353,65 @@ export const AIChatWidget: React.FC = () => {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [showGreetingBubble, setShowGreetingBubble] = useState(true);
 
+  // Trạng thái xử lý đặt trước sách 1-click
+  const [isReservingBookId, setIsReservingBookId] = useState<number | null>(null);
+  const [reservedBookIds, setReservedBookIds] = useState<Set<number>>(new Set());
+
+  const handleConfirmReservation = async (bookId: number, bookTitle?: string, isReady?: boolean) => {
+    if (!user) {
+      navigate('/login');
+      setIsFullscreen(false);
+      setIsOpen(false);
+      return;
+    }
+    if (isReservingBookId || reservedBookIds.has(bookId)) return;
+
+    setIsReservingBookId(bookId);
+    try {
+      const res = await api.post('/reservations', { book_id: bookId });
+      setReservedBookIds((prev) => new Set(prev).add(bookId));
+
+      const isReadyResult = res.data?.status === 'ready' || isReady;
+      const queuePos = res.data?.queue_position;
+      const resId = res.data?.id;
+
+      const confirmText = isReadyResult
+        ? `🎉 **Giữ chỗ thành công!**\n\nCuốn **${bookTitle || 'sách'}** đã được giữ riêng cho bạn tại Quầy lưu thông trong **3 ngày**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Bạn có thể ghé thư viện nhận sách nhé!`
+        : `🎉 **Đặt trước vào hàng chờ thành công!**\n\nBạn đang ở vị trí **#${queuePos || 1}** trong hàng chờ cuốn **${bookTitle || 'sách'}**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!`;
+
+      const confirmMsg: Message = {
+        id: `res-confirm-${Date.now()}`,
+        sender: 'ai',
+        text: confirmText,
+        action: {
+          label: 'Xem danh sách đặt trước của tôi',
+          path: '/profile',
+        },
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setSessions((prev) =>
+        prev.map((s) => (s.id === currentSessionId ? { ...s, messages: [...s.messages, confirmMsg] } : s))
+      );
+    } catch (err: any) {
+      const errorDetail =
+        err.response?.data?.detail ||
+        err.response?.data?.error ||
+        'Không thể đặt trước sách lúc này. Vui lòng kiểm tra lại điều kiện thẻ hoặc thử lại sau.';
+      const errorMsg: Message = {
+        id: `res-err-${Date.now()}`,
+        sender: 'ai',
+        text: `⚠️ **Không thể đặt trước sách**\n\n${errorDetail}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setSessions((prev) =>
+        prev.map((s) => (s.id === currentSessionId ? { ...s, messages: [...s.messages, errorMsg] } : s))
+      );
+    } finally {
+      setIsReservingBookId(null);
+    }
+  };
+
   // Cho phép người dùng kéo thả popup AI di chuyển trên màn hình
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -1818,19 +1877,80 @@ export const AIChatWidget: React.FC = () => {
                               )}
 
                               {msg.sender === 'ai' && msg.action && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigate(msg.action!.path);
-                                    setIsFullscreen(false);
-                                    setIsOpen(false);
-                                  }}
-                                  className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#006F70] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#005B5C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
-                                >
-                                  <DollarSign className="h-4 w-4" />
-                                  <span>{msg.action.label}</span>
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </button>
+                                msg.action.type === 'reservation' && msg.action.book_id ? (
+                                  <div className="mt-3.5 p-3 rounded-2xl bg-white/95 border-2 border-teal-200/90 shadow-md flex flex-col gap-2.5">
+                                    <div className="flex items-center justify-between text-xs font-semibold text-teal-950">
+                                      <span className="flex items-center gap-1.5">
+                                        {msg.action.is_ready ? (
+                                          <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                                        ) : (
+                                          <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                                        )}
+                                        <span className="font-bold">
+                                          {msg.action.is_ready ? '⚡ Sách sẵn sàng giữ chỗ tại quầy' : '⏳ Sách đang chờ vào hàng chờ'}
+                                        </span>
+                                      </span>
+                                      <span className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full font-bold border border-teal-200/60">
+                                        Mã sách #{msg.action.book_id}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={isReservingBookId === msg.action.book_id || reservedBookIds.has(msg.action.book_id)}
+                                      onClick={() =>
+                                        handleConfirmReservation(
+                                          msg.action!.book_id!,
+                                          msg.action!.book_title,
+                                          msg.action!.is_ready
+                                        )
+                                      }
+                                      className={`w-full py-2.5 px-4 rounded-xl text-xs sm:text-[13px] font-bold shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 ${
+                                        reservedBookIds.has(msg.action.book_id)
+                                          ? 'bg-emerald-600 text-white cursor-default'
+                                          : isReservingBookId === msg.action.book_id
+                                          ? 'bg-teal-700 text-white cursor-wait opacity-90'
+                                          : msg.action.is_ready
+                                          ? 'bg-gradient-to-r from-[#006F70] via-[#008B8B] to-[#00A896] hover:brightness-105 text-white hover:shadow-lg'
+                                          : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:brightness-105 text-white hover:shadow-lg'
+                                      }`}
+                                    >
+                                      {reservedBookIds.has(msg.action.book_id) ? (
+                                        <>
+                                          <Check className="w-4 h-4 text-emerald-200" />
+                                          <span>Đã đặt sách thành công!</span>
+                                        </>
+                                      ) : isReservingBookId === msg.action.book_id ? (
+                                        <>
+                                          <RefreshCw className="w-4 h-4 animate-spin" />
+                                          <span>Đang xử lý đặt sách...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          {msg.action.is_ready ? (
+                                            <Sparkles className="w-4 h-4" />
+                                          ) : (
+                                            <RotateCcw className="w-4 h-4" />
+                                          )}
+                                          <span>{msg.action.label}</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigate(msg.action!.path);
+                                      setIsFullscreen(false);
+                                      setIsOpen(false);
+                                    }}
+                                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#006F70] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#005B5C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                    <span>{msg.action.label}</span>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  </button>
+                                )
                               )}
 
                               {/* Thẻ sinh viên mượn quá hạn (chỉ hiện trong chat nếu không phải Fullscreen) */}
@@ -1902,9 +2022,51 @@ export const AIChatWidget: React.FC = () => {
                                               </span>
                                             </div>
                                           </div>
-                                          <div className="flex items-center gap-1 shrink-0 text-teal-800 group-hover:text-teal-950 font-semibold text-xs">
-                                            <span className="hidden sm:inline">Chi tiết</span>
-                                            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <button
+                                              type="button"
+                                              disabled={isReservingBookId === b.id || reservedBookIds.has(b.id)}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleConfirmReservation(b.id, b.title, b.available_copies > 0);
+                                              }}
+                                              className={`px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1 shadow-2xs active:scale-95 ${
+                                                reservedBookIds.has(b.id)
+                                                  ? 'bg-emerald-600 text-white cursor-default'
+                                                  : isReservingBookId === b.id
+                                                  ? 'bg-teal-700 text-white opacity-80 cursor-wait'
+                                                  : b.available_copies > 0
+                                                  ? 'bg-[#008B8B] hover:bg-[#006F70] text-white hover:shadow-sm'
+                                                  : 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-sm'
+                                              }`}
+                                              title={b.available_copies > 0 ? 'Giữ chỗ ngay tại quầy trong 3 ngày' : 'Đặt trước vào hàng chờ'}
+                                            >
+                                              {reservedBookIds.has(b.id) ? (
+                                                <>
+                                                  <Check className="w-3.5 h-3.5 text-emerald-200" />
+                                                  <span>Đã đặt</span>
+                                                </>
+                                              ) : isReservingBookId === b.id ? (
+                                                <>
+                                                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                  <span>Đang đặt...</span>
+                                                </>
+                                              ) : b.available_copies > 0 ? (
+                                                <>
+                                                  <Sparkles className="w-3.5 h-3.5" />
+                                                  <span>Giữ chỗ</span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <RotateCcw className="w-3.5 h-3.5" />
+                                                  <span>Đặt trước</span>
+                                                </>
+                                              )}
+                                            </button>
+                                            <div className="flex items-center gap-0.5 text-teal-800 group-hover:text-teal-950 font-semibold text-xs">
+                                              <span className="hidden sm:inline">Chi tiết</span>
+                                              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                            </div>
                                           </div>
                                         </div>
                                       );

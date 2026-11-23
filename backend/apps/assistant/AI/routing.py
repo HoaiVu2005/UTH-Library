@@ -3,7 +3,7 @@
 BOOK_INTENT_KEYWORDS = [
     "sách", "tìm", "kiếm", "tài liệu", "giáo trình", "đọc", "mượn", "tham khảo", "đầu sách",
     "cuốn", "tác giả", "chuyên ngành", "khoa học", "kỹ thuật", "lập trình", "toán học", "môn toán",
-    "kinh tế", "cầu đường", "logistics", "cntt", "it", "isbn", "kệ"
+    "kinh tế", "cầu đường", "logistics", "cntt", "it", "isbn", "kệ", "đặt trước", "giữ chỗ", "đặt mượn", "đặt sách"
 ]
 
 ADMIN_STATS_KEYWORDS = [

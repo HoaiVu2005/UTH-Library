@@ -10604,6 +10604,25 @@
     "family_id": "7c388a08-7686-4374-9a5e-2dafad17d928",
     "expires_at": "2026-12-23T02:47:20.754Z",
     "idle_expires_at": "2026-11-25T02:47:20.754Z",
+    "last_used_at": "2026-11-23T04:47:53.363Z",
+    "revoked_at": "2026-11-23T04:47:53.363Z",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "ip": "127.0.0.1"
+  }
+},
+{
+  "model": "accounts.refreshtoken",
+  "pk": 614,
+  "fields": {
+    "created_at": "2026-11-23T04:47:53.370Z",
+    "updated_at": "2026-11-23T04:47:53.370Z",
+    "user": [
+      "123456"
+    ],
+    "token_hash": "96fb02568d6e4b18b26ffe6285bd618b7766036915e0828ce3026f248622492d",
+    "family_id": "7c388a08-7686-4374-9a5e-2dafad17d928",
+    "expires_at": "2026-12-23T04:47:53.370Z",
+    "idle_expires_at": "2026-11-25T04:47:53.370Z",
     "last_used_at": null,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
@@ -26285,6 +26304,48 @@
   }
 },
 {
+  "model": "assistant.assistantconversation",
+  "pk": 27,
+  "fields": {
+    "created_at": "2026-11-23T03:56:28.629Z",
+    "updated_at": "2026-11-23T04:08:55.833Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795406159663",
+    "title": "tôi có đang có sách nào quá hạn không",
+    "last_message_at": "2026-11-23T04:08:55.833Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 28,
+  "fields": {
+    "created_at": "2026-11-23T04:45:54.854Z",
+    "updated_at": "2026-11-23T04:45:54.862Z",
+    "user": [
+      "sv001"
+    ],
+    "client_session_id": "test-session",
+    "title": "tôi muốn đặt trước sách Python",
+    "last_message_at": "2026-11-23T04:45:54.862Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 29,
+  "fields": {
+    "created_at": "2026-11-23T04:46:48.597Z",
+    "updated_at": "2026-11-23T04:48:33.646Z",
+    "user": [
+      "sv009"
+    ],
+    "client_session_id": "test-session",
+    "title": "tôi muốn đặt trước sách Python",
+    "last_message_at": "2026-11-23T04:48:33.646Z"
+  }
+},
+{
   "model": "assistant.assistantmessage",
   "pk": 1,
   "fields": {
@@ -26882,8 +26943,8 @@
   "model": "assistant.assistantmessage",
   "pk": 55,
   "fields": {
-    "created_at": "2026-11-17T14:56:12.000Z",
-    "updated_at": "2026-11-17T14:56:12.000Z",
+    "created_at": "2026-11-17T14:56:12Z",
+    "updated_at": "2026-11-17T14:56:12Z",
     "conversation": 14,
     "role": "user",
     "content": "halo"
@@ -26893,8 +26954,8 @@
   "model": "assistant.assistantmessage",
   "pk": 56,
   "fields": {
-    "created_at": "2026-11-17T14:56:12.000Z",
-    "updated_at": "2026-11-17T14:56:12.000Z",
+    "created_at": "2026-11-17T14:56:12Z",
+    "updated_at": "2026-11-17T14:56:12Z",
     "conversation": 14,
     "role": "assistant",
     "content": "Alo 😄 UTHie đây! Bạn muốn hỏi gì hay tám chuyện một chút?"
@@ -27646,6 +27707,160 @@
     "conversation": 26,
     "role": "assistant",
     "content": "Để mượn sách tại Thư viện UTH, bạn thực hiện theo 4 bước đơn giản sau nhé:\n\n**Bước 1: Tra cứu thông tin**\nBạn sử dụng thanh tìm kiếm trên Cổng Thư viện số để tìm tên sách. Hãy chú ý xem sách đang ở **Cơ sở** nào (Quận Bình Thạnh, Thủ Đức hay Quận 12) và ghi lại **Mã xếp giá** (ví dụ: 621.3/T105) để tìm sách trên kệ nhanh hơn.\n\n**Bước 2: Lấy sách tại kho**\nBạn đến đúng cơ sở có sách, vào kho và tìm sách theo mã xếp giá đã ghi. Nếu gặp khó khăn, bạn cứ nhờ các anh chị thủ thư hỗ trợ tìm giúp nhé.\n\n**Bước 3: Làm thủ tục tại quầy**\nSau khi có sách, bạn mang sách cùng **Thẻ sinh viên** đến Quầy lưu thông. Thủ thư sẽ quét mã vạch để ghi nhận lượt mượn vào tài khoản của bạn.\n\n**Bước 4: Kiểm tra hạn trả**\n*   **Số lượng:** Bạn được mượn tối đa 5 cuốn.\n*   **Thời gian:** 14 ngày/lượt.\n*   **Gia hạn:** Bạn có thể tự gia hạn online thêm 7 ngày tại mục \"Sách của tôi\" (thực hiện trước khi sách bị quá hạn).\n\nHiện tại bạn đang mượn 1 cuốn và còn hạn mức mượn thêm 4 cuốn nữa đó!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 125,
+  "fields": {
+    "created_at": "2026-11-23T03:56:28.630Z",
+    "updated_at": "2026-11-23T03:56:28.630Z",
+    "conversation": 27,
+    "role": "user",
+    "content": "tôi có đang có sách nào quá hạn không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 126,
+  "fields": {
+    "created_at": "2026-11-23T03:56:28.630Z",
+    "updated_at": "2026-11-23T03:56:28.630Z",
+    "conversation": 27,
+    "role": "assistant",
+    "content": "Hiện tại bạn **không có cuốn sách nào quá hạn** cả.\n\nTheo dữ liệu hệ thống, bạn đang mượn **1 cuốn** và tình trạng vẫn rất ổn định:\n\n*   **Tên sách:** *Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học*\n*   **Hạn trả:** 08/12/2026\n*   **Trạng thái:** Bạn còn **15 ngày** nữa mới đến hạn trả.\n\nLưu ý là cuốn sách này bạn đã thực hiện gia hạn trực tuyến (1/1 lần) rồi, nên bạn hãy chú ý trả sách đúng ngày 08/12/2026 tại quầy lưu thông để tránh phát sinh phí phạt (2.000 VNĐ/ngày) nhé."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 127,
+  "fields": {
+    "created_at": "2026-11-23T04:05:44.496Z",
+    "updated_at": "2026-11-23T04:05:44.496Z",
+    "conversation": 27,
+    "role": "user",
+    "content": "ở gần cơ sở 3 có quán cơm tấm nào không mày đói quá"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 128,
+  "fields": {
+    "created_at": "2026-11-23T04:05:44.496Z",
+    "updated_at": "2026-11-23T04:05:44.496Z",
+    "conversation": 27,
+    "role": "assistant",
+    "content": "Ở gần Cơ sở 3 (số 70 Tô Ký, Quận 12), khu vực này là \"thiên đường\" đồ ăn giá sinh viên nên bạn yên tâm là không thiếu cơm tấm đâu. Dưới đây là vài gợi ý quanh cổng trường cho bạn:\n\n1.  **Cơm tấm ngay cổng trường (Đường Tô Ký):** Đi dọc phía cổng trường hướng về phía cầu vượt Quang Trung hoặc ngược lại về phía ngã tư Tô Ký - Nguyễn Ảnh Thủ, có rất nhiều quán cơm tấm bình dân. Bạn cứ thấy quán nào đông sinh viên ngồi là tấp vào, giá thường dao động từ 25k - 35k/đĩa.\n2.  **Cơm Tấm Cây Khế:** Nằm trên đường Tô Ký (đoạn gần chung cư Tô Ký). Quán này khá nổi tiếng ở khu vực này, miếng sườn to và ướp khá đậm đà.\n3.  **Cơm Tấm Phúc Lộc Thọ (Tô Ký):** Nếu bạn muốn ngồi máy lạnh cho mát và không gian sạch sẽ hơn thì có thể ghé chi nhánh Phúc Lộc Thọ trên đường Tô Ký. Chất lượng ở đây thì khá đồng nhất, tuy giá cao hơn một chút so với quán lề đường.\n4.  **Khu vực chợ Tân Chánh Hiệp:** Cách trường khoảng vài trăm mét, rẽ vào các con đường nhỏ quanh chợ có rất nhiều sạp cơm tấm \"bụi\" đúng chất sinh viên, rẻ và no lâu.\n\n**Lưu ý nhỏ:** Giờ trưa (tầm 11h - 12h30)"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 129,
+  "fields": {
+    "created_at": "2026-11-23T04:08:33.414Z",
+    "updated_at": "2026-11-23T04:08:33.414Z",
+    "conversation": 27,
+    "role": "user",
+    "content": "tôi học cntt đề xuất sách cho tôi"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 130,
+  "fields": {
+    "created_at": "2026-11-23T04:08:33.414Z",
+    "updated_at": "2026-11-23T04:08:33.414Z",
+    "conversation": 27,
+    "role": "assistant",
+    "content": "Chào phong, với chuyên ngành **Công nghệ thông tin** mà bạn đang theo học, việc nắm vững từ tư duy lập trình, cấu trúc hệ thống đến các công nghệ hiện đại là rất quan trọng.\n\nDựa trên kho tài liệu hiện có tại Thư viện UTH, mình đề xuất bạn nên mượn các cuốn sách \"gối đầu giường\" sau đây để hỗ trợ việc học:\n\n1.  **Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST** (Tác giả: Martin Fowler, Robert C. Martin): Cuốn này cực kỳ phù hợp nếu bạn muốn theo hướng Fullstack, kết hợp giữa Frontend hiện đại và Backend mạnh mẽ.\n2.  **Mạng Máy tính và Các Giao thức Truyền thông Hiện đại** (Tác giả: Andrew S. Tanenbaum, PGS.TS. Đinh Mạnh Tường): Đây là kiến thức nền tảng bắt buộc. Hiểu về mạng sẽ giúp bạn triển khai ứng dụng và bảo mật tốt hơn.\n3.  **Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có** (Tác giả: Martin Fowler): Cuốn sách này giúp bạn nâng cấp tư duy từ \"viết code chạy được\" thành \"viết code sạch và chuyên nghiệp\".\n4.  **Deep Learning và Thị giác Máy tính trong Giao thông Thông minh**: Đặc biệt hữu ích nếu bạn muốn làm đồ án tốt nghiệp liên quan đến thế mạnh của trường UTH (Giao thông vận tải) kết hợp với AI.\n\nBạn có thể nhấn vào các thẻ sách bên dưới để xem vị trí chính xác trên kệ tại Thư viện Trung tâm (Cơ sở 1) hoặc các cơ sở khác và bấm \"Đặt mượn\" ngay nhé. Hiện tại các sách này đều đang **còn sẵn** trong kho."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 131,
+  "fields": {
+    "created_at": "2026-11-23T04:08:55.832Z",
+    "updated_at": "2026-11-23T04:08:55.832Z",
+    "conversation": 27,
+    "role": "user",
+    "content": "muốn đặt trước cuốn lập trình ứng dụng"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 132,
+  "fields": {
+    "created_at": "2026-11-23T04:08:55.832Z",
+    "updated_at": "2026-11-23T04:08:55.832Z",
+    "conversation": 27,
+    "role": "assistant",
+    "content": "Để đặt trước cuốn **\"Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST\"**, bạn thực hiện theo các bước sau ngay trên hệ thống này:\n\n1.  **Nhấp vào thẻ sách** \"Lập trình Ứng dụng Web Toàn diện...\" xuất hiện ở phía dưới hoặc trong kết quả tra cứu.\n2.  Chọn nút **\"Đặt mượn\"** (Reservation).\n3.  Hệ thống sẽ ghi nhận yêu cầu của bạn. Khi sách đã sẵn sàng tại quầy, bạn sẽ nhận được thông báo.\n\n**Lưu ý cho bạn:**\n*   Thư viện sẽ giữ chỗ cho bạn trong vòng **48 giờ** kể từ khi có thông báo sách sẵn sàng. Sau thời gian này, yêu cầu đặt chỗ sẽ tự động hủy để nhường cho bạn đọc khác.\n*   Hiện tại cuốn này đang **còn sẵn 5/5 bản** trong kho, nên sau khi bấm đặt trước, bạn có thể tranh thủ ghé Thư viện để mượn ngay.\n\nNếu cần mình hỗ trợ kiểm tra vị trí kệ chính xác của cuốn này tại cơ sở nào, cứ bảo mình nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 133,
+  "fields": {
+    "created_at": "2026-11-23T04:45:54.855Z",
+    "updated_at": "2026-11-23T04:45:54.855Z",
+    "conversation": 28,
+    "role": "user",
+    "content": "tôi muốn đặt trước sách Python"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 134,
+  "fields": {
+    "created_at": "2026-11-23T04:45:54.855Z",
+    "updated_at": "2026-11-23T04:45:54.855Z",
+    "conversation": 28,
+    "role": "assistant",
+    "content": "Bạn đang có **1 cuốn sách quá hạn** chưa trả. Theo quy chế Thư viện UTH, bạn cần hoàn trả sách quá hạn trước khi có thể đặt trước hoặc giữ chỗ sách mới."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 135,
+  "fields": {
+    "created_at": "2026-11-23T04:46:48.598Z",
+    "updated_at": "2026-11-23T04:46:48.598Z",
+    "conversation": 29,
+    "role": "user",
+    "content": "tôi muốn đặt trước sách Python"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 136,
+  "fields": {
+    "created_at": "2026-11-23T04:46:48.598Z",
+    "updated_at": "2026-11-23T04:46:48.598Z",
+    "conversation": 29,
+    "role": "assistant",
+    "content": "Để UTHie giúp bạn đặt trước, bạn hãy cho mình biết tên đầu sách bạn muốn mượn nhé (ví dụ: *\"Đặt trước sách Giải tích 1\"* hoặc *\"Giữ chỗ sách Lập trình Python\"*), hoặc mở kho sách để chọn cuốn ưng ý."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 137,
+  "fields": {
+    "created_at": "2026-11-23T04:48:33.646Z",
+    "updated_at": "2026-11-23T04:48:33.646Z",
+    "conversation": 29,
+    "role": "user",
+    "content": "tôi muốn đặt trước sách Githup"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 138,
+  "fields": {
+    "created_at": "2026-11-23T04:48:33.646Z",
+    "updated_at": "2026-11-23T04:48:33.646Z",
+    "conversation": 29,
+    "role": "assistant",
+    "content": "Thư viện đang có sẵn **5 bản** cho đầu sách **\"Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST\"**.\n\nBạn chỉ cần nhấn nút xác nhận bên dưới, UTHie sẽ **giữ chỗ ngay** tại quầy cho bạn trong 3 ngày!"
   }
 }
 ]

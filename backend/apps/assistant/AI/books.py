@@ -123,7 +123,7 @@ def query_relevant_books(query_text: str, patron_dept: str = None, limit: int = 
                 qs = qs.filter(Q(title__icontains=q_lower) | Q(category__name__icontains=q_lower))
         else:
             words = [w.strip() for w in q_lower.split() if len(w.strip()) > 1]
-            stop_words = {"tìm", "cho", "mình", "với", "cuốn", "những", "sách", "tài", "liệu", "về", "các", "có"}
+            stop_words = {"tìm", "cho", "mình", "với", "cuốn", "những", "sách", "tài", "liệu", "về", "các", "có", "đặt", "trước", "giữ", "chỗ", "mượn", "giúp", "muốn"}
             search_words = [w for w in words if w not in stop_words] or words
             q_obj = Q()
             for w in search_words:

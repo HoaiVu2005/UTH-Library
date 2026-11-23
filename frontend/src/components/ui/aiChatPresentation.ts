@@ -3,6 +3,10 @@ export type ChatRole = 'student' | 'lecturer' | 'librarian' | 'admin';
 export type ChatAction = {
   label: string;
   path: string;
+  type?: 'link' | 'reservation';
+  book_id?: number;
+  book_title?: string;
+  is_ready?: boolean;
 };
 
 export const AI_CHAT_REQUEST_CONFIG = {
@@ -98,10 +102,32 @@ export function getRecentChatHistory<T>(messages: T[], limit = 10): T[] {
 
 export function normalizeChatAction(value: unknown): ChatAction | null {
   if (!value || typeof value !== 'object') return null;
-  const { label, path } = value as Partial<ChatAction>;
-  if (typeof label !== 'string' || !label.trim()) return null;
-  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return null;
-  return { label: label.trim(), path };
+  const raw = value as Record<string, unknown>;
+  const label = typeof raw.label === 'string' ? raw.label.trim() : '';
+  if (!label) return null;
+
+  const path = typeof raw.path === 'string' && raw.path.startsWith('/') && !raw.path.startsWith('//')
+    ? raw.path
+    : undefined;
+
+  const actionType = raw.type === 'reservation' ? 'reservation' : 'link';
+  const bookId = typeof raw.book_id === 'number' ? raw.book_id : undefined;
+  const bookTitle = typeof raw.book_title === 'string' ? raw.book_title : undefined;
+  const isReady = typeof raw.is_ready === 'boolean' ? raw.is_ready : undefined;
+
+  if (actionType === 'reservation') {
+    return {
+      label,
+      path: path || (bookId ? `/books/${bookId}` : '/books'),
+      type: 'reservation',
+      book_id: bookId,
+      book_title: bookTitle,
+      is_ready: isReady,
+    };
+  }
+
+  if (!path) return null;
+  return { label, path };
 }
 
 export function shouldShowBookSuggestions(role: ChatRole): boolean {
