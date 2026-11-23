@@ -84,8 +84,8 @@ export function getHistorySessionTone(isActive: boolean): string {
 
 export function getChatCanvasTone(): ChatCanvasTone {
   return {
-    backgroundLayerClass: 'absolute inset-0 bg-cover bg-center opacity-70',
-    tintLayerClass: 'absolute inset-0 bg-gradient-to-br from-[#063F46]/78 via-[#007C7D]/58 to-[#032F36]/82',
+    backgroundLayerClass: 'absolute inset-0 bg-cover bg-center opacity-90',
+    tintLayerClass: 'absolute inset-0 bg-gradient-to-br from-[#063F46]/10 via-transparent to-[#032F36]/15 pointer-events-none',
     assistantMessageClass: 'bg-[#E6F4F3] text-[#183B3F] border border-teal-200 shadow-[0_8px_20px_rgba(2,47,54,0.2)]',
     welcomeSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-[0_10px_24px_rgba(2,47,54,0.2)]',
     loadingSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-sm',

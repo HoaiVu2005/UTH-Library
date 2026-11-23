@@ -39,6 +39,7 @@ import {
   PanelLeftClose,
   Compass,
   Lightbulb,
+  GripHorizontal,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
@@ -348,8 +349,185 @@ export const AIChatWidget: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>(getInitialSessions);
   const [currentSessionId, setCurrentSessionId] = useState<string>(() => sessions[0]?.id || `session-${Date.now()}`);
   const activeStorageKeyRef = useRef(storageKey);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [showGreetingBubble, setShowGreetingBubble] = useState(true);
+
+  // Cho phép người dùng kéo thả popup AI di chuyển trên màn hình
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const dragStartRef = useRef<{ startX: number; startY: number; initOffsetX: number; initOffsetY: number }>({
+    startX: 0,
+    startY: 0,
+    initOffsetX: 0,
+    initOffsetY: 0,
+  });
+
+  const handleHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isFullscreen) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button, a, input, textarea, select')) return;
+
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initOffsetX: dragOffset.x,
+      initOffsetY: dragOffset.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleHeaderPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || isFullscreen) return;
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
+    let nextX = dragStartRef.current.initOffsetX + dx;
+    let nextY = dragStartRef.current.initOffsetY + dy;
+
+    if (chatWindowRef.current) {
+      const rect = chatWindowRef.current.getBoundingClientRect();
+      const baseLeft = rect.left - dragOffset.x;
+      const baseTop = rect.top - dragOffset.y;
+      const minX = 12 - baseLeft;
+      const maxX = window.innerWidth - 12 - (baseLeft + rect.width);
+      const minY = 12 - baseTop;
+      const maxY = window.innerHeight - 12 - (baseTop + rect.height);
+      nextX = Math.min(Math.max(nextX, minX), maxX);
+      nextY = Math.min(Math.max(nextY, minY), maxY);
+    }
+
+    setDragOffset({ x: nextX, y: nextY });
+  };
+
+  const handleHeaderPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    setIsDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  // Cho phép người dùng kéo thả avatar UTHie di chuyển trên màn hình khi thu nhỏ/đóng
+  const [avatarOffset, setAvatarOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isAvatarDragging, setIsAvatarDragging] = useState(false);
+  const isAvatarDraggingRef = useRef(false);
+  const hasAvatarMovedRef = useRef(false);
+  const avatarDragStartRef = useRef<{ startX: number; startY: number; initOffsetX: number; initOffsetY: number }>({
+    startX: 0,
+    startY: 0,
+    initOffsetX: 0,
+    initOffsetY: 0,
+  });
+
+  const handleAvatarPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    isAvatarDraggingRef.current = true;
+    hasAvatarMovedRef.current = false;
+    avatarDragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initOffsetX: avatarOffset.x,
+      initOffsetY: avatarOffset.y,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleAvatarPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!isAvatarDraggingRef.current) return;
+    const dx = e.clientX - avatarDragStartRef.current.startX;
+    const dy = e.clientY - avatarDragStartRef.current.startY;
+
+    if (!hasAvatarMovedRef.current) {
+      if (Math.hypot(dx, dy) > 5) {
+        hasAvatarMovedRef.current = true;
+        setIsAvatarDragging(true);
+      } else {
+        return;
+      }
+    }
+
+    const rawX = avatarDragStartRef.current.initOffsetX + dx;
+    const rawY = avatarDragStartRef.current.initOffsetY + dy;
+
+    // Avatar có kích thước ~68px, nằm trong container `bottom-6 right-6` (cách lề phải và đáy 24px)
+    const baseLeft = window.innerWidth - 92;
+    const baseTop = window.innerHeight - 92;
+    const minX = 12 - baseLeft;
+    const maxX = 12;
+    const minY = 12 - baseTop;
+    const maxY = 12;
+
+    const clampedX = Math.min(Math.max(rawX, minX), maxX);
+    const clampedY = Math.min(Math.max(rawY, minY), maxY);
+
+    setAvatarOffset({ x: clampedX, y: clampedY });
+  };
+
+  const handleAvatarPointerUp = (e: React.PointerEvent<HTMLElement>) => {
+    if (!isAvatarDraggingRef.current) return;
+    isAvatarDraggingRef.current = false;
+    const hadMoved = hasAvatarMovedRef.current;
+    setIsAvatarDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+
+    // Nếu không phải thao tác kéo (chỉ click chuột), mở khung chat
+    if (!hadMoved) {
+      setIsOpen(true);
+      setIsMinimized(false);
+    }
+  };
+
+  // Tự động căn chỉnh lại vị trí khi kích thước màn hình thay đổi
+  useEffect(() => {
+    const handleResize = () => {
+      if (chatWindowRef.current && !isFullscreen) {
+        setDragOffset((prev) => {
+          const rect = chatWindowRef.current?.getBoundingClientRect();
+          if (!rect) return prev;
+          const baseLeft = rect.left - prev.x;
+          const baseTop = rect.top - prev.y;
+          const minX = 12 - baseLeft;
+          const maxX = window.innerWidth - 12 - (baseLeft + rect.width);
+          const minY = 12 - baseTop;
+          const maxY = window.innerHeight - 12 - (baseTop + rect.height);
+          const clampedX = Math.min(Math.max(prev.x, minX), maxX);
+          const clampedY = Math.min(Math.max(prev.y, minY), maxY);
+          return { x: clampedX, y: clampedY };
+        });
+      }
+
+      setAvatarOffset((prev) => {
+        const baseLeft = window.innerWidth - 92;
+        const baseTop = window.innerHeight - 92;
+        const minX = 12 - baseLeft;
+        const maxX = 12;
+        const minY = 12 - baseTop;
+        const maxY = 12;
+        return {
+          x: Math.min(Math.max(prev.x, minX), maxX),
+          y: Math.min(Math.max(prev.y, minY), maxY),
+        };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isFullscreen]);
+
+  // Tự động ẩn dòng thông báo chào của UTHie sau 6 giây để không gây vướng màn hình
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowGreetingBubble(false);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Lưu sessions vào localStorage mỗi khi có cập nhật
   useEffect(() => {
@@ -1260,54 +1438,89 @@ export const AIChatWidget: React.FC = () => {
   };
 
   // ─── Kích Thước Khung Chat ──────────────────────────────────────────────────
-  const windowClass = isMinimized
-    ? 'h-[64px] w-[94vw] sm:w-[480px]'
-    : isFullscreen
+  const windowClass = isFullscreen
     ? 'fixed inset-2 sm:inset-3 md:inset-4 w-auto h-auto rounded-3xl z-[9999]'
     : 'h-[650px] max-h-[90vh] w-[94vw] sm:w-[480px]';
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end select-none font-sans">
       {/* 1. NÚT TRÒN BONG BÓNG & TOOLTIP AVATAR */}
-      {!isOpen && (
-        <div className="relative flex items-center group">
+      {!isOpen && (() => {
+        const isAvatarNearLeft = typeof window !== 'undefined' && window.innerWidth - 92 + avatarOffset.x < 240;
+        return (
           <div
-            onClick={() => {
-              setIsOpen(true);
-              setIsMinimized(false);
-            }}
-            className="cursor-pointer mr-4 px-4 py-2.5 rounded-2xl bg-white text-teal-950 text-xs font-semibold shadow-xl border border-teal-200/90 flex items-center gap-2 hover:bg-teal-50 transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap relative"
+            style={
+              avatarOffset.x !== 0 || avatarOffset.y !== 0
+                ? { transform: `translate3d(${avatarOffset.x}px, ${avatarOffset.y}px, 0)` }
+                : undefined
+            }
+            className={`relative flex items-center group touch-none select-none ${
+              isAvatarDragging ? 'transition-none' : 'transition-transform duration-200'
+            } ${isAvatarNearLeft ? 'flex-row-reverse' : ''}`}
           >
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-            <span className="tracking-wide">
-              {isAdmin ? 'UTHie sẵn sàng hỗ trợ quản lý!' : 'UTHie luôn hỗ trợ bạn!'}
-            </span>
-            <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent border-l-[8px] border-l-white drop-shadow-sm" />
-            <div className="absolute -right-[9px] top-1/2 -translate-y-1/2 w-0 h-0 border-y-[7px] border-y-transparent border-l-[9px] border-l-teal-200 -z-10" />
-          </div>
-
-          <div className="relative">
-            <span className="absolute -inset-1.5 rounded-full bg-teal-400 opacity-60 blur-sm animate-pulse" />
-            <span className="absolute -inset-1 rounded-full border-2 border-teal-400/80 animate-ping opacity-30" />
-
-            <button
+            <div
               onClick={() => {
                 setIsOpen(true);
                 setIsMinimized(false);
               }}
-              aria-label="Mở trợ lý ảo UTHie"
-              className="relative w-[68px] h-[68px] rounded-full overflow-hidden shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center border-3 border-teal-500 bg-white ring-4 ring-teal-500/25 z-10"
+              className={`cursor-pointer ${
+                isAvatarNearLeft ? 'ml-3.5' : 'mr-3.5'
+              } px-3.5 py-2 rounded-2xl bg-white text-teal-950 text-xs font-semibold shadow-xl border border-teal-200/90 flex items-center gap-2 hover:bg-teal-50 transition-all duration-300 hover:scale-105 active:scale-95 whitespace-nowrap relative ${
+                showGreetingBubble
+                  ? 'opacity-100 translate-x-0 pointer-events-auto'
+                  : 'opacity-0 translate-x-2 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto'
+              }`}
             >
-              <img
-                src={uthieAvatarImg}
-                alt="UTHie Avatar"
-                className="w-full h-full object-cover"
-              />
-              <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm z-20" />
-            </button>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <span className="tracking-wide">
+                {isAdmin ? 'UTHie sẵn sàng hỗ trợ quản lý!' : 'UTHie luôn hỗ trợ bạn!'}
+              </span>
+              {isAvatarNearLeft ? (
+                <>
+                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent border-r-[8px] border-r-white drop-shadow-sm" />
+                  <div className="absolute -left-[9px] top-1/2 -translate-y-1/2 w-0 h-0 border-y-[7px] border-y-transparent border-r-[9px] border-r-teal-200 -z-10" />
+                </>
+              ) : (
+                <>
+                  <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-0 h-0 border-y-[6px] border-y-transparent border-l-[8px] border-l-white drop-shadow-sm" />
+                  <div className="absolute -right-[9px] top-1/2 -translate-y-1/2 w-0 h-0 border-y-[7px] border-y-transparent border-l-[9px] border-l-teal-200 -z-10" />
+                </>
+              )}
+            </div>
+
+            <div className="relative">
+              <span className="absolute -inset-1.5 rounded-full bg-teal-400 opacity-60 blur-sm animate-pulse pointer-events-none" />
+              <span className="absolute -inset-1 rounded-full border-2 border-teal-400/80 animate-ping opacity-30 pointer-events-none" />
+
+              <button
+                onPointerDown={handleAvatarPointerDown}
+                onPointerMove={handleAvatarPointerMove}
+                onPointerUp={handleAvatarPointerUp}
+                onPointerCancel={handleAvatarPointerUp}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setAvatarOffset({ x: 0, y: 0 });
+                }}
+                aria-label="Mở trợ lý ảo UTHie"
+                className={`relative w-[68px] h-[68px] rounded-full overflow-hidden shadow-2xl transition-all duration-200 flex items-center justify-center border-3 border-teal-500 bg-white ring-4 ring-teal-500/25 z-10 touch-none ${
+                  isAvatarDragging
+                    ? 'cursor-grabbing scale-105 ring-teal-500/50'
+                    : 'cursor-grab hover:scale-105 active:scale-95'
+                }`}
+                title="Kéo để di chuyển UTHie (Nhấp đúp để về góc, click để mở chat)"
+              >
+                <img
+                  src={uthieAvatarImg}
+                  alt="UTHie Avatar"
+                  className="w-full h-full object-cover pointer-events-none select-none"
+                  draggable={false}
+                />
+                <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full shadow-sm z-20 pointer-events-none" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 2. CỬA SỔ CHAT UTHie AI */}
       {isOpen && (
@@ -1320,95 +1533,130 @@ export const AIChatWidget: React.FC = () => {
           )}
 
           <div
-            className={`flex flex-col bg-white rounded-3xl shadow-2xl border border-teal-200/60 overflow-hidden transition-all duration-300 ease-out origin-bottom-right shadow-teal-950/20 ${windowClass} ${
+            ref={chatWindowRef}
+            style={
+              !isFullscreen && (dragOffset.x !== 0 || dragOffset.y !== 0)
+                ? { transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` }
+                : undefined
+            }
+            className={`flex flex-col bg-white rounded-3xl shadow-2xl border border-teal-200/60 overflow-hidden ${
+              isDragging ? 'transition-none select-none shadow-teal-950/40' : 'transition-all duration-300 ease-out shadow-teal-950/20'
+            } origin-bottom-right ${windowClass} ${
               !isMinimized && !isFullscreen ? 'animate-in fade-in zoom-in-95 slide-in-from-bottom-5' : ''
             }`}
           >
             {/* ── HEADER CỬA SỔ CHAT ── */}
-            <div className="bg-gradient-to-r from-[#006F70] via-[#008B8B] to-[#00A896] px-3.5 sm:px-4 py-2.5 sm:py-3 text-white flex items-center justify-between shadow-md relative overflow-hidden shrink-0">
+            <div
+              onPointerDown={handleHeaderPointerDown}
+              onPointerMove={handleHeaderPointerMove}
+              onPointerUp={handleHeaderPointerUp}
+              onPointerCancel={handleHeaderPointerUp}
+              onDoubleClick={(e) => {
+                if ((e.target as HTMLElement).closest('button, a, input')) return;
+                setDragOffset({ x: 0, y: 0 });
+              }}
+              className={`bg-gradient-to-r from-[#006F70] via-[#008B8B] to-[#00A896] px-3 sm:px-3.5 py-1.5 sm:py-2 text-white flex items-center justify-between shadow-md relative overflow-hidden shrink-0 select-none touch-none ${
+                isFullscreen ? '' : isDragging ? 'cursor-grabbing' : 'cursor-grab'
+              }`}
+              title={!isFullscreen ? 'Kéo để di chuyển khung chat (Nhấp đúp để về góc)' : undefined}
+            >
               <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-white/10 blur-xl pointer-events-none" />
 
-              <div className="flex items-center gap-2.5 sm:gap-3 relative z-10">
+              <div className="flex items-center gap-2 relative z-10">
                 {/* Nút toggle Sidebar Lịch sử trò chuyện */}
                 {!isMinimized && (
                   <button
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="p-1.5 hover:bg-white/15 hover:text-white rounded-xl transition-all active:scale-90"
+                    className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-all active:scale-90"
                     title={isSidebarOpen ? 'Thu gọn lịch sử chat' : 'Mở lịch sử chat'}
                   >
                     {isSidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeft className="w-4 h-4" />}
                   </button>
                 )}
 
-                <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white/80 shadow-md shrink-0 bg-white ring-2 ring-white/20">
+                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/80 shadow-xs shrink-0 bg-white ring-1 ring-white/20">
                   <img
                     src={uthieAvatarImg}
                     alt="UTHie Avatar"
                     className="w-full h-full object-cover"
                   />
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-white rounded-full" />
+                  <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-400 border border-white rounded-full" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-bold text-xs sm:text-sm tracking-wide">UTHie AI</h3>
-                    <span className="bg-amber-400 text-amber-950 text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider flex items-center gap-0.5 shadow-xs">
-                      <Sparkles className="w-2.5 h-2.5 fill-current" />
+                  <div className="flex items-center gap-1.5 leading-none">
+                    <h3 className="font-bold text-xs sm:text-[13px] tracking-wide">UTHie AI</h3>
+                    <span className="bg-amber-400 text-amber-950 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-0.5 shadow-2xs">
+                      <Sparkles className="w-2 h-2 fill-current" />
                       {isAdmin ? 'COPILOT' : 'TRỢ LÝ'}
                     </span>
                   </div>
-                  <p className="text-[10px] sm:text-[11px] text-teal-100 font-medium truncate max-w-[140px] sm:max-w-none">
+                  <p className="text-[10px] text-teal-100 font-medium leading-tight truncate max-w-[140px] sm:max-w-none mt-0.5">
                     {isAdmin ? 'Trợ lý Nghiệp vụ Thư viện UTH' : 'Trợ lý tra cứu Thư viện UTH'}
                   </p>
                 </div>
               </div>
 
+              {/* Grip icon ở giữa báo hiệu có thể kéo */}
+              {!isFullscreen && (
+                <div
+                  className="hidden sm:flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity pointer-events-none mx-1"
+                  title="Kéo để di chuyển"
+                >
+                  <GripHorizontal className="w-4 h-4 text-white" />
+                </div>
+              )}
+
               {/* Nhóm nút điều khiển Header */}
-              <div className="flex items-center gap-1 sm:gap-1.5 text-teal-100 relative z-10">
+              <div className="flex items-center gap-0.5 sm:gap-1 text-teal-100 relative z-10">
                 {!isMinimized && (
                   <>
-                    <button
-                      onClick={handleNewChat}
-                      className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-semibold transition-all active:scale-95 shadow-2xs"
-                      title="Tạo đoạn chat mới"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Chat mới</span>
-                    </button>
+                    {!isSidebarOpen && (
+                      <button
+                        onClick={handleNewChat}
+                        className="hidden sm:flex items-center gap-1 px-2 py-0.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-[11px] font-semibold transition-all active:scale-95 shadow-2xs"
+                        title="Tạo đoạn chat mới"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Chat mới</span>
+                      </button>
+                    )}
                     <button
                       onClick={handleResetChat}
-                      className="p-1.5 hover:bg-white/15 hover:text-white rounded-xl transition-colors active:scale-90"
+                      className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-colors active:scale-90"
                       title="Làm mới phiên trò chuyện hiện tại"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => setIsFullscreen(!isFullscreen)}
-                      className="p-1.5 hover:bg-white/15 hover:text-white rounded-xl transition-colors active:scale-90"
+                      className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-colors active:scale-90"
                       title={isFullscreen ? 'Thu nhỏ bình thường (Esc)' : 'Mở rộng toàn màn hình'}
                     >
-                      {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                      {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
                     </button>
                   </>
                 )}
                 <button
                   onClick={() => {
-                    setIsMinimized(!isMinimized);
+                    setShowGreetingBubble(false);
+                    setIsOpen(false);
+                    setIsMinimized(false);
                     if (isFullscreen) setIsFullscreen(false);
                   }}
-                  className="p-1.5 hover:bg-white/15 hover:text-white rounded-xl transition-colors active:scale-90"
-                  title={isMinimized ? 'Mở rộng' : 'Thu nhỏ'}
+                  className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-colors active:scale-90"
+                  title="Thu nhỏ về avatar"
                 >
-                  <Minus className="w-4 h-4" />
+                  <Minus className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => {
                     setIsOpen(false);
                     setIsFullscreen(false);
                   }}
-                  className="p-1.5 hover:bg-white/15 hover:text-white rounded-xl transition-colors active:scale-90"
+                  className="p-1 hover:bg-white/15 hover:text-white rounded-lg transition-colors active:scale-90"
                   title="Đóng chat"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -1422,20 +1670,13 @@ export const AIChatWidget: React.FC = () => {
                     isFullscreen ? 'w-64 sm:w-72' : 'w-52 sm:w-60'
                   }`}>
                     {/* Header Sidebar: New chat button */}
-                    <div className="p-3 border-b border-slate-200/80 flex items-center justify-between gap-2">
+                    <div className="p-2.5 border-b border-slate-200/80">
                       <button
                         onClick={handleNewChat}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-[#008B8B] to-[#00A896] hover:brightness-105 active:scale-95 text-white rounded-xl font-semibold text-xs shadow-xs transition-all"
+                        className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-gradient-to-r from-[#008B8B] to-[#00A896] hover:brightness-105 active:scale-95 text-white rounded-xl font-semibold text-xs shadow-xs transition-all"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>+ Đoạn chat mới</span>
-                      </button>
-                      <button
-                        onClick={() => setIsSidebarOpen(false)}
-                        className="p-2 hover:bg-slate-200/70 text-slate-500 rounded-lg transition-colors"
-                        title="Đóng sidebar"
-                      >
-                        <PanelLeftClose className="w-4 h-4" />
+                        <span>Đoạn chat mới</span>
                       </button>
                     </div>
 
@@ -1500,7 +1741,7 @@ export const AIChatWidget: React.FC = () => {
                   }`}
                 >
                   {/* Danh sách tin nhắn */}
-                  <div className="relative flex-1 overflow-hidden bg-[#063F46]">
+                  <div className="relative flex-1 overflow-hidden bg-[#0E979D]">
                     <div
                       aria-hidden="true"
                       className={chatCanvasTone.backgroundLayerClass}
