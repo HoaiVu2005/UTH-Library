@@ -12,6 +12,7 @@ from apps.assistant.AI import (
     send_overdue_notice_to_student,
     is_admin_query,
     is_book_query_intent,
+    classify_chat_mode,
     normalize_assistant_voice,
     compact_simple_reply,
     build_long_term_memory_context,
@@ -87,10 +88,12 @@ class AIChatView(APIView):
         )
 
         # 2. Tìm sách liên quan trong kho Thư viện UTH
+        # Chỉ đề xuất sách khi người dùng thực sự có nhu cầu tra cứu, mượn sách hoặc hỏi tài liệu học tập
+        chat_mode = classify_chat_mode(message, is_admin=is_admin)
         patron_dept = patron_context.get('department', '') if patron_context else ''
         relevant_books = (
-            query_relevant_books(message, patron_dept=patron_dept, limit=4)
-            if is_book_query_intent(message) and not workflow
+            query_relevant_books(message, patron_dept=patron_dept, limit=4, history=history)
+            if is_book_query_intent(message, history=history) and not workflow and chat_mode not in ('conversation', 'campus_life')
             else []
         )
 

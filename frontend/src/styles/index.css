@@ -196,6 +196,37 @@ body {
   background: #94a3b8;
 }
 
+/* AI Chat & Operational Panels Ultra-Smooth Hardware-Accelerated Scrolling */
+.ai-smooth-scroll {
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch !important;
+  contain: content;
+}
+
+.ai-chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 139, 139, 0.4) transparent;
+}
+
+.ai-chat-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ai-chat-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.ai-chat-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 139, 139, 0.35) !important;
+  border-radius: 9999px !important;
+}
+
+.ai-chat-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 111, 112, 0.65) !important;
+}
+
 /* Focus Visible Global Helper */
 .focus-ring {
   @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2;

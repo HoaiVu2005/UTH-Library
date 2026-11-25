@@ -154,7 +154,7 @@ class GeminiLatencyBudgetTests(APITestCase):
             result = call_gemini_api('Câu hỏi mới', history, [])
 
         self.assertEqual(result, 'Phản hồi nhanh')
-        self.assertEqual(urlopen_mock.call_args.kwargs['timeout'], 10)
+        self.assertEqual(urlopen_mock.call_args.kwargs['timeout'], 7)
         request = urlopen_mock.call_args.args[0]
         payload = json.loads(request.data.decode('utf-8'))
         self.assertEqual(payload['generationConfig']['maxOutputTokens'], 180)
@@ -420,6 +420,56 @@ class AIChatViewTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['suggested_books'], [])
         query_relevant_books_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Bạn không có sách quá hạn.')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_patron_account_and_loan_status_query_does_not_suggest_books(
+        self,
+        query_relevant_books_mock,
+        _call_gemini_api_mock,
+    ):
+        loan_queries = [
+            'mình có đang có sách nào tới hạn nộp không',
+            'sách tôi đang mượn có bị quá hạn không',
+            'tôi có bị phạt tiền không',
+            'thư viện cơ sở 1 mở cửa mấy giờ',
+            'sinh viên được mượn bao nhiêu cuốn sách trong mấy ngày',
+        ]
+        for query in loan_queries:
+            response = self.client.post(
+                reverse('ai-chat'),
+                {
+                    'message': query,
+                    'user_role': 'student',
+                },
+                format='json',
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(
+                response.data['suggested_books'],
+                [],
+                f"Query '{query}' should NOT return suggested books!"
+            )
+        query_relevant_books_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value=None)
+    def test_return_book_fallback_prohibits_returning_via_friends_and_requires_scanning_card(
+        self,
+        _call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {
+                'message': 'tôi muốn trả sách',
+                'user_role': 'student',
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        reply = response.data['reply']
+        self.assertIn('Không thể nhờ bạn bè trả hộ', reply)
+        self.assertIn('quét mã thẻ', reply)
+        self.assertEqual(response.data['suggested_books'], [])
 
     @patch('apps.assistant.views.call_gemini_api', return_value=None)
     @patch('apps.assistant.views.query_relevant_books', return_value=[])

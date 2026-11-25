@@ -167,7 +167,7 @@ def get_reservation_workflow_action(
             ),
             'action': {
                 'label': 'Xem sách đang mượn',
-                'path': '/profile',
+                'path': '/loans',
             },
             'suggested_tab': None,
         }
@@ -202,11 +202,11 @@ def get_reservation_workflow_action(
             return {
                 'reply': (
                     f'Thư viện đang có sẵn **{available} bản** cho đầu sách **"{book_title}"**.\n\n'
-                    f'Bạn chỉ cần nhấn nút xác nhận bên dưới, UTHie sẽ **giữ chỗ ngay** tại quầy cho bạn trong 3 ngày!'
+                    f'Bạn chỉ cần nhấn nút xác nhận bên dưới, UTHie sẽ **chuẩn bị mượn sách ngay** tại quầy cho bạn (giữ sách 3 ngày)!'
                 ),
                 'action': {
                     'type': 'reservation',
-                    'label': '⚡ Xác nhận giữ chỗ ngay',
+                    'label': '⚡ Xác nhận mượn sách ngay',
                     'path': f'/books/{book_id}',
                     'book_id': book_id,
                     'book_title': book_title,

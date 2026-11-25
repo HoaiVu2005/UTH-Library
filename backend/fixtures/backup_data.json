@@ -109,7 +109,7 @@
   "model": "accounts.user",
   "fields": {
     "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$SnBTZ293OG9XSUVzQlZXM2NhSGJhaw$kaeF90iWX+gPwE4JeBp8iqWE1io8a+ygblYnrY53+gY",
-    "last_login": "2026-11-18T11:08:42.370Z",
+    "last_login": "2026-11-23T04:51:20.774Z",
     "is_superuser": true,
     "username": "admin",
     "full_name": "Nguyễn Văn Quản Trị (Thủ Thư Trưởng)",
@@ -1061,7 +1061,7 @@
   "model": "accounts.user",
   "fields": {
     "password": "argon2$argon2id$v=19$m=102400,t=2,p=8$UTB4aFBlNFZCZ0dDV3VlMDg0d1BFVg$ZtJu5fxJ8vLVvpMnWz4FFB4T8hiVY2GrkOBTxdDEuOs",
-    "last_login": "2026-11-23T02:47:20.617Z",
+    "last_login": "2026-11-25T08:29:39.362Z",
     "is_superuser": false,
     "username": "123456",
     "full_name": "phong",
@@ -1079,7 +1079,7 @@
     "locked_until": null,
     "failed_login_count": 0,
     "last_failed_login_at": "2026-11-17T08:21:14.097Z",
-    "reservation_locked_until": null,
+    "reservation_locked_until": "2026-12-25T08:55:48.141Z",
     "password_changed_at": "2026-11-16T06:21:19.949Z",
     "must_change_password": false,
     "is_active": true,
@@ -10623,6 +10623,82 @@
     "family_id": "7c388a08-7686-4374-9a5e-2dafad17d928",
     "expires_at": "2026-12-23T04:47:53.370Z",
     "idle_expires_at": "2026-11-25T04:47:53.370Z",
+    "last_used_at": null,
+    "revoked_at": "2026-11-23T04:51:15.966Z",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "ip": "127.0.0.1"
+  }
+},
+{
+  "model": "accounts.refreshtoken",
+  "pk": 615,
+  "fields": {
+    "created_at": "2026-11-23T04:51:20.854Z",
+    "updated_at": "2026-11-23T04:51:20.854Z",
+    "user": [
+      "admin"
+    ],
+    "token_hash": "ede872c36dc52912feb259bd9a5455d066000e1dfeb0e42cce67292535a65698",
+    "family_id": "d28d9306-fc57-414e-9ab8-425dd8f228d2",
+    "expires_at": "2026-12-23T04:51:20.854Z",
+    "idle_expires_at": "2026-11-25T04:51:20.854Z",
+    "last_used_at": null,
+    "revoked_at": "2026-11-23T05:17:01.728Z",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "ip": "127.0.0.1"
+  }
+},
+{
+  "model": "accounts.refreshtoken",
+  "pk": 616,
+  "fields": {
+    "created_at": "2026-11-23T05:17:48.621Z",
+    "updated_at": "2026-11-23T05:17:48.621Z",
+    "user": [
+      "123456"
+    ],
+    "token_hash": "5a535e316d5232d351c81ffd7372562e4cb66c3f8bf8ecedd91ec157ee5c806d",
+    "family_id": "5f028e38-71ce-4c4c-9572-8753f7cc7519",
+    "expires_at": "2026-12-23T05:17:48.621Z",
+    "idle_expires_at": "2026-11-25T05:17:48.621Z",
+    "last_used_at": "2026-11-23T07:17:49.350Z",
+    "revoked_at": "2026-11-23T07:17:49.350Z",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "ip": "127.0.0.1"
+  }
+},
+{
+  "model": "accounts.refreshtoken",
+  "pk": 617,
+  "fields": {
+    "created_at": "2026-11-23T07:17:49.352Z",
+    "updated_at": "2026-11-23T07:17:49.352Z",
+    "user": [
+      "123456"
+    ],
+    "token_hash": "749e2a77cc6dd180989e198a26668a351227fbf30981480d818eeefef245ba03",
+    "family_id": "5f028e38-71ce-4c4c-9572-8753f7cc7519",
+    "expires_at": "2026-12-23T07:17:49.352Z",
+    "idle_expires_at": "2026-11-25T07:17:49.352Z",
+    "last_used_at": null,
+    "revoked_at": null,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "ip": "127.0.0.1"
+  }
+},
+{
+  "model": "accounts.refreshtoken",
+  "pk": 618,
+  "fields": {
+    "created_at": "2026-11-25T08:29:39.496Z",
+    "updated_at": "2026-11-25T08:29:39.496Z",
+    "user": [
+      "123456"
+    ],
+    "token_hash": "9a0fbc7bde071ddb6ca22c5e19a611074f05a6ad7be3538ee10ef51002e0f6d2",
+    "family_id": "8d8343ba-16b8-4770-b01c-d29f45f27245",
+    "expires_at": "2026-12-25T08:29:39.496Z",
+    "idle_expires_at": "2026-11-27T08:29:39.496Z",
     "last_used_at": null,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
@@ -20458,6 +20534,90 @@
   }
 },
 {
+  "model": "reservations.reservation",
+  "pk": 21,
+  "fields": {
+    "created_at": "2026-11-23T06:39:04.095Z",
+    "updated_at": "2026-11-23T06:39:04.095Z",
+    "user": [
+      "123456"
+    ],
+    "book": 240,
+    "copy": 836,
+    "status": "cancelled",
+    "type": "borrow",
+    "ready_at": "2026-11-23T06:39:04.093Z",
+    "hold_expires_at": "2026-11-26T16:59:59.999Z",
+    "queue_position": 1,
+    "notified_at": null,
+    "no_show_counted": true,
+    "cancel_reason": "Hủy bởi 123456"
+  }
+},
+{
+  "model": "reservations.reservation",
+  "pk": 22,
+  "fields": {
+    "created_at": "2026-11-23T06:39:09.044Z",
+    "updated_at": "2026-11-23T06:39:09.044Z",
+    "user": [
+      "123456"
+    ],
+    "book": 247,
+    "copy": 860,
+    "status": "cancelled",
+    "type": "borrow",
+    "ready_at": "2026-11-23T06:39:09.043Z",
+    "hold_expires_at": "2026-11-26T16:59:59.999Z",
+    "queue_position": 1,
+    "notified_at": null,
+    "no_show_counted": true,
+    "cancel_reason": "Hủy bởi 123456"
+  }
+},
+{
+  "model": "reservations.reservation",
+  "pk": 23,
+  "fields": {
+    "created_at": "2026-11-23T06:41:27.253Z",
+    "updated_at": "2026-11-23T06:41:27.253Z",
+    "user": [
+      "123456"
+    ],
+    "book": 244,
+    "copy": 850,
+    "status": "cancelled",
+    "type": "borrow",
+    "ready_at": "2026-11-23T06:41:27.250Z",
+    "hold_expires_at": "2026-11-26T16:59:59.999Z",
+    "queue_position": 1,
+    "notified_at": null,
+    "no_show_counted": true,
+    "cancel_reason": "Hủy bởi 123456"
+  }
+},
+{
+  "model": "reservations.reservation",
+  "pk": 24,
+  "fields": {
+    "created_at": "2026-11-23T06:50:49.972Z",
+    "updated_at": "2026-11-23T06:50:49.972Z",
+    "user": [
+      "123456"
+    ],
+    "book": 228,
+    "copy": 794,
+    "status": "cancelled",
+    "type": "borrow",
+    "ready_at": "2026-11-23T06:50:49.970Z",
+    "hold_expires_at": "2026-11-26T16:59:59.999Z",
+    "queue_position": 1,
+    "notified_at": null,
+    "no_show_counted": true,
+    "cancel_reason": "Hủy bởi 123456"
+  }
+},
+{
   "model": "fines.fine",
   "pk": 10,
   "fields": {
@@ -21369,6 +21529,150 @@
     "is_read": false,
     "dedupe_key": "admin_overdue_loans_1_20261118_3",
     "sent_at": "2026-11-17T18:39:54.169Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 128,
+  "fields": {
+    "created_at": "2026-11-23T04:51:21.054Z",
+    "updated_at": "2026-11-23T04:51:21.054Z",
+    "user": [
+      "admin"
+    ],
+    "type": "reservation_ready",
+    "channel": "in_app",
+    "content": "Hiện có 3 sách giữ chỗ sẵn sàng tại quầy lưu thông đang chờ bạn đọc đến nhận.",
+    "link": "/admin/reservations",
+    "is_read": false,
+    "dedupe_key": "admin_ready_res_1_20261123_3",
+    "sent_at": "2026-11-23T04:51:21.054Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 129,
+  "fields": {
+    "created_at": "2026-11-23T04:51:21.061Z",
+    "updated_at": "2026-11-23T04:51:21.061Z",
+    "user": [
+      "admin"
+    ],
+    "type": "overdue",
+    "channel": "in_app",
+    "content": "Hệ thống ghi nhận 4 lượt mượn sách quá hạn cần đôn đốc bạn đọc hoàn trả.",
+    "link": "/admin/loans",
+    "is_read": false,
+    "dedupe_key": "admin_overdue_loans_1_20261123_4",
+    "sent_at": "2026-11-23T04:51:21.061Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 130,
+  "fields": {
+    "created_at": "2026-11-23T06:39:04.104Z",
+    "updated_at": "2026-11-23T06:39:04.104Z",
+    "user": [
+      "123456"
+    ],
+    "type": "reservation_ready",
+    "channel": "in_app",
+    "content": "Giữ chỗ thành công! Sách \"Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)\" đã được giữ cho bạn tại quầy A. Vui lòng đến nhận trước 23:59 ngày 26/11/2026.",
+    "link": "/reservations",
+    "is_read": false,
+    "dedupe_key": null,
+    "sent_at": "2026-11-23T06:39:04.104Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 131,
+  "fields": {
+    "created_at": "2026-11-23T06:39:09.046Z",
+    "updated_at": "2026-11-23T06:39:09.046Z",
+    "user": [
+      "123456"
+    ],
+    "type": "reservation_ready",
+    "channel": "in_app",
+    "content": "Giữ chỗ thành công! Sách \"Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương\" đã được giữ cho bạn tại quầy A. Vui lòng đến nhận trước 23:59 ngày 26/11/2026.",
+    "link": "/reservations",
+    "is_read": false,
+    "dedupe_key": null,
+    "sent_at": "2026-11-23T06:39:09.046Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 132,
+  "fields": {
+    "created_at": "2026-11-23T06:41:27.255Z",
+    "updated_at": "2026-11-23T06:41:27.255Z",
+    "user": [
+      "123456"
+    ],
+    "type": "reservation_ready",
+    "channel": "in_app",
+    "content": "Giữ chỗ thành công! Sách \"Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế\" đã được giữ cho bạn tại quầy A. Vui lòng đến nhận trước 23:59 ngày 26/11/2026.",
+    "link": "/reservations",
+    "is_read": true,
+    "dedupe_key": null,
+    "sent_at": "2026-11-23T06:41:27.255Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 133,
+  "fields": {
+    "created_at": "2026-11-23T06:50:49.974Z",
+    "updated_at": "2026-11-23T06:50:49.974Z",
+    "user": [
+      "123456"
+    ],
+    "type": "reservation_ready",
+    "channel": "in_app",
+    "content": "Giữ chỗ thành công! Sách \"Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có\" đã được giữ cho bạn tại quầy A. Vui lòng đến nhận trước 23:59 ngày 26/11/2026.",
+    "link": "/reservations",
+    "is_read": true,
+    "dedupe_key": null,
+    "sent_at": "2026-11-23T06:50:49.974Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 134,
+  "fields": {
+    "created_at": "2026-11-25T08:55:45.766Z",
+    "updated_at": "2026-11-25T08:55:45.766Z",
+    "user": [
+      "123456"
+    ],
+    "type": "overdue",
+    "channel": "in_app",
+    "content": "Tài khoản của bạn đã bị khóa chức năng đặt trước/giữ chỗ 30 ngày do có 3 lần không đến nhận sách đúng hẹn.",
+    "link": "/reservations",
+    "is_read": false,
+    "dedupe_key": null,
+    "sent_at": "2026-11-25T08:55:45.766Z"
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": 135,
+  "fields": {
+    "created_at": "2026-11-25T08:55:48.143Z",
+    "updated_at": "2026-11-25T08:55:48.143Z",
+    "user": [
+      "123456"
+    ],
+    "type": "overdue",
+    "channel": "in_app",
+    "content": "Tài khoản của bạn đã bị khóa chức năng đặt trước/giữ chỗ 30 ngày do có 4 lần không đến nhận sách đúng hẹn.",
+    "link": "/reservations",
+    "is_read": false,
+    "dedupe_key": null,
+    "sent_at": "2026-11-25T08:55:48.143Z"
   }
 },
 {
@@ -25940,6 +26244,248 @@
   }
 },
 {
+  "model": "audit.auditlog",
+  "pk": 325,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "LOGOUT",
+    "entity_type": "User",
+    "entity_id": "29",
+    "detail": {},
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T04:51:15.972Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 326,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action": "LOGIN",
+    "entity_type": "User",
+    "entity_id": "1",
+    "detail": {
+      "ip": "127.0.0.1"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T04:51:20.863Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 327,
+  "fields": {
+    "user": [
+      "admin"
+    ],
+    "action": "LOGOUT",
+    "entity_type": "User",
+    "entity_id": "1",
+    "detail": {},
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T05:17:01.734Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 328,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "LOGIN",
+    "entity_type": "User",
+    "entity_id": "29",
+    "detail": {
+      "ip": "127.0.0.1"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T05:17:48.629Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 329,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "HOLD_RESERVATION_READY",
+    "entity_type": "Reservation",
+    "entity_id": "21",
+    "detail": {
+      "book": "Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)",
+      "barcode": "UTH-KT-000008",
+      "hold_expires_at": "2026-11-26T23:59:59.999999+07:00"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T06:39:04.106Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 330,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "HOLD_RESERVATION_READY",
+    "entity_type": "Reservation",
+    "entity_id": "22",
+    "detail": {
+      "book": "Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương",
+      "barcode": "UTH-KT-000032",
+      "hold_expires_at": "2026-11-26T23:59:59.999999+07:00"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T06:39:09.046Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 331,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "HOLD_RESERVATION_READY",
+    "entity_type": "Reservation",
+    "entity_id": "23",
+    "detail": {
+      "book": "Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế",
+      "barcode": "UTH-KT-000022",
+      "hold_expires_at": "2026-11-26T23:59:59.999999+07:00"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T06:41:27.256Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 332,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "HOLD_RESERVATION_READY",
+    "entity_type": "Reservation",
+    "entity_id": "24",
+    "detail": {
+      "book": "Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có",
+      "barcode": "UTH-CNTT-000010",
+      "hold_expires_at": "2026-11-26T23:59:59.999999+07:00"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-23T06:50:49.976Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 333,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "LOGIN",
+    "entity_type": "User",
+    "entity_id": "29",
+    "detail": {
+      "ip": "127.0.0.1"
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-25T08:29:39.527Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 334,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "CANCEL_RESERVATION",
+    "entity_type": "Reservation",
+    "entity_id": "24",
+    "detail": {
+      "old_status": "ready",
+      "no_show_counted": true
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-25T08:55:36.898Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 335,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "CANCEL_RESERVATION",
+    "entity_type": "Reservation",
+    "entity_id": "23",
+    "detail": {
+      "old_status": "ready",
+      "no_show_counted": true
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-25T08:55:38.792Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 336,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "CANCEL_RESERVATION",
+    "entity_type": "Reservation",
+    "entity_id": "22",
+    "detail": {
+      "old_status": "ready",
+      "no_show_counted": true
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-25T08:55:45.794Z"
+  }
+},
+{
+  "model": "audit.auditlog",
+  "pk": 337,
+  "fields": {
+    "user": [
+      "123456"
+    ],
+    "action": "CANCEL_RESERVATION",
+    "entity_type": "Reservation",
+    "entity_id": "21",
+    "detail": {
+      "old_status": "ready",
+      "no_show_counted": true
+    },
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+    "created_at": "2026-11-25T08:55:48.161Z"
+  }
+},
+{
   "model": "assistant.assistantconversation",
   "pk": 1,
   "fields": {
@@ -26056,13 +26602,13 @@
   "pk": 9,
   "fields": {
     "created_at": "2026-11-17T13:53:01.933Z",
-    "updated_at": "2026-11-17T14:11:09.204Z",
+    "updated_at": "2026-11-23T05:40:31.145Z",
     "user": [
       "sv001"
     ],
     "client_session_id": "default",
     "title": "nộp phạt",
-    "last_message_at": "2026-11-17T14:11:09.204Z"
+    "last_message_at": "2026-11-23T05:40:31.145Z"
   }
 },
 {
@@ -26343,6 +26889,160 @@
     "client_session_id": "test-session",
     "title": "tôi muốn đặt trước sách Python",
     "last_message_at": "2026-11-23T04:48:33.646Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 30,
+  "fields": {
+    "created_at": "2026-11-23T04:52:06.671Z",
+    "updated_at": "2026-11-23T05:16:30.888Z",
+    "user": [
+      "admin"
+    ],
+    "client_session_id": "session-1795409510884",
+    "title": "có sinh viên nào đang trễ hạn trả sách không",
+    "last_message_at": "2026-11-23T05:16:30.888Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 31,
+  "fields": {
+    "created_at": "2026-11-23T05:18:24.348Z",
+    "updated_at": "2026-11-23T05:27:33.783Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795411072731",
+    "title": "tôi đang thích một bạn nữ trong thư viện trường, có cách nào để tôi làm quen bạn được không",
+    "last_message_at": "2026-11-23T05:27:33.783Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 32,
+  "fields": {
+    "created_at": "2026-11-23T05:43:21.450Z",
+    "updated_at": "2026-11-23T05:43:21.453Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795412588722",
+    "title": "đề xuất sách về kinh tế đi bạn",
+    "last_message_at": "2026-11-23T05:43:21.453Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 33,
+  "fields": {
+    "created_at": "2026-11-23T05:52:00.557Z",
+    "updated_at": "2026-11-23T06:17:11.293Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795413108181",
+    "title": "tôi muốn mượn sách về IT",
+    "last_message_at": "2026-11-23T06:17:11.293Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 34,
+  "fields": {
+    "created_at": "2026-11-23T06:38:12.199Z",
+    "updated_at": "2026-11-23T06:50:47.497Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795415877591",
+    "title": "đề xuất sách chuyên ngành kinh tế",
+    "last_message_at": "2026-11-23T06:50:47.497Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 35,
+  "fields": {
+    "created_at": "2026-11-23T06:57:22.983Z",
+    "updated_at": "2026-11-23T06:57:22.994Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795417036943",
+    "title": "alo có đó hem",
+    "last_message_at": "2026-11-23T06:57:22.994Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 36,
+  "fields": {
+    "created_at": "2026-11-23T07:11:03.560Z",
+    "updated_at": "2026-11-23T07:13:20.691Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795417854855",
+    "title": "alo",
+    "last_message_at": "2026-11-23T07:13:20.691Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 37,
+  "fields": {
+    "created_at": "2026-11-23T07:46:28.691Z",
+    "updated_at": "2026-11-23T07:49:12.362Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795419978198",
+    "title": "alo",
+    "last_message_at": "2026-11-23T07:49:12.362Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 38,
+  "fields": {
+    "created_at": "2026-11-25T08:30:47.636Z",
+    "updated_at": "2026-11-25T08:31:55.654Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795595398506",
+    "title": "trường đại học Phenikaa ở đâu ngoài miền Bắc",
+    "last_message_at": "2026-11-25T08:31:55.654Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 39,
+  "fields": {
+    "created_at": "2026-11-25T08:34:36.195Z",
+    "updated_at": "2026-11-25T08:48:42.731Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795595654790",
+    "title": "tôi muốn trả sách",
+    "last_message_at": "2026-11-25T08:48:42.731Z"
+  }
+},
+{
+  "model": "assistant.assistantconversation",
+  "pk": 40,
+  "fields": {
+    "created_at": "2026-11-25T08:36:47.272Z",
+    "updated_at": "2026-11-25T08:43:35.648Z",
+    "user": [
+      "123456"
+    ],
+    "client_session_id": "session-1795595785292",
+    "title": "Địa chỉ của trường đại học Văn Lang",
+    "last_message_at": "2026-11-25T08:43:35.648Z"
   }
 },
 {
@@ -27861,6 +28561,754 @@
     "conversation": 29,
     "role": "assistant",
     "content": "Thư viện đang có sẵn **5 bản** cho đầu sách **\"Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST\"**.\n\nBạn chỉ cần nhấn nút xác nhận bên dưới, UTHie sẽ **giữ chỗ ngay** tại quầy cho bạn trong 3 ngày!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 139,
+  "fields": {
+    "created_at": "2026-11-23T04:52:06.672Z",
+    "updated_at": "2026-11-23T04:52:06.672Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "có sinh viên nào đang trễ hạn trả sách không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 140,
+  "fields": {
+    "created_at": "2026-11-23T04:52:06.672Z",
+    "updated_at": "2026-11-23T04:52:06.672Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Hiện tại hệ thống ghi nhận có **4 sinh viên** đang mượn sách quá hạn với tổng cộng **4 cuốn**.\n\nDưới đây là danh sách chi tiết để anh/chị theo dõi và xử lý nghiệp vụ:\n\n1.  **Sinh Viên UTH 05 (SV20260005)**: Trễ **39 ngày** cuốn *Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức*. Đây là trường hợp quá hạn lâu nhất, phí phạt ước tính đã lên đến 78.000 VNĐ.\n2.  **Sinh Viên UTH 04 (SV20260004)**: Trễ **15 ngày** cuốn *Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức*. Phí phạt ước tính: 30.000 VNĐ.\n3.  **Sinh Viên UTH 02 (SV20260002)**: Trễ **7 ngày** cuốn *Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại*. Phí phạt ước tính: 14.000 VNĐ.\n4.  **Sinh Viên UTH 01 (SV20260001)**: Trễ **3 ngày** cuốn *Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại*. Phí phạt ước tính: 6.000 VNĐ.\n\nĐáng chú ý là cả 4 cuốn sách đang bị trễ hạn đều thuộc nhóm tài liệu chuyên ngành Giao thông vận tải đang trong tình trạng **hết bản sao khả dụng** tại kho. Anh/chị có thể sử dụng tính năng gửi thông báo nhắc trả sách 1-click trên hệ thống để yêu cầu các bạn hoàn trả sớm, phục vụ nhu cầu của các bạn đọc khác."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 141,
+  "fields": {
+    "created_at": "2026-11-23T05:09:06.712Z",
+    "updated_at": "2026-11-23T05:09:06.712Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "sinh viên đang quá hạn trả sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 142,
+  "fields": {
+    "created_at": "2026-11-23T05:09:06.712Z",
+    "updated_at": "2026-11-23T05:09:06.712Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Hiện tại hệ thống ghi nhận có **4 sinh viên** đang mượn sách quá hạn với tổng cộng 4 cuốn.\n\nDưới đây là danh sách chi tiết để bạn nắm thông tin và xử lý nghiệp vụ:\n\n1.  **Sinh Viên UTH 05 (SV20260005)**: Trễ **39 ngày** cuốn *Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức*. Đây là trường hợp quá hạn lâu nhất (Phí phạt ước tính: 78,000 VNĐ).\n2.  **Sinh Viên UTH 04 (SV20260004)**: Trễ **15 ngày** cuốn *Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức* (Phí phạt ước tính: 30,000 VNĐ).\n3.  **Sinh Viên UTH 02 (SV20260002)**: Trễ **7 ngày** cuốn *Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại* (Phí phạt ước tính: 14,000 VNĐ).\n4.  **Sinh Viên UTH 01 (SV20260001)**: Trễ **3 ngày** cuốn *Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại* (Phí phạt ước tính: 6,000 VNĐ).\n\nBạn có thể kiểm tra danh sách thẻ bên dưới để thực hiện gửi thông báo nhắc nhở hoặc khóa thẻ đối với các trường hợp quá hạn lâu ngày."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 143,
+  "fields": {
+    "created_at": "2026-11-23T05:12:35.579Z",
+    "updated_at": "2026-11-23T05:12:35.579Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "số sách tồn kho"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 144,
+  "fields": {
+    "created_at": "2026-11-23T05:12:35.579Z",
+    "updated_at": "2026-11-23T05:12:35.579Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Tổng số bản sao hiện có trong toàn hệ thống là **288 bản**. Tình trạng phân bổ cụ thể như sau:\n\n*   **Sẵn sàng phục vụ:** 270 bản.\n*   **Đang cho mượn:** 8 bản.\n*   **Đang giữ chỗ (Reservation):** 3 bản.\n*   **Sách hỏng/mất:** 5 bản (4 hỏng, 1 mất).\n\nĐáng chú ý, có **3 đầu sách chuyên ngành đã hết sạch bản sao lưu thông** trên kệ (0 bản sẵn sàng):\n1.  *Githup* (CNTT): 0/3 bản.\n2.  *Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại*: 0/2 bản.\n3.  *Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức*: 0/3 bản.\n\nNếu cần báo cáo chi tiết hơn về từng cơ sở, bạn cho mình biết nhé."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 145,
+  "fields": {
+    "created_at": "2026-11-23T05:15:26.734Z",
+    "updated_at": "2026-11-23T05:15:26.734Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "chi tiết sách tồn kho"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 146,
+  "fields": {
+    "created_at": "2026-11-23T05:15:26.734Z",
+    "updated_at": "2026-11-23T05:15:26.734Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Dưới đây là chi tiết tình trạng tồn kho và phân loại tài liệu trong hệ thống Thư viện UTH tính đến thời điểm hiện tại:\n\n### 1. Thống kê tổng quát\n*   **Tổng số bản sao trong kho:** 288 bản.\n*   **Sẵn sàng trên kệ:** 270 bản.\n*   **Đang lưu thông (cho mượn):** 8 bản.\n*   **Đang giữ chỗ (đặt trước):** 3 bản.\n*   **Tình trạng khác:** 4 bản hỏng, 1 bản mất.\n\n### 2. Các đầu sách đã hết bản sao khả dụng (Cần lưu ý nhập thêm)\nHiện có 3 đầu sách chuyên ngành quan trọng đã cho mượn hết, không còn bản nào trên kệ:\n*   **Githup** (Công nghệ thông tin): Còn 0/3 bản.\n*   **Thiết kế Hình học Đường ô tô và Nút giao thông Hiện đại**: Còn 0/2 bản.\n*   **Kỹ thuật Thiết kế Đường cao tốc và Nút giao Khác mức**: Còn 0/3 bản.\n\n### 3. Các đầu sách có số lượng bản sao thấp (Khả dụng <= 1)\n*   **Kỹ năng Thuyết trình Chuyên nghiệp...**: Còn 1/2 bản.\n*   **Kỹ năng Quản trị Thời gian và Làm việc Nhóm...**: Còn 1/3 bản.\n\n### 4. Các đầu sách còn số lượng lớn (Sẵn sàng phục vụ)\n*   **Quản lý Rủi ro và Chiến lược Chuỗi Cung ứng Xanh**: Còn 8/8 bản.\n*   **Quản trị Kho bãi Hiện đại và Trung tâm Phân phối**: Còn 8/8 bản.\n*   **Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp**: Còn 8/10 bản.\n*   **Tối ưu hóa Chi phí Logistics và Bài toán Định tuyến**: Còn 6/6 bản.\n\n### 5. Tài chính liên quan đến kho\n*   **Phiếu phạt chưa thu:** 2 phiếu (Tổng cộng 217,000 VNĐ).\n*   **Tài khoản bị khóa:** 1 bạn đọc (do vi phạm quy định lưu thông).\n\nNếu bạn cần danh sách mã vạch cụ thể của các cuốn đang hỏng hoặc mất để thực hiện thanh lý, hãy báo mình nhé."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 147,
+  "fields": {
+    "created_at": "2026-11-23T05:15:45.255Z",
+    "updated_at": "2026-11-23T05:15:45.255Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "trả sach"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 148,
+  "fields": {
+    "created_at": "2026-11-23T05:15:45.255Z",
+    "updated_at": "2026-11-23T05:15:45.255Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Bạn có thể quét mã vạch trên sách hoặc nhập **Mã sinh viên/Mã tài liệu** để mình ghi nhận trả sách ngay nhé. Hệ thống sẽ tự động tính phí phạt nếu có quá hạn và cập nhật lại trạng thái \"Sẵn sàng\" lên kệ cho tài liệu đó."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 149,
+  "fields": {
+    "created_at": "2026-11-23T05:16:30.887Z",
+    "updated_at": "2026-11-23T05:16:30.887Z",
+    "conversation": 30,
+    "role": "user",
+    "content": "có sinh viên trả sách, cho phần quét mã"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 150,
+  "fields": {
+    "created_at": "2026-11-23T05:16:30.887Z",
+    "updated_at": "2026-11-23T05:16:30.887Z",
+    "conversation": 30,
+    "role": "assistant",
+    "content": "Mời bạn quét mã vạch (Code128) trên sách hoặc nhập mã tài liệu vào ô dưới đây. Hệ thống sẽ tự động đối soát với danh sách 8 cuốn đang lưu thông để ghi nhận trả sách và tính toán phí phạt (nếu có) cho sinh viên.\n\n*(Gợi ý: Hiện có 4 cuốn đang quá hạn từ 3 đến 39 ngày, bạn lưu ý kiểm tra phí phạt hiển thị sau khi quét).*"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 151,
+  "fields": {
+    "created_at": "2026-11-23T05:18:24.349Z",
+    "updated_at": "2026-11-23T05:18:24.349Z",
+    "conversation": 31,
+    "role": "user",
+    "content": "tôi đang thích một bạn nữ trong thư viện trường, có cách nào để tôi làm quen bạn được không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 152,
+  "fields": {
+    "created_at": "2026-11-23T05:18:24.349Z",
+    "updated_at": "2026-11-23T05:18:24.349Z",
+    "conversation": 31,
+    "role": "assistant",
+    "content": "Làm quen trong không gian yên tĩnh như thư viện cần sự tinh tế để không làm phiền bạn ấy và những người xung quanh. Với tư cách là \"thủ thư ảo\" quan sát thư viện mỗi ngày, mình gợi ý cho bạn vài \"chiêu\" vừa lịch sự vừa hiệu quả nhé:\n\n### 1. Tận dụng bối cảnh học tập (Cách tự nhiên nhất)\n*   **Hỏi về sách/tài liệu:** Nếu thấy bạn ấy đang đọc một cuốn giáo trình hoặc sách chuyên ngành, bạn có thể đợi lúc bạn ấy nghỉ tay, tiến lại gần và hỏi khẽ: *\"Chào bạn, mình thấy bạn đang đọc cuốn này, không biết nội dung có dễ hiểu không? Mình cũng đang định tìm hiểu về mảng này.\"*\n*   **Nhờ canh đồ hộ:** Khi bạn cần ra ngoài nghe điện thoại hoặc đi vệ sinh, hãy nhờ nhẹ nhàng: *\"Bạn ơi, phiền bạn để mắt giúp mình cái laptop/balo một chút nhé, mình quay lại ngay.\"* Khi quay lại, đó là cái cớ tuyệt vời để cảm ơn và bắt đầu câu chuyện.\n\n### 2. Sử dụng \"mảnh giấy ghi chú\" (Cách tinh tế nhất)\nVì thư viện cần giữ im lặng, một mảnh giấy nhỏ (Post-it) sẽ rất hiệu quả và ít gây áp lực:\n*   Viết một dòng ngắn gọn: *\"Chào bạn, mình thấy bạn học rất tập trung, nhìn rất ngưỡng mộ. Nếu không phiền, sau giờ học mình có thể mời bạn một ly nước ở canteen/quán cafe gần trường (Võ Oanh) được không? Đây là Zalo của mình...\"*\n*   Đặt nhẹ nhàng lên bàn khi bạn ấy chuẩn bị ra về hoặc lúc bạn rời đi. Cách này giúp bạn ấy có thời gian suy nghĩ và không bị khó xử trước mặt mọi người.\n\n### 3. Quan sát \"tần suất\"\n*   Nếu bạn ấy thường xuyên ngồi một vị trí cố định vào một khung giờ nhất định, hãy cố gắng chọn chỗ ngồi trong tầm mắt (nhưng đừng quá gần kiểu \"theo dõi\"). Việc chạm mặt nhau vài lần và nở một nụ cười nhẹ chào hỏi sẽ giúp xóa tan khoảng cách trước khi bạn chính thức mở lời.\n\n### 4. Một vài lưu ý \"sống còn\" tại Thư viện UTH:\n*   **Giữ âm lặng:** Tuyệt đối không nói chuyện to hay cười đùa gây ảnh hưởng đến người khác, điều này sẽ làm mất điểm trầm trọng trong mắt đối phương.\n*   **Quan sát thái độ:** Nếu bạn ấy đang đeo tai nghe và gõ máy tính liên tục, đó là lúc bạn ấy đang rất bận (có thể đang chạy deadline đồ án), đừng nên làm phiền lúc này.\n*   **Vẻ ngoài chỉn chu:** Dù đi thư viện ôn thi có mệt mỏi, hãy đảm bảo trang phục gọn gàng và hơi thở thơm tho nhé.\n\n**Gợi ý nhỏ từ UTHie:** Nếu biết bạn ấy học ngành gì, bạn có thể nhờ mình tìm giúp một cuốn sách hay về ngành đó để làm quà hoặc làm cái cớ để thảo luận. Chúc bạn \"thu hoạch\" thành công tại thư viện nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 153,
+  "fields": {
+    "created_at": "2026-11-23T05:27:18.719Z",
+    "updated_at": "2026-11-23T05:27:18.719Z",
+    "conversation": 31,
+    "role": "user",
+    "content": "tôi sinh viên IT, đề xuất giúp tôi 1 số sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 154,
+  "fields": {
+    "created_at": "2026-11-23T05:27:18.719Z",
+    "updated_at": "2026-11-23T05:27:18.719Z",
+    "conversation": 31,
+    "role": "assistant",
+    "content": "Dành cho dân IT tại UTH, bạn nên mượn ngay 2 cuốn kinh điển này: **\"Clean Code\"** (Robert C. Martin) để rèn tư duy viết code đẹp và **\"Cấu trúc dữ liệu và Giải thuật\"** để xây dựng nền tảng vững chắc."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 155,
+  "fields": {
+    "created_at": "2026-11-23T05:27:33.782Z",
+    "updated_at": "2026-11-23T05:27:33.782Z",
+    "conversation": 31,
+    "role": "user",
+    "content": "sách thư viện"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 156,
+  "fields": {
+    "created_at": "2026-11-23T05:27:33.782Z",
+    "updated_at": "2026-11-23T05:27:33.782Z",
+    "conversation": 31,
+    "role": "assistant",
+    "content": "Hiện tại, với chuyên ngành **Công nghệ thông tin** của bạn, Thư viện UTH có những đầu sách và giáo trình cốt lõi mà bạn nên mượn để phục vụ việc học và làm đồ án.\n\nDưới đây là các cuốn sách tiêu biểu đang có sẵn trên kệ:\n\n1.  **Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học**\n    *   *Tình trạng:* Bạn **đang mượn** cuốn này (Hạn trả: 08/12/2026). Đây là tài liệu cực kỳ quan trọng để bạn trình bày các bài tiểu luận hoặc đồ án chuyên ngành IT sao cho đúng chuẩn.\n2.  **Giáo trình Kỹ thuật lập trình C/C++**\n    *   *Nội dung:* Nền tảng quan trọng nhất cho sinh viên IT tại UTH để nắm vững tư duy lập trình và cấu trúc dữ liệu.\n3.  **Cơ sở dữ liệu**\n    *   *Nội dung:* Cung cấp kiến thức về SQL, thiết kế hệ thống thông tin – kỹ năng không thể thiếu cho bất kỳ lập trình viên nào.\n4.  **Mạng máy tính và Truyền số liệu**\n    *   *Nội dung:* Phù hợp nếu bạn đang theo hướng quản trị mạng hoặc muốn hiểu cách thức internet vận hành.\n\n**Cách để bạn lấy sách nhanh nhất:**\n*   **Bước 1:** Bạn kiểm tra mã xếp giá (ví dụ: *UTH-IT-000xxx*) trên cổng tra cứu.\n*   **Bước 2:** Đến **Cơ sở 1 (Số 2 Võ Oanh, Bình Thạnh)**, lên **Tòa C (Thư viện Trung tâm)**. Đây là nơi tập trung nhiều tài liệu CNTT nhất.\n*   **Bước 3:** Mang sách và Thẻ sinh viên (Mã: 123456) ra quầy để thủ thư quét mã.\n\n**Lưu ý cho bạn:**\n*   Bạn đang mượn 1 cuốn, nên vẫn còn hạn mức mượn thêm **4 cuốn** nữa.\n*   Thời gian mượn là **14 ngày**.\n\nBạn có muốn mình tìm cụ thể một môn học nào trong học kỳ này không? (Ví dụ: Lập trình Java, Hệ điều hành, hay Trí tuệ nhân tạo...)"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 157,
+  "fields": {
+    "created_at": "2026-11-23T05:40:31.144Z",
+    "updated_at": "2026-11-23T05:40:31.144Z",
+    "conversation": 9,
+    "role": "user",
+    "content": "tôi sinh viên IT, đề xuất giúp tôi 1 số sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 158,
+  "fields": {
+    "created_at": "2026-11-23T05:40:31.144Z",
+    "updated_at": "2026-11-23T05:40:31.144Z",
+    "conversation": 9,
+    "role": "assistant",
+    "content": "Chào bạn, là sinh viên IT (Công nghệ thông tin), việc cập nhật các công nghệ mới và nắm vững tư duy lập trình là cực kỳ quan trọng. Dựa trên kho tài liệu hiện có tại Thư viện UTH, mình đề xuất bạn nên mượn các cuốn sách chuyên ngành chất lượng sau:\n\n1.  **Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST** (Tác giả: Martin Fowler, Robert C. Martin): Cuốn này cực kỳ phù hợp nếu bạn muốn theo đuổi hướng Full-stack, kết hợp giữa Frontend hiện đại và Backend mạnh mẽ. (Hiện còn 5 bản).\n2.  **Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có** (Tác giả: Martin Fowler): Đây là cuốn sách \"gối đầu giường\" để giúp bạn viết code sạch, dễ bảo trì và chuyên nghiệp hơn. (Hiện còn 5 bản).\n3.  **Mạng Máy tính và Các Giao thức Truyền thông Hiện đại** (Tác giả: Andrew S. Tanenbaum, PGS.TS. Đinh Mạnh Tường): Cung cấp nền tảng vững chắc về cách thức dữ liệu vận hành trên internet, rất cần thiết cho mọi kỹ sư phần mềm. (Hiện còn 5 bản).\n4.  **Deep Learning và Thị giác Máy tính trong Giao thông Thông minh** (Tác giả: Andrew Ng, PGS.TS. Đinh Mạnh Tường): Nếu bạn quan tâm đến AI và ứng dụng thực tế trong ngành giao thông – thế mạnh của trường mình – thì đây là lựa chọn hàng đầu. (Hiện còn 4 bản).\n\nBạn có thể nhấn vào các thẻ sách bên dưới để xem vị trí chính xác trên kệ tại Thư viện Trung tâm (Cơ sở 1) và bấm nút **Đặt trước** để giữ sách nhé.\n\nNgoài ra, mình thấy bạn đang có một cuốn sách về *Thiết kế Hình học Đường ô tô* đã **quá hạn 3 ngày** (hạn trả là 19/11). Bạn nên tranh thủ vào mục \"Sách của tôi\" để bấm gia hạn thêm 7 ngày hoặc mang sách đến thư viện trả để tránh phát sinh thêm phí phạt (hiện tại đang là 6.000 VNĐ) nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 159,
+  "fields": {
+    "created_at": "2026-11-23T05:43:21.451Z",
+    "updated_at": "2026-11-23T05:43:21.451Z",
+    "conversation": 32,
+    "role": "user",
+    "content": "đề xuất sách về kinh tế đi bạn"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 160,
+  "fields": {
+    "created_at": "2026-11-23T05:43:21.452Z",
+    "updated_at": "2026-11-23T05:43:21.452Z",
+    "conversation": 32,
+    "role": "assistant",
+    "content": "Chào phong, dù bạn đang học Khoa Công nghệ thông tin nhưng việc tìm hiểu thêm về kinh tế, đặc biệt là mảng quản trị và hợp đồng, sẽ rất có lợi cho tư duy quản lý dự án sau này.\n\nDưới đây là các tài liệu chuyên ngành Kinh tế & Quản trị kinh doanh đang có sẵn tại kho Thư viện UTH mà bạn có thể mượn ngay:\n\n1.  **Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)** – *PGS.TS. Khuất Việt Hùng, PGS.TS. Nguyễn Văn Vị*: Cuốn sách này cung cấp kiến thức nền tảng về quản lý dự án theo chuẩn quốc tế, rất phù hợp nếu bạn muốn hướng tới vị trí Project Manager. (Còn sẵn: 5/5 bản).\n2.  **Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương** – *Philip Kotler, TS. Lê Hoàng Vận*: Giúp bạn rèn luyện kỹ năng thương thảo và hiểu về các điều khoản hợp đồng trong môi trường toàn cầu. (Còn sẵn: 4/4 bản).\n3.  **Hợp đồng Hợp tác Công - Tư (PPP) trong Phát triển Cơ sở Hạ tầng** – *GS.TS. Nguyễn Xuân Trục, PGS.TS. Nguyễn Văn Vị*: Tài liệu chuyên sâu về mô hình hợp tác kinh tế đang rất phổ biến hiện nay. (Còn sẵn: 4/4 bản).\n4.  **Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế** – *PGS.TS. Nguyễn Văn Vị, TS. Lê Hoàng Vận*: Phù hợp nếu bạn quan tâm đến mảng tài chính và logistics. (Còn sẵn: 5/5 bản).\n\nBạn có thể nhấn vào các thẻ sách bên dưới để xem vị trí chính xác trên kệ tại thư viện hoặc bấm **\"Đặt trước\"** để giữ sách nhé.\n\nNgoài ra, phong lưu ý là cuốn sách **\"Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học\"** bạn đang mượn có hạn trả đến ngày **08/12/2026**. Vì bạn đã gia hạn 1 lần rồi nên hãy chú ý trả sách đúng hạn để tránh phát sinh phí phạt (2.000 VNĐ/ngày) nha!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 161,
+  "fields": {
+    "created_at": "2026-11-23T05:52:00.558Z",
+    "updated_at": "2026-11-23T05:52:00.558Z",
+    "conversation": 33,
+    "role": "user",
+    "content": "tôi muốn mượn sách về IT"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 162,
+  "fields": {
+    "created_at": "2026-11-23T05:52:00.558Z",
+    "updated_at": "2026-11-23T06:06:43.293Z",
+    "conversation": 33,
+    "role": "assistant",
+    "content": "Chào phong, với chuyên ngành Công nghệ thông tin của bạn, mình đã lọc ra những cuốn sách chuyên sâu và hiện đại nhất đang có sẵn tại kho Thư viện UTH để bạn tham khảo:\n\n1.  **Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST** (Tác giả: Martin Fowler, Robert C. Martin): Cuốn này cực kỳ phù hợp nếu bạn muốn nắm vững cả Frontend lẫn Backend theo xu hướng hiện nay. (Còn sẵn 5/5 bản).\n2.  **Mạng Máy tính và Các Giao thức Truyền thông Hiện đại** (Tác giả: Andrew S. Tanenbaum, PGS.TS. Đinh Mạnh Tường): Tài liệu nền tảng không thể thiếu để hiểu sâu về cách thức vận hành của internet và hệ thống mạng. (Còn sẵn 5/5 bản).\n3.  **Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có** (Tác giả: Martin Fowler): \"Cẩm nang\" giúp bạn nâng cấp tư duy viết code sạch và tối ưu hóa hệ thống. (Còn sẵn 5/5 bản).\n4.  **Deep Learning và Thị giác Máy tính trong Giao thông Thông minh** (Tác giả: Andrew Ng, PGS.TS. Đinh Mạnh Tường): Cuốn sách mang tính ứng dụng cao, kết hợp giữa AI và đặc thù ngành Giao thông vận tải của trường mình. (Còn sẵn 4/4 bản).\n\n**Quy trình mượn dành cho bạn:**\n*   **Bước 1:** Bạn xem các thẻ sách bên dưới để lấy mã xếp giá.\n*   **Bước 2:** Đến **Cơ sở 1 (Số 2 Võ Oanh, Bình Thạnh)** – Thư viện Trung tâm (Tòa C) để tìm sách trên kệ.\n*   **Bước 3:** Mang sách và Thẻ sinh viên đến Quầy lưu thông để thủ thư quét mã.\n\nVì bạn là sinh viên, bạn được mượn tối đa **5 cuốn trong 14 ngày**. Hiện tại bạn đang mượn 1 cuốn (Viết Báo cáo Kỹ thuật), nên bạn vẫn có thể mượn thêm tối đa 4 cuốn nữa nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 169,
+  "fields": {
+    "created_at": "2026-11-23T06:38:12.200Z",
+    "updated_at": "2026-11-23T06:38:12.200Z",
+    "conversation": 34,
+    "role": "user",
+    "content": "đề xuất sách chuyên ngành kinh tế"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 170,
+  "fields": {
+    "created_at": "2026-11-23T06:38:12.200Z",
+    "updated_at": "2026-11-23T06:38:12.200Z",
+    "conversation": 34,
+    "role": "assistant",
+    "content": "Thư viện UTH hiện có 4 tài liệu phù hợp với chủ đề bạn đang quan tâm:\n1. **Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)** - Tác giả: PGS.TS. Khuất Việt Hùng, PGS.TS. Nguyễn Văn Vị (Còn sẵn: 5/5 bản)\n2. **Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế** - Tác giả: PGS.TS. Nguyễn Văn Vị, TS. Lê Hoàng Vận (Còn sẵn: 5/5 bản)\n3. **Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương** - Tác giả: Philip Kotler, TS. Lê Hoàng Vận (Còn sẵn: 4/4 bản)\n4. **Hợp đồng Hợp tác Công - Tư (PPP) trong Phát triển Cơ sở Hạ tầng** - Tác giả: GS.TS. Nguyễn Xuân Trục, PGS.TS. Nguyễn Văn Vị (Còn sẵn: 4/4 bản)\n\n👉 Bạn có thể nhấp trực tiếp vào các thẻ sách bên dưới để xem vị trí giá sách và đặt mượn trên hệ thống nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 171,
+  "fields": {
+    "created_at": "2026-11-23T06:50:47.496Z",
+    "updated_at": "2026-11-23T06:50:47.496Z",
+    "conversation": 34,
+    "role": "user",
+    "content": "sách IT"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 172,
+  "fields": {
+    "created_at": "2026-11-23T06:50:47.497Z",
+    "updated_at": "2026-11-23T06:50:47.497Z",
+    "conversation": 34,
+    "role": "assistant",
+    "content": "với tư cách là sinh viên Khoa Công nghệ thông tin, mình đã chọn lọc những đầu sách chuyên môn rất sát với lộ trình học tập và phát triển kỹ năng lập trình hiện nay từ kho tài liệu của thư viện UTH.\n\nDưới đây là các tài liệu chuyên ngành CNTT đang có sẵn tại thư viện để bạn tham khảo:\n\n*   **Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST**: Cuốn sách này cực kỳ hữu ích nếu bạn đang theo đuổi con đường Full-stack, giúp bạn nắm vững cách kết hợp giữa Frontend hiện đại và Backend mạnh mẽ.\n*   **Mạng Máy tính và Các Giao thức Truyền thông Hiện đại**: Đây là nền tảng cốt lõi cho mọi kỹ sư CNTT, giúp bạn hiểu sâu về cách dữ liệu vận chuyển trên internet.\n*   **Refactoring: Cải tiến và Tối ưu hóa Thiết kế Mã nguồn Hiện có**: Một \"cuốn sách gối đầu giường\" để học cách viết code sạch, dễ bảo trì và tối ưu hóa hiệu năng – kỹ năng mà mọi lập trình viên chuyên nghiệp đều cần.\n*   **Deep Learning và Thị giác Máy tính trong Giao thông Thông minh**: Nếu bạn quan tâm đến AI và ứng dụng của nó trong lĩnh vực giao thông, đây là tài liệu rất chuyên sâu và thực tế.\n\nBạn có thể nhấn vào các thẻ sách bên dưới để xem vị trí kệ sách tại thư viện hoặc thực hiện đặt trước (Reservation) nếu muốn giữ sách ngay nhé. Nếu cần thêm thông tin về môn học cụ thể nào, cứ cho mình biết!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 173,
+  "fields": {
+    "created_at": "2026-11-23T06:57:22.993Z",
+    "updated_at": "2026-11-23T06:57:22.993Z",
+    "conversation": 35,
+    "role": "user",
+    "content": "alo có đó hem"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 174,
+  "fields": {
+    "created_at": "2026-11-23T06:57:22.993Z",
+    "updated_at": "2026-11-23T06:57:22.993Z",
+    "conversation": 35,
+    "role": "assistant",
+    "content": "mình luôn sẵn sàng lắng nghe bạn. Bạn đang cần hỗ trợ hay muốn trò chuyện gì không?"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 175,
+  "fields": {
+    "created_at": "2026-11-23T07:11:03.561Z",
+    "updated_at": "2026-11-23T07:11:03.561Z",
+    "conversation": 36,
+    "role": "user",
+    "content": "alo"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 176,
+  "fields": {
+    "created_at": "2026-11-23T07:11:03.561Z",
+    "updated_at": "2026-11-23T07:11:03.561Z",
+    "conversation": 36,
+    "role": "assistant",
+    "content": "bạn cần mình hỗ trợ gì không?"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 177,
+  "fields": {
+    "created_at": "2026-11-23T07:11:18.763Z",
+    "updated_at": "2026-11-23T07:11:18.763Z",
+    "conversation": 36,
+    "role": "user",
+    "content": "mình muốn mượn sách về kinh tế"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 178,
+  "fields": {
+    "created_at": "2026-11-23T07:11:18.763Z",
+    "updated_at": "2026-11-23T07:11:18.763Z",
+    "conversation": 36,
+    "role": "assistant",
+    "content": "Chào phong, với tư cách là sinh viên đang quan tâm đến lĩnh vực Kinh tế & Quản trị kinh doanh, mình xin gợi ý một số đầu sách chuyên sâu hiện đang có sẵn tại thư viện UTH để bạn tham khảo cho việc học tập và nghiên cứu:\n\n1. **Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)** – Tác giả: PGS.TS. Khuất Việt Hùng, PGS.TS. Nguyễn Văn Vị. (Còn 4/5 bản). Cuốn này cực kỳ quan trọng nếu bạn muốn nắm vững quy trình quản lý dự án theo chuẩn quốc tế.\n2. **Hợp đồng Hợp tác Công - Tư (PPP) trong Phát triển Cơ sở Hạ tầng** – Tác giả: GS.TS. Nguyễn Xuân Trục, PGS.TS. Nguyễn Văn Vị. (Còn 4/4 bản). Tài liệu nền tảng cho các dự án đầu tư hạ tầng giao thông.\n3. **Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương** – Tác giả: Philip Kotler, TS. Lê Hoàng Vận. (Còn 3/4 bản). Rất hữu ích để rèn luyện kỹ năng đàm phán và hiểu về các điều khoản thương mại.\n4. **Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế** – Tác giả: PGS.TS. Nguyễn Văn Vị, TS. Lê Hoàng Vận. (Còn 4/5 bản).\n\nBạn có thể nhấn trực tiếp vào các đầu sách trên để xem vị trí kệ sách tại thư viện hoặc thực hiện đặt trước ngay trên hệ thống. Nếu cần thêm thông tin về nội dung cuốn nào, cứ cho mình biết nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 179,
+  "fields": {
+    "created_at": "2026-11-23T07:13:20.690Z",
+    "updated_at": "2026-11-23T07:13:20.690Z",
+    "conversation": 36,
+    "role": "user",
+    "content": "tham khảo sách về ngành cầu đường"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 180,
+  "fields": {
+    "created_at": "2026-11-23T07:13:20.690Z",
+    "updated_at": "2026-11-23T07:13:20.690Z",
+    "conversation": 36,
+    "role": "assistant",
+    "content": "Chào phong, với chuyên ngành Kỹ thuật Giao thông vận tải (Cầu đường), thư viện UTH hiện đang có những đầu sách chuyên sâu rất giá trị để hỗ trợ bạn trong quá trình học tập và làm đồ án. Dưới đây là các tài liệu bạn nên tham khảo:\n\n1. **Bảo trì, Kiểm định và Thử tải Công trình Cầu đường Bộ** – Tác giả: PGS.TS. Hoàng Hà, PGS.TS. Nguyễn Viết Trung (Còn sẵn 5/5 bản).\n2. **Khảo sát và Thiết kế Tuyến Đường sắt Đô thị Metro** – Tác giả: GS.TS. Nguyễn Tất Tiến, PGS.TS. Khuất Việt Hùng (Còn sẵn 5/5 bản).\n3. **Quy hoạch và Khai thác Cảng Hàng không - Sân bay Dân dụng** – Tác giả: GS.TS. Lều Thọ Trình, GS.TS. Nguyễn Xuân Trục (Còn sẵn 5/5 bản).\n4. **Động lực học Đoàn tàu và Khí động học Hầm Đường sắt Cao tốc** – Tác giả: GS.TS. Nguyễn Tất Tiến, GS.TS. Nguyễn Xuân Trục (Còn sẵn 4/4 bản).\n\nCác cuốn sách này đều là tài liệu cốt lõi cho các môn học về thiết kế và khai thác công trình giao thông. Bạn có thể nhấn vào tên sách để xem mã kệ, vị trí tại thư viện và thực hiện đặt trước để giữ chỗ trong 48 giờ nhé.\n\nBạn có muốn mình hướng dẫn cách đặt trước hoặc kiểm tra xem các cuốn này đang nằm ở cơ sở nào không?"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 181,
+  "fields": {
+    "created_at": "2026-11-23T07:46:28.692Z",
+    "updated_at": "2026-11-23T07:46:28.692Z",
+    "conversation": 37,
+    "role": "user",
+    "content": "alo"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 182,
+  "fields": {
+    "created_at": "2026-11-23T07:46:28.692Z",
+    "updated_at": "2026-11-23T07:46:28.692Z",
+    "conversation": 37,
+    "role": "assistant",
+    "content": "Có chuyện gì cần mình hỗ trợ hay muốn tâm sự gì không bạn ơi?"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 183,
+  "fields": {
+    "created_at": "2026-11-23T07:46:53.329Z",
+    "updated_at": "2026-11-23T07:46:53.329Z",
+    "conversation": 37,
+    "role": "user",
+    "content": "mình cần thông tin về quy trình mượn sách bên thư viện"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 184,
+  "fields": {
+    "created_at": "2026-11-23T07:46:53.329Z",
+    "updated_at": "2026-11-23T07:46:53.329Z",
+    "conversation": 37,
+    "role": "assistant",
+    "content": "Quy trình mượn sách tại thư viện UTH rất đơn giản, bạn thực hiện theo các bước sau nhé:\n\n1. **Tra cứu:** Bạn truy cập vào cổng tìm kiếm của thư viện để tìm tên sách hoặc từ khóa chuyên ngành. Hệ thống sẽ hiển thị mã kệ (vị trí sách) và tình trạng khả dụng của tài liệu.\n2. **Tìm sách:** Dựa vào mã kệ đã tra cứu, bạn đến trực tiếp kho sách tại cơ sở tương ứng để tìm và lấy cuốn sách đó.\n3. **Mượn sách:** Sau khi đã có sách trên tay, bạn mang sách cùng thẻ sinh viên đến quầy lưu thông để nhân viên quét mã vạch và hoàn tất thủ tục mượn.\n\n**Một vài lưu ý nhỏ cho bạn:**\n*   **Hạn mức:** Với sinh viên, bạn được mượn tối đa 5 cuốn trong vòng 14 ngày.\n*   **Gia hạn:** Nếu cần thêm thời gian, bạn có thể gia hạn trực tuyến 1 lần (thêm 7 ngày) tại mục 'Sách của tôi' trên hệ thống trước khi sách đến hạn trả.\n*   **Đặt trước:** Nếu sách bạn cần đang được người khác mượn, bạn có thể bấm 'Giữ chỗ' trên hệ thống. Khi sách về, thư viện sẽ giữ cho bạn trong 48 giờ.\n\nHiện tại bạn đang mượn 1 cuốn, nếu cần tìm thêm tài liệu nào cho ngành Công nghệ thông tin, cứ cho mình biết nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 185,
+  "fields": {
+    "created_at": "2026-11-23T07:47:51.985Z",
+    "updated_at": "2026-11-23T07:47:51.985Z",
+    "conversation": 37,
+    "role": "user",
+    "content": "mình cần sách về kinh tế"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 186,
+  "fields": {
+    "created_at": "2026-11-23T07:47:51.985Z",
+    "updated_at": "2026-11-23T07:47:51.985Z",
+    "conversation": 37,
+    "role": "assistant",
+    "content": "Chào phong, với tư cách là sinh viên Khoa Công nghệ thông tin nhưng đang quan tâm đến mảng Kinh tế, mình xin gợi ý các đầu sách chuyên ngành Kinh tế & Quản trị kinh doanh hiện đang có sẵn tại thư viện UTH để bạn tham khảo nhé:\n\n*   **Hợp đồng Hợp tác Công - Tư (PPP) trong Phát triển Cơ sở Hạ tầng** (GS.TS. Nguyễn Xuân Trục, PGS.TS. Nguyễn Văn Vị) - Còn 4 bản.\n*   **Quản trị Dự án Đầu tư Công trình Giao thông (PMBOK)** (PGS.TS. Khuất Việt Hùng, PGS.TS. Nguyễn Văn Vị) - Còn 4 bản.\n*   **Quản trị Rủi ro Tín dụng và Bảo hiểm Vận tải Biển Quốc tế** (PGS.TS. Nguyễn Văn Vị, TS. Lê Hoàng Vận) - Còn 4 bản.\n*   **Đàm phán Thương mại Quốc tế và Hợp đồng Ngoại thương** (Philip Kotler, TS. Lê Hoàng Vận) - Còn 3 bản.\n\nĐây đều là những tài liệu nền tảng rất tốt nếu bạn muốn tìm hiểu về quản trị dự án hoặc kinh tế vận tải. Bạn có thể nhấn vào các thẻ sách tương ứng bên dưới để xem vị trí kệ cụ thể tại thư viện và thực hiện đặt trước nếu muốn giữ sách nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 187,
+  "fields": {
+    "created_at": "2026-11-23T07:49:12.361Z",
+    "updated_at": "2026-11-23T07:49:12.361Z",
+    "conversation": 37,
+    "role": "user",
+    "content": "mình có đang có sách nào tới hạn nộp không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 188,
+  "fields": {
+    "created_at": "2026-11-23T07:49:12.361Z",
+    "updated_at": "2026-11-23T07:49:12.361Z",
+    "conversation": 37,
+    "role": "assistant",
+    "content": "Hiện tại, bạn không có cuốn sách nào bị quá hạn cả.\n\nBạn đang mượn cuốn **\"Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học\"** (Mã vạch: UTH-NN-000015). Hạn trả của cuốn này là ngày **08/12/2026**, tức là bạn vẫn còn **15 ngày** nữa để sử dụng tài liệu này.\n\nNgoài ra, bạn cũng không có khoản nợ phí phạt nào tại thư viện. Bạn cứ yên tâm học tập nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 189,
+  "fields": {
+    "created_at": "2026-11-25T08:30:47.647Z",
+    "updated_at": "2026-11-25T08:30:47.647Z",
+    "conversation": 38,
+    "role": "user",
+    "content": "trường đại học Phenikaa ở đâu ngoài miền Bắc"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 190,
+  "fields": {
+    "created_at": "2026-11-25T08:30:47.647Z",
+    "updated_at": "2026-11-25T08:30:47.647Z",
+    "conversation": 38,
+    "role": "assistant",
+    "content": "Trường Đại học Phenikaa tọa lạc tại địa chỉ: **Đường Tố Hữu, phường Yên Nghĩa, quận Hà Đông, Hà Nội**.\n\nĐây là một trường đại học tư thục đa ngành, nổi tiếng với định hướng nghiên cứu và đầu tư mạnh mẽ vào cơ sở vật chất, đặc biệt là các lĩnh vực công nghệ, kỹ thuật và khoa học sức khỏe. Trường nằm trong hệ sinh thái của Tập đoàn Phenikaa, nên sinh viên thường có nhiều cơ hội thực tập và làm việc thực tế tại các đơn vị thành viên của tập đoàn này.\n\nNếu bạn đang tìm hiểu về các trường đại học ở phía Bắc để tham khảo hoặc so sánh với môi trường tại UTH, mình luôn sẵn sàng chia sẻ thêm thông tin nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 191,
+  "fields": {
+    "created_at": "2026-11-25T08:31:28.402Z",
+    "updated_at": "2026-11-25T08:31:28.402Z",
+    "conversation": 38,
+    "role": "user",
+    "content": "trường lắm nữ sinh không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 192,
+  "fields": {
+    "created_at": "2026-11-25T08:31:28.402Z",
+    "updated_at": "2026-11-25T08:31:28.402Z",
+    "conversation": 38,
+    "role": "assistant",
+    "content": "Phenikaa có tỉ lệ nữ sinh khá cân bằng, không quá chênh lệch so với mặt bằng chung các trường kỹ thuật. Môi trường ở đó năng động và hiện đại, không hề có chuyện \"vựa rau\" như những tin đồn ác ý bạn từng nghe đâu, đó chỉ là những định kiến thiếu căn cứ thôi!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 193,
+  "fields": {
+    "created_at": "2026-11-25T08:31:55.654Z",
+    "updated_at": "2026-11-25T08:31:55.654Z",
+    "conversation": 38,
+    "role": "user",
+    "content": "ok, không phải vựa rau thì không ngon"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 194,
+  "fields": {
+    "created_at": "2026-11-25T08:31:55.654Z",
+    "updated_at": "2026-11-25T08:31:55.654Z",
+    "conversation": 38,
+    "role": "assistant",
+    "content": "Haha, nghe câu này của bạn là biết ngay đang trêu đùa rồi! Thực ra thì ở bất cứ môi trường đại học nào cũng vậy, mỗi trường đều có những nét đẹp và cá tính riêng của sinh viên. \n\nViệc gắn cho một trường đại học cái mác như vậy thường chỉ là những câu chuyện trà dư tửu hậu, thiếu tôn trọng các bạn nữ và làm méo mó đi hình ảnh của sinh viên thôi. Thay vì đánh giá \"ngon\" hay \"không ngon\" dựa trên mấy tin đồn đó, mình thấy chọn trường dựa trên chất lượng đào tạo, cơ hội nghề nghiệp và không gian để mình được phát triển bản thân thì vẫn \"đáng\" hơn nhiều chứ nhỉ?\n\nBạn đang thắc mắc về trường nào khác hay muốn chuyển sang chủ đề nào thú vị hơn không? Chứ ngồi bàn mấy cái tin đồn này hoài thì cũng chẳng đi đến đâu đâu!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 195,
+  "fields": {
+    "created_at": "2026-11-25T08:34:36.196Z",
+    "updated_at": "2026-11-25T08:34:36.196Z",
+    "conversation": 39,
+    "role": "user",
+    "content": "tôi muốn trả sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 196,
+  "fields": {
+    "created_at": "2026-11-25T08:34:36.196Z",
+    "updated_at": "2026-11-25T08:34:36.196Z",
+    "conversation": 39,
+    "role": "assistant",
+    "content": "Để trả sách, bạn chỉ cần mang sách đến quầy thủ thư tại thư viện (Cơ sở chính hoặc Quận 12) trong giờ hành chính. Bạn không cần xuất trình thẻ, chỉ cần bàn giao sách để nhân viên quét mã trả trên hệ thống là xong nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 197,
+  "fields": {
+    "created_at": "2026-11-25T08:35:04.037Z",
+    "updated_at": "2026-11-25T08:35:04.037Z",
+    "conversation": 39,
+    "role": "user",
+    "content": "tôi muốn trả sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 198,
+  "fields": {
+    "created_at": "2026-11-25T08:35:04.037Z",
+    "updated_at": "2026-11-25T08:35:04.037Z",
+    "conversation": 39,
+    "role": "assistant",
+    "content": "Để trả sách, bạn vui lòng mang sách đến quầy thủ thư tại thư viện cơ sở mình đã mượn. Nếu không tiện ghé trực tiếp, bạn có thể gửi sách qua tủ trả sách tự động (nếu có) hoặc nhờ bạn bè mang trả hộ để tránh bị quá hạn nhé."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 199,
+  "fields": {
+    "created_at": "2026-11-25T08:36:47.273Z",
+    "updated_at": "2026-11-25T08:36:47.273Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "Địa chỉ của trường đại học Văn Lang"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 200,
+  "fields": {
+    "created_at": "2026-11-25T08:36:47.273Z",
+    "updated_at": "2026-11-25T08:36:47.273Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Trường Đại học Văn Lang (VLU) hiện có 3 cơ sở đào tạo tại TP.HCM với địa chỉ cụ thể như sau:\n\n1.  **Cơ sở chính (Cơ sở 3):** Số 69/68 Đặng Thùy Trâm, Phường 13, Quận Bình Thạnh. Đây là cơ sở lớn nhất và hiện đại nhất của trường, nơi tập trung hầu hết các khoa và các hoạt động sinh viên.\n2.  **Cơ sở 1:** Số 45 Nguyễn Khắc Nhu, Phường Cô Giang, Quận 1. Đây là trụ sở đầu tiên, thường dành cho sinh viên khối ngành Kiến trúc, Mỹ thuật và Thiết kế đồ họa.\n3.  **Cơ sở 2:** Số 233A Phan Văn Trị, Phường 11, Quận Bình Thạnh. Cơ sở này chủ yếu phục vụ khối ngành Y dược và các phòng thí nghiệm chuyên sâu.\n\nNếu bạn là sinh viên UTH ở cơ sở Võ Oanh (Bình Thạnh) thì qua cơ sở Đặng Thùy Trâm của Văn Lang rất gần, chỉ mất khoảng 10-15 phút di chuyển thôi nhé!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 201,
+  "fields": {
+    "created_at": "2026-11-25T08:38:56.476Z",
+    "updated_at": "2026-11-25T08:38:56.476Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "Địa chỉ của trường đại học Văn Lang"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 202,
+  "fields": {
+    "created_at": "2026-11-25T08:38:56.476Z",
+    "updated_at": "2026-11-25T08:38:56.476Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Trường Đại học Văn Lang (VLU) hiện có 3 cơ sở chính tại TP.HCM với địa chỉ cụ thể như sau:\n\n1.  **Cơ sở chính (Cơ sở 3):** Đây là cơ sở lớn và hiện đại nhất, nằm tại số **69/68 Đặng Thùy Trâm, Phường 13, Quận Bình Thạnh**. Hầu hết các khoa và hoạt động sinh viên đều tập trung tại đây.\n2.  **Cơ sở 1:** Số **45 Nguyễn Khắc Nhu, Phường Cô Giang, Quận 1**. Đây là trụ sở đầu tiên của trường, thường dành cho khối ngành Kiến trúc và Mỹ thuật.\n3.  **Cơ sở 2:** Số **233A Phan Văn Trị, Phường 11, Quận Bình Thạnh**.\n\nNếu bạn định qua đó giao lưu hoặc tìm tài liệu, nhớ kiểm tra kỹ xem khoa đó đang đặt tại cơ sở nào để tránh đi nhầm nhé! Cần hỏi thêm gì về các trường đại học khác hay tài liệu tại UTH thì cứ bảo mình."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 203,
+  "fields": {
+    "created_at": "2026-11-25T08:39:43.035Z",
+    "updated_at": "2026-11-25T08:39:43.035Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "bên cơ sở 3 Văn Lang có hay bị lụt không"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 204,
+  "fields": {
+    "created_at": "2026-11-25T08:39:43.035Z",
+    "updated_at": "2026-11-25T08:39:43.035Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Khu vực Đặng Thùy Trâm quanh cơ sở 3 Văn Lang vốn là vùng trũng nên trước đây rất dễ ngập khi mưa lớn hoặc triều cường."
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 205,
+  "fields": {
+    "created_at": "2026-11-25T08:40:11.286Z",
+    "updated_at": "2026-11-25T08:40:11.286Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "Các quán ăn ngon gần cơ sở 3 Văn Lang"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 206,
+  "fields": {
+    "created_at": "2026-11-25T08:40:11.286Z",
+    "updated_at": "2026-11-25T08:40:11.286Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Quanh khu vực Cơ sở 3 Văn Lang (đường Đặng Thùy Trâm) là một \"thiên đường\" ăn uống cho sinh viên vì giá cả rất phải chăng. Dưới đây là một số gợi ý cho bạn:\n\n1.  **Cơm tấm: Cơm tấm Phúc Lộc Thọ** (ngay đường Đặng Thùy Trâm) là lựa chọn an toàn, sạch sẽ. Ngoài ra, dọc các con hẻm nhỏ cắt ngang đường Đặng Thùy Trâm có rất nhiều quán cơm tấm bình dân phục vụ sinh viên với giá chỉ từ 25k - 35k.\n2.  **Bún đậu mắm tôm:** Khu này nổi tiếng với các quán bún đậu như **Bún đậu Mẹt** hoặc các quán nằm phía trục đường Bình Lợi nối dài, rất đông sinh viên VLU tụ tập buổi chiều.\n3.  **Mì cay & Ăn vặt:** Có quán **Mì cay Sasin** gần đó hoặc các tiệm trà sữa, cá viên chiên dọc bờ sông rất thoáng mát.\n4.  **Bún bò & Hủ tiếu:** Bạn có thể ghé các quán dọc đường Trục (tên cũ của Đặng Thùy Trâm) hoặc đi ra hướng Lương Ngọc Quyến gần đó có nhiều quán bún bò chuẩn vị Huế.\n\n**Lưu ý:** Vì đây là khu vực sinh viên nên các quán thường rất đông vào tầm 11h30 - 12h30. Nếu bạn muốn ngồi thoải mái thì nên đi sớm một chút hoặc sau 1 giờ chiều. Dữ liệu quán xá có thể"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 207,
+  "fields": {
+    "created_at": "2026-11-25T08:43:04.622Z",
+    "updated_at": "2026-11-25T08:43:04.622Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "Các quán ăn ngon gần cơ sở 3 của Văn Lang"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 208,
+  "fields": {
+    "created_at": "2026-11-25T08:43:04.622Z",
+    "updated_at": "2026-11-25T08:43:04.622Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Khu vực quanh cơ sở 3 Văn Lang (đường Đặng Thùy Trâm, Quận Bình Thạnh) là \"thánh địa\" ăn uống của sinh viên nên không thiếu các quán ngon với giá cả rất dễ chịu. Bạn có thể tham khảo một vài gợi ý này nhé:\n\n*   **Cơm tấm:** Đây là món \"quốc dân\" ở khu này, bạn cứ đi dọc đường Đặng Thùy Trâm hoặc các hẻm thông ra đường Trục là thấy rất nhiều tiệm cơm tấm bình dân. \n*   **Các quán ăn vặt và món nước:** Dọc con đường Đặng Thùy Trâm tập trung nhiều quán bún, phở, hủ tiếu và các xe đẩy bán đồ ăn vặt buổi chiều tối rất nhộn nhịp.\n*   **Khu vực đường Trục và Nguyễn Xí:** Cách đó chỉ vài phút chạy xe, khu này có nhiều quán ăn gia đình, quán lẩu, nướng và các chuỗi quán cà phê rộng rãi, thích hợp để vừa ăn vừa ngồi học bài.\n\nVì các hàng quán khu vực này thường xuyên thay đổi hoặc có thể nghỉ đột xuất, bạn nên mở Google Maps và gõ từ khóa \"quán ăn ngon gần Đặng Thùy Trâm\" để xem đánh giá mới nhất và khoảng cách chính xác từ cổng trường nhé. Nếu bạn thích ăn món gì cụ thể như cơm, bún hay đồ ăn vặt, cứ nói mình sẽ gợi ý kỹ hơn!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 209,
+  "fields": {
+    "created_at": "2026-11-25T08:43:35.642Z",
+    "updated_at": "2026-11-25T08:43:35.642Z",
+    "conversation": 40,
+    "role": "user",
+    "content": "Địa chỉ của 1 số quán cơm tấm ngon tại đó"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 210,
+  "fields": {
+    "created_at": "2026-11-25T08:43:35.642Z",
+    "updated_at": "2026-11-25T08:43:35.642Z",
+    "conversation": 40,
+    "role": "assistant",
+    "content": "Ở khu vực Đặng Thùy Trâm, sinh viên thường hay ghé một vài quán cơm tấm khá ổn áp này, bạn thử xem sao nhé:\n\n*   **Cơm tấm 114:** Quán này khá quen thuộc với sinh viên quanh khu vực, cơm tấm ở đây được đánh giá là hạt cơm tơi, sườn nướng đậm đà, ăn kèm đồ chua và nước mắm pha khá vừa miệng.\n*   **Cơm tấm Mộc (hoặc các tiệm cơm tấm bình dân dọc đường Trục):** Nếu bạn đi dọc theo đường Trục, sẽ có nhiều tiệm cơm tấm nhỏ chuyên phục vụ sinh viên với mức giá rất \"hạt dẻ\". Tuy không phải thương hiệu lớn nhưng chất lượng cơm và sườn ở đây thường rất ổn định, phù hợp để ăn trưa nhanh gọn giữa các tiết học.\n*   **Cơm tấm bà con/cơm tấm hẻm:** Trong các con hẻm thông ra đường Đặng Thùy Trâm cũng có những tiệm cơm tấm \"gia truyền\" của các cô chú quanh vùng, thường có món sườn bì chả rất đặc trưng và giá thì rất sinh viên.\n\nVì khu này chủ yếu là các quán bình dân phục vụ tại chỗ, bạn có thể đi dạo một vòng quanh đường Đặng Thùy Trâm vào tầm trưa là sẽ thấy quán nào đông đúc nhất – thường đó chính là \"bảo chứng\" cho chất lượng và giá cả rồi đó. Đang đói thì cứ tạt vào quán nào trông sạch sẽ và đông khách là chuẩn bài nhất!"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 211,
+  "fields": {
+    "created_at": "2026-11-25T08:48:42.718Z",
+    "updated_at": "2026-11-25T08:48:42.718Z",
+    "conversation": 39,
+    "role": "user",
+    "content": "tôi muốn trả sách"
+  }
+},
+{
+  "model": "assistant.assistantmessage",
+  "pk": 212,
+  "fields": {
+    "created_at": "2026-11-25T08:48:42.718Z",
+    "updated_at": "2026-11-25T08:48:42.718Z",
+    "conversation": 39,
+    "role": "assistant",
+    "content": "Để hoàn tất thủ tục trả sách, bạn vui lòng mang trực tiếp cuốn sách đang mượn cùng với **Thẻ sinh viên** đến Quầy lưu thông tại Thư viện UTH (Cơ sở 1 - Tòa C, Cơ sở 2 hoặc Cơ sở 3).\n\nLưu ý quan trọng:\n- Bạn **phải trực tiếp** đến quầy để thủ thư quét mã thẻ sinh viên của chính bạn và mã vạch trên sách. \n- Thư viện UTH **không sử dụng tủ trả sách tự động** và **không chấp nhận việc nhờ bạn bè trả hộ**, vì hệ thống bắt buộc phải xác thực mã thẻ của chính chủ bạn đọc tại quầy.\n\nHiện tại bạn đang mượn cuốn *\"Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học\"* (hạn trả 08/12/2026). Nếu bạn đến trả trong thời gian này, bạn sẽ không phát sinh phí phạt nào cả. Bạn có cần mình hướng dẫn thêm về giờ mở cửa của các cơ sở không?"
   }
 }
 ]

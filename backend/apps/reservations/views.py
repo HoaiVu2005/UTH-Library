@@ -36,7 +36,7 @@ class CreateReservationView(APIView):
         reservation = create_reservation(user=request.user, book_id=book_id, request=request)
 
         msg = (
-            'Giữ chỗ sách thành công! Sách đang được giữ cho bạn tại quầy A trong 3 ngày.'
+            'Đăng ký mượn sách thành công! Sách đang được giữ cho bạn tại Quầy lưu thông trong 3 ngày.'
             if reservation.status == 'ready'
             else f'Đặt trước thành công! Bạn đã được thêm vào hàng chờ (Vị trí #{reservation.queue_position}).'
         )

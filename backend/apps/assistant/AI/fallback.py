@@ -197,6 +197,17 @@ Bạn có thể tham khảo thêm nhiều giáo trình kỹ thuật và cơ khí
             "qua mã VietQR tại mục 'Tiền phạt' (/fines) hoặc nộp tại Quầy lưu thông."
         )
 
+    if any(k in msg for k in ["trả sách", "cách trả", "hướng dẫn trả", "thủ tục trả", "quy trình trả", "muốn trả", "trả hộ", "nhờ trả"]):
+        return (
+            "Quy trình trả sách tại Thư viện UTH:\n"
+            "1. **Đến trực tiếp Quầy lưu thông:** Bạn đọc trực tiếp mang sách cùng Thẻ sinh viên/học viên (hoặc mã thẻ bạn đọc) đến Quầy lưu thông tại Thư viện UTH (Cơ sở 1: Tòa C; Cơ sở 2 hoặc Cơ sở 3).\n"
+            "2. **Thủ thư quét mã thẻ & mã sách:** Thủ thư sẽ quét mã thẻ của chính bạn đọc và mã vạch Code128 trên từng cuốn sách để hoàn tất thủ tục trả sách trên hệ thống.\n"
+            "3. **Kiểm tra tình trạng tài liệu:** Thủ thư kiểm tra tình trạng sách nguyên vẹn và xác nhận tất toán phiếu mượn.\n\n"
+            "⚠️ **Lưu ý quan trọng từ Thư viện UTH:**\n"
+            "- **Không thể nhờ bạn bè trả hộ:** Thủ thư bắt buộc phải quét mã thẻ của chính sinh viên mượn tại quầy để đối soát và tất toán phiếu mượn.\n"
+            "- Thư viện UTH không áp dụng tủ trả sách tự động, bạn vui lòng đến trực tiếp quầy lưu thông trong giờ mở cửa nhé!"
+        )
+
     if any(k in msg for k in ["cách mượn", "hướng dẫn mượn", "thủ tục mượn", "mượn như thế nào", "mượn sách thế nào", "quy trình mượn", "mượn sách làm sao"]):
         return (
             "Quy trình mượn sách tại Thư viện UTH gồm 3 bước đơn giản:\n"

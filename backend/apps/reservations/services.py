@@ -134,7 +134,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             Notification.objects.create(
                 user=user,
                 type=NotificationType.RESERVATION_READY,
-                content=f'Giữ chỗ thành công! Sách "{book.title}" đã được giữ cho bạn tại quầy A. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
+                content=f'Đăng ký mượn sách thành công! Sách "{book.title}" đã được chuẩn bị sẵn sàng cho bạn tại Quầy lưu thông. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
                 link='/reservations'
             )
 

@@ -13,6 +13,7 @@ import {
   getWelcomeActions,
   shouldShowBookSuggestions,
   shouldRenderDockedComposer,
+  cleanAssistantReplyText,
 } from './aiChatPresentation';
 
 describe('AI chat presentation by role', () => {
@@ -30,11 +31,18 @@ describe('AI chat presentation by role', () => {
       label: 'Mở Quản lý tiền phạt',
       path: '/admin/fines',
     });
+    expect(normalizeChatAction({
+      label: 'Xem danh sách đặt trước của tôi',
+      path: '/profile',
+    })).toEqual({
+      label: 'Xem danh sách đặt trước của tôi',
+      path: '/reservations',
+    });
     expect(normalizeChatAction({ label: 'Trang lạ', path: 'https://example.com' })).toBeNull();
   });
 
   it('stops waiting shortly after the backend latency budget expires', () => {
-    expect(AI_CHAT_REQUEST_CONFIG.timeout).toBe(20_000);
+    expect(AI_CHAT_REQUEST_CONFIG.timeout).toBe(10_000);
   });
   it('greets staff by role instead of treating the last word as their name', () => {
     expect(
@@ -110,5 +118,10 @@ describe('AI chat presentation by role', () => {
     expect(tone.assistantMessageClass).not.toContain('backdrop-blur');
     expect(tone.welcomeSurfaceClass).not.toContain('backdrop-blur');
     expect(tone.loadingSurfaceClass).not.toContain('backdrop-blur');
+  });
+
+  it('strips raw hallucinated action JSON and technical markup from assistant reply', () => {
+    const rawReply = `Bạn có thể xem sách bên dưới.\n\n{\n  "action": "show_book_cards",\n  "book_ids": [\n    "UTH-IT-000001",\n    "UTH-IT-000002"\n  ]\n}`;
+    expect(cleanAssistantReplyText(rawReply)).toBe('Bạn có thể xem sách bên dưới.');
   });
 });

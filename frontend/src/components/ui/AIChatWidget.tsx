@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
 import {
@@ -7,6 +7,7 @@ import {
   User as UserIcon,
   BookOpen,
   ChevronRight,
+  ChevronDown,
   RefreshCw,
   Minus,
   Sparkles,
@@ -198,6 +199,8 @@ const createWelcomeMessage = (isAdminUser: boolean, isLecturerUser: boolean, use
 function cleanAndFormatMarkdown(text: string, hasOverdueCards: boolean = false): string {
   if (!text) return '';
   let cleaned = text
+    .replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/gi, '')
+    .replace(/\{[\s\r\n]*"(?:action|book_ids|suggested_books|command)"[\s\S]*?\}/gi, '')
     .replace(/\[\s*Gửi thông báo[^\]]*\]/gi, '')
     .trim();
 
@@ -381,7 +384,7 @@ export const AIChatWidget: React.FC = () => {
       const resId = res.data?.id;
 
       const confirmText = isReadyResult
-        ? `🎉 **Giữ chỗ thành công!**\n\nCuốn **${bookTitle || 'sách'}** đã được giữ riêng cho bạn tại Quầy lưu thông trong **3 ngày**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Bạn có thể ghé thư viện nhận sách nhé!`
+        ? `🎉 **Đăng ký mượn sách thành công!**\n\nCuốn **${bookTitle || 'sách'}** đã được giữ riêng cho bạn tại Quầy lưu thông trong **3 ngày**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Bạn có thể ghé thư viện nhận sách nhé!`
         : `🎉 **Đặt trước vào hàng chờ thành công!**\n\nBạn đang ở vị trí **#${queuePos || 1}** trong hàng chờ cuốn **${bookTitle || 'sách'}**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!`;
 
       const confirmMsg: Message = {
@@ -389,8 +392,8 @@ export const AIChatWidget: React.FC = () => {
         sender: 'ai',
         text: confirmText,
         action: {
-          label: 'Xem danh sách đặt trước của tôi',
-          path: '/profile',
+          label: 'Xem danh sách mượn / đặt trước',
+          path: '/reservations',
         },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
@@ -657,6 +660,12 @@ export const AIChatWidget: React.FC = () => {
   };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const isUserScrolledUpRef = useRef(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+  const prevMessagesLengthRef = useRef(messages.length);
+  const prevSessionIdRef = useRef(currentSessionId);
+  const scrollRafRef = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -690,16 +699,66 @@ export const AIChatWidget: React.FC = () => {
     });
   }, [latestOverdueStudents, searchOverdueQuery, overdueSeverityFilter]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const handleChatScroll = useCallback(() => {
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = chatScrollRef.current;
+      if (!el) return;
+      const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const isScrolledUp = distanceToBottom > 120;
+      isUserScrolledUpRef.current = isScrolledUp;
+      setShowScrollBottomBtn((prev) => (prev !== isScrolledUp ? isScrolledUp : prev));
+    });
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const el = chatScrollRef.current;
+    if (!el) {
+      messagesEndRef.current?.scrollIntoView({ behavior });
+      return;
+    }
+    if (behavior === 'auto') {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+    isUserScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+  }, []);
 
   useEffect(() => {
-    if (isOpen && !isMinimized) {
-      scrollToBottom();
-      setTimeout(() => inputRef.current?.focus(), 250);
+    if (!isOpen || isMinimized) return;
+
+    const isNewSession = prevSessionIdRef.current !== currentSessionId;
+    const isInitialOpen = prevMessagesLengthRef.current === 0 && messages.length > 0;
+    const lastMsg = messages[messages.length - 1];
+    const isSentByUser = lastMsg?.sender === 'user';
+
+    if (isNewSession || isInitialOpen) {
+      scrollToBottom('auto');
+      prevSessionIdRef.current = currentSessionId;
+      prevMessagesLengthRef.current = messages.length;
+      setTimeout(() => inputRef.current?.focus(), 150);
+      return;
     }
-  }, [isOpen, isMinimized, messages]);
+
+    if (messages.length !== prevMessagesLengthRef.current) {
+      prevMessagesLengthRef.current = messages.length;
+      if (isSentByUser || !isUserScrolledUpRef.current) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [isOpen, isMinimized, messages, currentSessionId, scrollToBottom]);
+
+  useEffect(() => {
+    if (loading && !isUserScrolledUpRef.current) {
+      scrollToBottom('smooth');
+    }
+  }, [loading, scrollToBottom]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -1019,7 +1078,7 @@ export const AIChatWidget: React.FC = () => {
     const list = latestAdminStats?.lecturer_borrowers ?? [];
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-[#006F70] to-[#004D40] text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -1101,7 +1160,7 @@ export const AIChatWidget: React.FC = () => {
     const issuesPct = (((stats.damaged_copies + stats.lost_copies) / total) * 100).toFixed(1);
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-teal-900 to-teal-800 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
           <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
@@ -1199,7 +1258,7 @@ export const AIChatWidget: React.FC = () => {
     const list = latestAdminStats?.low_stock_books ?? [];
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-amber-900 to-amber-800 text-white p-4 rounded-2xl shadow-md">
           <div className="flex items-center justify-between">
             <div>
@@ -1259,7 +1318,7 @@ export const AIChatWidget: React.FC = () => {
     const finesList = stats.unpaid_fines_list || [];
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-rose-900 via-rose-800 to-rose-950 text-white p-4 rounded-2xl shadow-md relative overflow-hidden">
           <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
@@ -1349,7 +1408,7 @@ export const AIChatWidget: React.FC = () => {
     const list = latestAdminStats?.top_borrowed_books ?? [];
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-indigo-900 to-indigo-800 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
           <div>
             <p className="text-indigo-200 text-xs font-medium">Bảng xếp hạng tài liệu được quan tâm</p>
@@ -1410,7 +1469,7 @@ export const AIChatWidget: React.FC = () => {
     const list = latestAdminStats?.issue_copies_list ?? [];
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-rose-950 via-slate-900 to-rose-900 text-white p-4 rounded-2xl shadow-md flex items-center justify-between">
           <div>
             <p className="text-rose-200 text-xs font-medium">Bảo quản & Phục hồi Tài liệu</p>
@@ -1452,7 +1511,7 @@ export const AIChatWidget: React.FC = () => {
     const stats = latestAdminStats;
 
     return (
-      <div className="p-4 space-y-4 overflow-y-auto flex-1">
+      <div className="p-4 space-y-4 overflow-y-auto flex-1 ai-smooth-scroll ai-chat-scrollbar">
         <div className="bg-gradient-to-br from-[#006F70] to-[#008B8B] text-white p-4 rounded-2xl shadow-md">
           <p className="text-teal-200 text-xs font-medium">Báo cáo Nhịp Độ Lưu Thông Thư Viện UTH</p>
           <h3 className="text-xl font-bold mt-0.5">Hệ thống đang phục vụ ổn định</h3>
@@ -1475,7 +1534,7 @@ export const AIChatWidget: React.FC = () => {
           <div className="bg-white p-3 rounded-2xl border border-gray-200">
             <p className="text-[11px] text-gray-500 font-medium">Đặt trước đang chờ</p>
             <p className="text-lg font-bold text-gray-900 mt-0.5">{stats.pending_reservations} yêu cầu</p>
-            <span className="text-[10px] text-gray-400">Giữ chỗ 48h</span>
+            <span className="text-[10px] text-gray-400">Giữ 3 ngày tại quầy</span>
           </div>
           <div className="bg-white p-3 rounded-2xl border border-amber-100 bg-amber-50/30">
             <p className="text-[11px] text-amber-700 font-medium">Nợ phạt tồn đọng</p>
@@ -1595,7 +1654,7 @@ export const AIChatWidget: React.FC = () => {
         <>
           {isFullscreen && (
             <div
-              className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9998] transition-opacity duration-300"
+              className="fixed inset-0 bg-slate-900/60 z-[9998] transition-opacity duration-200"
               onClick={() => setIsFullscreen(false)}
             />
           )}
@@ -1607,10 +1666,10 @@ export const AIChatWidget: React.FC = () => {
                 ? { transform: `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` }
                 : undefined
             }
-            className={`flex flex-col bg-white rounded-3xl shadow-2xl border border-teal-200/60 overflow-hidden ${
-              isDragging ? 'transition-none select-none shadow-teal-950/40' : 'transition-all duration-300 ease-out shadow-teal-950/20'
+            className={`flex flex-col bg-white rounded-3xl shadow-xl border border-teal-200/60 overflow-hidden ${
+              isDragging ? 'transition-none select-none shadow-teal-950/40' : 'shadow-teal-950/20'
             } origin-bottom-right ${windowClass} ${
-              !isMinimized && !isFullscreen ? 'animate-in fade-in zoom-in-95 slide-in-from-bottom-5' : ''
+              !isMinimized && !isFullscreen ? 'animate-in fade-in zoom-in-95' : ''
             }`}
           >
             {/* ── HEADER CỬA SỔ CHAT ── */}
@@ -1628,7 +1687,7 @@ export const AIChatWidget: React.FC = () => {
               }`}
               title={!isFullscreen ? 'Kéo để di chuyển khung chat (Nhấp đúp để về góc)' : undefined}
             >
-              <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-white/10 blur-xl pointer-events-none" />
+              <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-white/5 pointer-events-none" />
 
               <div className="flex items-center gap-2 relative z-10">
                 {/* Nút toggle Sidebar Lịch sử trò chuyện */}
@@ -1780,7 +1839,7 @@ export const AIChatWidget: React.FC = () => {
                     </div>
 
                     {/* Danh sách các phiên trò chuyện */}
-                    <div className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-2">
+                    <div className="flex-1 overflow-y-auto px-2.5 pb-3 space-y-2 ai-smooth-scroll ai-chat-scrollbar">
                       {sessions.map((s) => {
                         const isActive = s.id === currentSessionId;
                         return (
@@ -1832,11 +1891,15 @@ export const AIChatWidget: React.FC = () => {
                   <div className="relative flex-1 overflow-hidden bg-[#0E979D]">
                     <div
                       aria-hidden="true"
-                      className={chatCanvasTone.backgroundLayerClass}
-                      style={{ backgroundImage: `url(${uthChatBackgroundImg})` }}
+                      className={`${chatCanvasTone.backgroundLayerClass} pointer-events-none select-none`}
+                      style={{ backgroundImage: `url(${uthChatBackgroundImg})`, transform: 'translateZ(0)' }}
                     />
-                    <div aria-hidden="true" className={chatCanvasTone.tintLayerClass} />
-                    <div className="relative z-10 h-full overflow-y-auto p-4 sm:p-6">
+                    <div aria-hidden="true" className={`${chatCanvasTone.tintLayerClass} pointer-events-none`} />
+                    <div
+                      ref={chatScrollRef}
+                      onScroll={handleChatScroll}
+                      className="relative z-10 h-full overflow-y-auto p-4 sm:p-6 ai-smooth-scroll ai-chat-scrollbar"
+                    >
                       <div className={`${getConversationWidthClass(isFullscreen, isAdmin)} min-h-full space-y-5`}>
                       {/* Màn hình bắt đầu tối giản, tập trung vào một hành động */}
                       {messages.length <= 1 && (
@@ -1868,15 +1931,15 @@ export const AIChatWidget: React.FC = () => {
                         return (
                           <div
                             key={msg.id}
-                            className={`flex items-start gap-3 transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2 ${
+                            className={`flex items-start gap-3 ${
                               msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
                             }`}
                           >
                             <div
-                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0 shadow-sm flex items-center justify-center ${
+                              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0 shadow-xs flex items-center justify-center ${
                                 msg.sender === 'user'
-                                  ? 'bg-gradient-to-tr from-amber-600 to-amber-500 text-white shadow-amber-500/20'
-                                  : 'border-2 border-teal-300/80 bg-white ring-2 ring-teal-500/10'
+                                  ? 'bg-gradient-to-tr from-amber-600 to-amber-500 text-white shadow-xs'
+                                  : 'border border-teal-300/80 bg-white ring-1 ring-teal-500/10'
                               }`}
                             >
                               {msg.sender === 'user' ? (
@@ -1887,16 +1950,16 @@ export const AIChatWidget: React.FC = () => {
                             </div>
 
                             <div
-                              className={`rounded-2xl transition-all duration-200 ${
+                              className={`rounded-2xl ${
                                 msg.sender === 'user'
-                                  ? 'w-fit max-w-[85%] sm:max-w-[70%] ml-auto p-3.5 sm:p-4 bg-[#006F70] text-white border border-teal-300/30 rounded-tr-xs shadow-[0_10px_24px_rgba(2,47,54,0.28)]'
+                                  ? 'w-fit max-w-[85%] sm:max-w-[70%] ml-auto p-3.5 sm:p-4 bg-[#006F70] text-white border border-teal-300/30 rounded-tr-xs shadow-xs'
                                   : `w-full max-w-full sm:max-w-[92%] p-4 sm:p-5.5 rounded-tl-xs ${chatCanvasTone.assistantMessageClass}`
                               }`}
                             >
                               {msg.sender === 'ai' ? (
                                 <div className="leading-relaxed">
                                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                                    {msg.text}
+                                    {cleanAndFormatMarkdown(msg.text)}
                                   </ReactMarkdown>
                                 </div>
                               ) : (
@@ -1916,7 +1979,7 @@ export const AIChatWidget: React.FC = () => {
                                           <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
                                         )}
                                         <span className="font-bold">
-                                          {msg.action.is_ready ? '⚡ Sách sẵn sàng giữ chỗ tại quầy' : '⏳ Sách đang chờ vào hàng chờ'}
+                                          {msg.action.is_ready ? '⚡ Sách sẵn sàng mượn tại quầy' : '⏳ Sách đang chờ vào hàng chờ'}
                                         </span>
                                       </span>
                                       <span className="text-[11px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full font-bold border border-teal-200/60">
@@ -1946,12 +2009,12 @@ export const AIChatWidget: React.FC = () => {
                                       {reservedBookIds.has(msg.action.book_id) ? (
                                         <>
                                           <Check className="w-4 h-4 text-emerald-200" />
-                                          <span>Đã đặt sách thành công!</span>
+                                          <span>Đã đăng ký mượn sách thành công!</span>
                                         </>
                                       ) : isReservingBookId === msg.action.book_id ? (
                                         <>
                                           <RefreshCw className="w-4 h-4 animate-spin" />
-                                          <span>Đang xử lý đặt sách...</span>
+                                          <span>Đang xử lý mượn sách...</span>
                                         </>
                                       ) : (
                                         <>
@@ -1969,7 +2032,11 @@ export const AIChatWidget: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      navigate(msg.action!.path);
+                                      const targetPath =
+                                        msg.action!.label.toLowerCase().includes('đặt trước') && msg.action!.path === '/profile'
+                                          ? '/reservations'
+                                          : msg.action!.path;
+                                      navigate(targetPath);
                                       setIsFullscreen(false);
                                       setIsOpen(false);
                                     }}
@@ -2018,7 +2085,7 @@ export const AIChatWidget: React.FC = () => {
                                 <div className="mt-4 pt-4 border-t border-slate-100">
                                   <div className="text-xs sm:text-[13px] font-bold text-teal-900 flex items-center gap-1.5 mb-3">
                                     <BookOpen className="w-4 h-4 text-teal-600" />
-                                    <span>Tài liệu đề xuất trong Thư viện UTH (Click để xem vị trí kệ & đặt mượn):</span>
+                                    <span>Tài liệu đề xuất trong Thư viện UTH (Click để xem vị trí kệ & mượn sách):</span>
                                   </div>
                                   <div className={isFullscreen && !isAdmin ? "grid grid-cols-1 md:grid-cols-2 gap-3" : "space-y-2.5"}>
                                     {msg.suggested_books.map((b, index) => {
@@ -2027,7 +2094,7 @@ export const AIChatWidget: React.FC = () => {
                                         <div
                                           key={b.id}
                                           onClick={() => handleSelectBook(b.id)}
-                                          className={`group cursor-pointer p-3.5 rounded-xl border-2 transition-all duration-200 flex items-center justify-between hover:shadow-md hover:-translate-y-0.5 ${tone.surfaceClass}`}
+                                          className={`group cursor-pointer p-3.5 rounded-xl border transition-colors duration-150 flex items-center justify-between hover:border-teal-500 shadow-2xs ${tone.surfaceClass}`}
                                         >
                                           <div className="flex-1 pr-2">
                                             <p className="font-bold text-teal-950 group-hover:text-teal-800 line-clamp-1 text-xs sm:text-[13.5px]">
@@ -2068,7 +2135,7 @@ export const AIChatWidget: React.FC = () => {
                                                   ? 'bg-[#008B8B] hover:bg-[#006F70] text-white hover:shadow-sm'
                                                   : 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-sm'
                                               }`}
-                                              title={b.available_copies > 0 ? 'Giữ chỗ ngay tại quầy trong 3 ngày' : 'Đặt trước vào hàng chờ'}
+                                              title={b.available_copies > 0 ? 'Mượn sách tại quầy (giữ 3 ngày)' : 'Đặt trước vào hàng chờ'}
                                             >
                                               {reservedBookIds.has(b.id) ? (
                                                 <>
@@ -2083,7 +2150,7 @@ export const AIChatWidget: React.FC = () => {
                                               ) : b.available_copies > 0 ? (
                                                 <>
                                                   <Sparkles className="w-3.5 h-3.5" />
-                                                  <span>Giữ chỗ</span>
+                                                  <span>Mượn sách</span>
                                                 </>
                                               ) : (
                                                 <>
@@ -2135,28 +2202,42 @@ export const AIChatWidget: React.FC = () => {
                       })}
 
                       {loading && (
-                        <div className="flex items-center gap-3 text-teal-800 text-xs animate-in fade-in duration-200">
-                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden shrink-0 border-2 border-teal-400 bg-white ring-2 ring-teal-500/20">
+                        <div className="flex items-center gap-2.5 animate-in fade-in duration-200">
+                          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full overflow-hidden shrink-0 border border-teal-400 bg-white ring-2 ring-teal-500/20">
                             <img
                               src={uthieAvatarImg}
                               alt="UTHie"
-                              className="w-full h-full object-cover animate-pulse"
+                              className="w-full h-full object-cover"
                             />
                           </div>
-                          <div className={`px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2.5 text-teal-800 ${chatCanvasTone.loadingSurfaceClass}`}>
-                            <RefreshCw className="w-4 h-4 animate-spin text-teal-600" />
-                            <span className="font-medium text-xs sm:text-[13.5px]">UTHie đang tìm kiếm dữ liệu và soạn câu trả lời...</span>
+                          <div className={`px-4 py-3 rounded-2xl rounded-tl-none inline-flex items-center gap-1.5 ${chatCanvasTone.loadingSurfaceClass}`}>
+                            <span className="w-2 h-2 rounded-full bg-teal-600 animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-2 h-2 rounded-full bg-teal-600 animate-bounce" />
                           </div>
                         </div>
                       )}
                       <div ref={messagesEndRef} />
                       </div>
                     </div>
+
+                    {/* Nút nổi cuộn mượt xuống cuối khi người dùng cuộn lên đọc tin nhắn cũ */}
+                    {showScrollBottomBtn && (
+                      <button
+                        type="button"
+                        onClick={() => scrollToBottom('smooth')}
+                        className="absolute bottom-4 right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#005B5C] hover:bg-[#004D4E] text-white text-xs font-semibold shadow-md border border-teal-300/40 transition-colors active:scale-95"
+                        aria-label="Cuộn xuống tin nhắn mới nhất"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                        <span>Xuống cuối</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Ô nhập luôn ghim ở đáy, kể cả khi bắt đầu đoạn chat mới */}
                   {shouldRenderDockedComposer(messages.length) && (
-                    <div className="p-3 sm:p-4 bg-[#DCEFED] border-t border-teal-300/80 shadow-[0_-8px_22px_rgba(2,47,54,0.16)] shrink-0">
+                    <div className="p-3 sm:p-4 bg-[#DCEFED] border-t border-teal-300/80 shadow-xs shrink-0">
                       <div className={`${getConversationWidthClass(isFullscreen, isAdmin)} flex items-center gap-2.5`}>
                         <input
                           ref={inputRef}
@@ -2398,7 +2479,7 @@ export const AIChatWidget: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex-1 overflow-y-auto p-4 ai-smooth-scroll ai-chat-scrollbar">
                           {filteredOverdueStudents.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-gray-400 py-12">
                               <Check className="w-12 h-12 text-emerald-500 mb-2 stroke-1" />

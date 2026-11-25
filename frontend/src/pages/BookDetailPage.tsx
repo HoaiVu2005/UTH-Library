@@ -163,9 +163,9 @@ export const BookDetailPage: React.FC = () => {
       setJustReservedStatus(isReady ? 'ready' : 'pending');
 
       if (isReady) {
-        toast.success('Giữ chỗ thành công! Sách được giữ tại quầy trong 3 ngày.', {
+        toast.success('Đăng ký mượn sách thành công! Sách được giữ tại Quầy lưu thông trong 3 ngày.', {
           action: {
-            label: 'Xem đặt chỗ',
+            label: 'Xem danh sách mượn / đặt',
             onClick: () => navigate('/reservations'),
           },
         });
@@ -418,19 +418,19 @@ export const BookDetailPage: React.FC = () => {
                       className="bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold cursor-default hover:bg-emerald-50 opacity-100"
                       leftIcon={<Check className="w-4 h-4 text-emerald-600" />}
                     >
-                      Đã đặt trước
+                      {currentReservationStatus === 'ready' ? 'Đã đăng ký mượn' : 'Đã đặt trước'}
                     </Button>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-700">
                       <span>
                         {currentReservationStatus === 'ready'
-                          ? '✓ Sách đã được giữ sẵn sàng cho bạn tại quầy thư viện.'
+                          ? '✓ Sách đã sẵn sàng cho bạn đến mượn tại Quầy lưu thông (giữ trong 3 ngày).'
                           : '✓ Bạn đã đặt trước đầu sách này (Hàng chờ ưu tiên).'}
                       </span>
                       <Link
                         to="/reservations"
                         className="font-semibold underline underline-offset-2 text-brand hover:text-teal-700 inline-flex items-center gap-0.5 ml-1"
                       >
-                        <span>Xem đặt chỗ</span>
+                        <span>Xem danh sách mượn / đặt</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </Link>
                     </div>
@@ -459,10 +459,10 @@ export const BookDetailPage: React.FC = () => {
                       isLoading={actionLoading}
                       leftIcon={<Bookmark className="w-4 h-4" />}
                     >
-                      Đặt giữ chỗ tại quầy
+                      Mượn sách
                     </Button>
                     <span className="text-xs text-success font-medium">
-                      ✓ Đang có {book.available_copies_count} cuốn sẵn sàng, bấm để giữ chỗ 3 ngày tại quầy.
+                      ✓ Đang có {book.available_copies_count} cuốn sẵn sàng, bấm để mượn sách (giữ 3 ngày tại quầy).
                     </span>
                   </div>
                 ) : (
@@ -691,7 +691,7 @@ export const BookDetailPage: React.FC = () => {
                 <TableHead>Vị trí lưu kho</TableHead>
                 <TableHead>Hình thức phục vụ</TableHead>
                 <TableHead>Trạng thái bản sao</TableHead>
-                <TableHead>Ghi chú giữ chỗ</TableHead>
+                <TableHead>Ghi chú mượn / giữ chỗ</TableHead>
                 <TableHead className="w-32 text-center whitespace-nowrap">Tem mã vạch</TableHead>
               </TableRow>
             </TableHeader>

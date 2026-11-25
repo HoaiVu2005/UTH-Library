@@ -9,12 +9,34 @@ from .routing import classify_chat_mode
 
 # Chuẩn hóa giọng văn, độ dài và cách trình bày câu trả lời.
 
-def normalize_assistant_voice(reply: str, has_history: bool = False) -> str:
-    """Remove scripted re-introductions once a conversation is underway."""
-    if not reply or not has_history:
+def sanitize_ai_reply(reply: str) -> str:
+    """
+    Loại bỏ các chuỗi JSON hoặc action do LLM tự sinh (ví dụ {"action": "show_book_cards", ...})
+    để tránh hiển thị rác kỹ thuật trên bong bóng chat của người dùng.
+    """
+    if not reply:
         return reply
 
-    cleaned = reply.strip()
+    # 1. Loại bỏ các khối code json markdown: ```json { ... } ```
+    reply = re.sub(r'```(?:json)?\s*\{[\s\S]*?\}\s*```', '', reply, flags=re.IGNORECASE)
+
+    # 2. Loại bỏ các đoạn JSON đơn dòng hoặc đa dòng chứa action/book_ids/suggested_books/command
+    reply = re.sub(r'\{[\s\r\n]*"(?:action|book_ids|suggested_books|command)"[\s\S]*?\}', '', reply, flags=re.IGNORECASE)
+
+    # 3. Chuẩn hóa lại các dòng trống thừa sau khi xóa
+    reply = re.sub(r'\n{3,}', '\n\n', reply).strip()
+    return reply
+
+
+def normalize_assistant_voice(reply: str, has_history: bool = False) -> str:
+    """Remove scripted re-introductions once a conversation is underway and clean technical markup."""
+    if not reply:
+        return reply
+
+    cleaned = sanitize_ai_reply(reply)
+    if not has_history:
+        return cleaned
+
     greeting_patterns = [
         r'^(?:chào|xin chào)\s+(?:bạn|thầy/?cô)[!,.:–\-\s]*',
         r'^mình\s+(?:là\s+uthie\s+)?(?:đang\s+)?(?:nghe đây|đây)[!,.:–\-\s]*',

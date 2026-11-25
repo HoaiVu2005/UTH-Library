@@ -10,7 +10,7 @@ export type ChatAction = {
 };
 
 export const AI_CHAT_REQUEST_CONFIG = {
-  timeout: 20_000,
+  timeout: 10_000,
 } as const;
 
 type GreetingUser = {
@@ -90,9 +90,9 @@ export function getChatCanvasTone(): ChatCanvasTone {
   return {
     backgroundLayerClass: 'absolute inset-0 bg-cover bg-center opacity-90',
     tintLayerClass: 'absolute inset-0 bg-gradient-to-br from-[#063F46]/10 via-transparent to-[#032F36]/15 pointer-events-none',
-    assistantMessageClass: 'bg-[#E6F4F3] text-[#183B3F] border border-teal-200 shadow-[0_8px_20px_rgba(2,47,54,0.2)]',
-    welcomeSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-[0_10px_24px_rgba(2,47,54,0.2)]',
-    loadingSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-sm',
+    assistantMessageClass: 'bg-[#E6F4F3] text-[#183B3F] border border-teal-200 shadow-xs',
+    welcomeSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-xs',
+    loadingSurfaceClass: 'bg-[#E6F4F3] border border-teal-200 shadow-xs',
   };
 }
 
@@ -106,9 +106,16 @@ export function normalizeChatAction(value: unknown): ChatAction | null {
   const label = typeof raw.label === 'string' ? raw.label.trim() : '';
   if (!label) return null;
 
-  const path = typeof raw.path === 'string' && raw.path.startsWith('/') && !raw.path.startsWith('//')
+  let path = typeof raw.path === 'string' && raw.path.startsWith('/') && !raw.path.startsWith('//')
     ? raw.path
     : undefined;
+
+  // Tự động chuẩn hóa đường dẫn nếu cache/lưu nhầm sang /profile cho danh sách đặt trước hoặc sách đang mượn
+  if (label.toLowerCase().includes('đặt trước') && path === '/profile') {
+    path = '/reservations';
+  } else if (label.toLowerCase().includes('đang mượn') && path === '/profile') {
+    path = '/loans';
+  }
 
   const actionType = raw.type === 'reservation' ? 'reservation' : 'link';
   const bookId = typeof raw.book_id === 'number' ? raw.book_id : undefined;
@@ -132,6 +139,15 @@ export function normalizeChatAction(value: unknown): ChatAction | null {
 
 export function shouldShowBookSuggestions(role: ChatRole): boolean {
   return role !== 'admin';
+}
+
+export function cleanAssistantReplyText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/gi, '')
+    .replace(/\{[\s\r\n]*"(?:action|book_ids|suggested_books|command)"[\s\S]*?\}/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 export function getSuggestedBookCardTone(index: number): SuggestedBookCardTone {
