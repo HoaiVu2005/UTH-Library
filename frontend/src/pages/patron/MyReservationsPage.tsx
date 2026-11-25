@@ -102,7 +102,7 @@ export const MyReservationsPage: React.FC = () => {
     } catch (err) {
       if (!isBackground) {
         console.error('Failed to fetch reservations', err);
-        toast.error('Không thể tải danh sách đặt trước. Vui lòng thử lại.');
+        toast.error('Không thể tải danh sách mượn sách. Vui lòng thử lại.');
       }
     } finally {
       setIsLoading(false);
@@ -123,9 +123,9 @@ export const MyReservationsPage: React.FC = () => {
       setIsSubmitting(true);
       await api.delete(`/reservations/${cancellingItem.id}`);
       if (cancellingItem.status === 'ready') {
-        toast.warning('Đã hủy giữ chỗ sách tại quầy.');
+        toast.warning('Đã hủy chờ nhận sách tại quầy.');
       } else {
-        toast.success('Đã hủy yêu cầu đặt trước.');
+        toast.success('Đã hủy yêu cầu mượn sách.');
       }
       setCancellingItem(null);
       fetchReservations(false, true);
@@ -136,7 +136,7 @@ export const MyReservationsPage: React.FC = () => {
       broadcastRealtimeSync('dashboard');
       window.dispatchEvent(new CustomEvent('uth-refresh-notifications'));
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu đặt trước.');
+      toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu mượn sách.');
     } finally {
       setIsSubmitting(false);
     }
@@ -164,10 +164,10 @@ export const MyReservationsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Đặt trước &amp; Giữ chỗ sách</span>
+              <span>Mượn sách &amp; Chờ nhận sách</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Theo dõi hàng chờ đặt trước và nhận sách giữ chỗ tại quầy thủ thư UTH trong vòng 3 ngày làm việc
+              Theo dõi hàng chờ mượn sách và nhận sách chờ nhận sách tại quầy thủ thư UTH trong vòng 3 ngày làm việc
             </p>
           </div>
         </div>
@@ -206,7 +206,7 @@ export const MyReservationsPage: React.FC = () => {
           <div className="space-y-0.5">
             <span className="text-[11px] text-gray-500 font-medium block">Sẵn sàng nhận tại quầy</span>
             <span className="text-xl font-bold text-brand">{activeReady.length}</span>
-            <span className="text-[11px] text-gray-400 block">Sách đang giữ chỗ 3 ngày</span>
+            <span className="text-[11px] text-gray-400 block">Sách đang chờ nhận sách 3 ngày</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-teal-50 text-brand flex items-center justify-center shrink-0 shadow-2xs">
             <BookmarkCheck className="w-5 h-5" />
@@ -223,7 +223,7 @@ export const MyReservationsPage: React.FC = () => {
           )}
         >
           <div className="space-y-0.5">
-            <span className="text-[11px] text-gray-500 font-medium block">Hàng chờ đặt trước</span>
+            <span className="text-[11px] text-gray-500 font-medium block">Hàng chờ mượn sách</span>
             <span className="text-xl font-bold text-amber-600">{activePending.length}</span>
             <span className="text-[11px] text-gray-400 block">Đang đợi hoàn trả</span>
           </div>
@@ -242,7 +242,7 @@ export const MyReservationsPage: React.FC = () => {
           )}
         >
           <div className="space-y-0.5">
-            <span className="text-[11px] text-gray-500 font-medium block">Lịch sử đặt trước</span>
+            <span className="text-[11px] text-gray-500 font-medium block">Lịch sử mượn sách</span>
             <span className="text-xl font-bold text-gray-700">{pastReservations.length}</span>
             <span className="text-[11px] text-gray-400 block">Lượt đã hoàn tất</span>
           </div>
@@ -283,7 +283,7 @@ export const MyReservationsPage: React.FC = () => {
           )}
         >
           <Clock className="w-4 h-4 text-amber-600" />
-          <span>Hàng chờ đặt trước</span>
+          <span>Hàng chờ mượn sách</span>
           <span className={cn(
             'ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
             activeTab === 'pending' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-600'
@@ -302,7 +302,7 @@ export const MyReservationsPage: React.FC = () => {
           )}
         >
           <History className="w-4 h-4 text-gray-500" />
-          <span>Lịch sử đặt trước</span>
+          <span>Lịch sử mượn sách</span>
           <span className={cn(
             'ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
             activeTab === 'history' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-600'
@@ -319,7 +319,7 @@ export const MyReservationsPage: React.FC = () => {
             <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
               <EmptyState
                 title="Hiện không có sách nào đang chờ nhận tại quầy"
-                description="Khi sách bạn đặt trước được hoàn trả về thư viện, hệ thống sẽ tự động gán bản sao, giữ tại quầy 3 ngày và gửi thông báo cho bạn."
+                description="Khi sách bạn mượn sách được hoàn trả về thư viện, hệ thống sẽ tự động gán bản sao, giữ tại quầy 3 ngày và gửi thông báo cho bạn."
               />
             </div>
           ) : (
@@ -423,7 +423,7 @@ export const MyReservationsPage: React.FC = () => {
                         onClick={() => setCancellingItem(res)}
                         className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-[11px] font-bold"
                       >
-                        Hủy giữ chỗ
+                        Hủy chờ nhận sách
                       </Button>
                     </div>
                   </div>
@@ -434,14 +434,14 @@ export const MyReservationsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 2: Hàng chờ đặt trước (Compact Cards) */}
+      {/* Tab 2: Hàng chờ mượn sách (Compact Cards) */}
       {activeTab === 'pending' && (
         <div className="space-y-3">
           {activePending.length === 0 ? (
             <div className="bg-white border border-gray-200/80 rounded-2xl p-6 text-center shadow-xs">
               <EmptyState
                 title="Không có tài liệu nào đang trong hàng chờ"
-                description="Khi cuốn giáo trình bạn cần đã được độc giả khác mượn hết, hãy nhấn 'Đặt trước' để được tự động xếp chỗ ưu tiên."
+                description="Khi cuốn giáo trình bạn cần đã được độc giả khác mượn hết, hãy nhấn 'Mượn sách' để được tự động xếp chỗ ưu tiên."
               />
             </div>
           ) : (
@@ -515,7 +515,7 @@ export const MyReservationsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 3: Lịch sử đặt trước trước đây */}
+      {/* Tab 3: Lịch sử mượn sách trước đây */}
       {activeTab === 'history' && (
         <div className="space-y-4">
           <div className="bg-white border border-gray-200/80 rounded-2xl shadow-xs overflow-hidden">
@@ -550,9 +550,9 @@ export const MyReservationsPage: React.FC = () => {
                       noteDisplay = res.cancel_reason;
                     }
                   } else if (res.status === 'expired') {
-                    noteDisplay = 'Hết hạn giữ chỗ tại quầy (3 ngày)';
+                    noteDisplay = 'Hết hạn chờ nhận sách tại quầy (3 ngày)';
                   } else if (res.status === 'cancelled') {
-                    noteDisplay = 'Yêu cầu đặt trước đã hủy';
+                    noteDisplay = 'Yêu cầu mượn sách đã hủy';
                   }
 
                   return (
@@ -602,7 +602,7 @@ export const MyReservationsPage: React.FC = () => {
                           </Badge>
                         ) : res.status === 'expired' ? (
                           <Badge variant="expired" size="sm">
-                            Hết hạn giữ
+                            Hết hạn nhận sách
                           </Badge>
                         ) : (
                           <Badge variant="cancelled" size="sm">

@@ -28,7 +28,7 @@ class Command(BaseCommand):
 
                 res.status = ReservationStatus.EXPIRED
                 res.no_show_counted = True
-                res.cancel_reason = 'Hết hạn giữ sách 3 ngày (no-show tự động)'
+                res.cancel_reason = 'Hết hạn nhận sách sách 3 ngày (no-show tự động)'
                 res.save(update_fields=['status', 'no_show_counted', 'cancel_reason', 'updated_at'])
 
                 # Apply no-show check

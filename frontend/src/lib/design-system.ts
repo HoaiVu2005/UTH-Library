@@ -151,7 +151,7 @@ export const STATUS_DEFINITIONS: Record<
     dotColor: 'bg-sky-500',
   },
   reserved_hold: {
-    label: 'Đang giữ chỗ',
+    label: 'Đang chờ nhận sách',
     variant: 'default',
     bg: 'bg-teal-50',
     text: 'text-teal-800',
@@ -243,7 +243,7 @@ export const STATUS_DEFINITIONS: Record<
     dotColor: 'bg-emerald-500',
   },
   expired: {
-    label: 'Hết hạn giữ',
+    label: 'Hết hạn nhận sách',
     variant: 'default',
     bg: 'bg-slate-100',
     text: 'text-slate-600',

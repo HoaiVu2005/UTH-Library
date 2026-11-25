@@ -88,7 +88,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
       const newBadges: Record<string, BadgeItem> = {};
 
       if (isStaff) {
-        // Admin badges: Hàng chờ đặt trước & Duyệt đề xuất mua sách
+        // Admin badges: Hàng chờ mượn sách & Duyệt đề xuất mua sách
         try {
           const res = await api.get('/dashboard/summary');
           const d = res.data?.data || {};
@@ -235,7 +235,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
         { label: 'Trang chủ Thư viện', path: '/', icon: <Home className="w-4 h-4 text-emerald-600" /> },
         { label: 'Thông tin sinh viên / Thẻ', path: '/dashboard', icon: <GraduationCap className="w-4 h-4 text-primary" /> },
         { label: 'Sách đang mượn & Lịch sử', path: '/loans', icon: <BookOpen className="w-4 h-4 text-blue-600" /> },
-        { label: 'Đặt trước & Giữ chỗ', path: '/reservations', icon: <BookmarkCheck className="w-4 h-4 text-amber-500" /> },
+        { label: 'Mượn sách & Chờ nhận sách', path: '/reservations', icon: <BookmarkCheck className="w-4 h-4 text-amber-500" /> },
         { label: 'Gia hạn trực tuyến', path: '/loans', icon: <RefreshCw className="w-4 h-4 text-emerald-600" /> },
       ],
     },
@@ -270,7 +270,7 @@ export const SidebarDrawer: React.FC<SidebarDrawerProps> = ({ isOpen, onClose })
       items: [
         { label: 'Bảng điều khiển Admin', path: '/admin/dashboard', icon: <BarChart2 className="w-4 h-4 text-primary" /> },
         { label: 'Quầy Mượn - Trả tại quầy (Desk)', path: '/admin/circulation', icon: <ScanLine className="w-4 h-4 text-primary" /> },
-        { label: 'Hàng chờ Đặt trước toàn trường', path: '/admin/reservations', icon: <BookmarkCheck className="w-4 h-4 text-amber-500" /> },
+        { label: 'Hàng chờ Mượn sách toàn trường', path: '/admin/reservations', icon: <BookmarkCheck className="w-4 h-4 text-amber-500" /> },
       ],
     },
     {

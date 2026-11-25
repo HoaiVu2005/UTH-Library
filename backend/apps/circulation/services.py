@@ -54,22 +54,25 @@ def validate_user_can_borrow(user: User, book: Book = None):
         extra = {'locked_until': user.locked_until.isoformat()} if user.locked_until else {}
         raise BusinessLogicError('USER_LOCKED', detail='Tài khoản bạn đọc đang bị tạm khóa.', extra=extra)
 
-    # BR03: Check overdue books
-    has_overdue = Loan.objects.filter(
-        user=user,
-        status=LoanStatus.ACTIVE,
-        due_at__lt=timezone.now()
-    ).exists()
-    if has_overdue:
-        raise BusinessLogicError('LOAN_HAS_OVERDUE', detail='Bạn đọc có sách đang mượn quá hạn chưa trả.')
+    # A documented librarian review temporarily bypasses only BR03. Card,
+    # loan-limit, copy and duplicate-book rules must still be enforced.
+    if not user.has_active_borrow_override:
+        # BR03: Check overdue books
+        has_overdue = Loan.objects.filter(
+            user=user,
+            status=LoanStatus.ACTIVE,
+            due_at__lt=timezone.now()
+        ).exists()
+        if has_overdue:
+            raise BusinessLogicError('LOAN_HAS_OVERDUE', detail='Bạn đọc có sách đang mượn quá hạn chưa trả.')
 
-    # BR03: Check unpaid fines
-    has_unpaid_fines = Fine.objects.filter(
-        user=user,
-        status__in=[FineStatus.UNPAID, FineStatus.PARTIAL]
-    ).exists()
-    if has_unpaid_fines:
-        raise BusinessLogicError('LOAN_HAS_UNPAID_FINE', detail='Bạn đọc có khoản tiền phạt chưa hoàn tất nộp tại quầy.')
+        # BR03: Check unpaid fines
+        has_unpaid_fines = Fine.objects.filter(
+            user=user,
+            status__in=[FineStatus.UNPAID, FineStatus.PARTIAL]
+        ).exists()
+        if has_unpaid_fines:
+            raise BusinessLogicError('LOAN_HAS_UNPAID_FINE', detail='Bạn đọc có khoản tiền phạt chưa hoàn tất nộp tại quầy.')
 
     # BR02: Loan limit = active loans + ready reservations
     policy = get_current_policy_for_user(user)
@@ -121,7 +124,7 @@ def borrow_direct(patron_card_code: str, barcode: str, admin_user: User, request
 
         if copy.status == CopyStatus.RESERVED_HOLD:
             if copy.held_for_user_id != patron.id:
-                raise BusinessLogicError('COPY_HELD_FOR_OTHER', detail='Bản sao này đang được giữ chỗ cho một bạn đọc khác.')
+                raise BusinessLogicError('COPY_HELD_FOR_OTHER', detail='Bản sao này đang chờ một bạn đọc khác đến nhận để mượn.')
         elif copy.status != CopyStatus.AVAILABLE:
             raise BusinessLogicError('COPY_NOT_AVAILABLE', detail=f'Bản sao hiện đang ở trạng thái {copy.get_status_display()}, không thể mượn.')
 
@@ -194,10 +197,10 @@ def borrow_from_reservation(reservation_id: int, barcode: str, admin_user: User,
         ).first()
 
         if not reservation:
-            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy yêu cầu giữ chỗ đã sẵn sàng tương ứng.')
+            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy yêu cầu chờ nhận sách đã sẵn sàng tương ứng.')
 
         if not reservation.copy_id:
-            raise BusinessLogicError('CONFLICT', detail='Yêu cầu giữ chỗ chưa được gán bản sao.')
+            raise BusinessLogicError('CONFLICT', detail='Yêu cầu chờ nhận sách chưa được gán bản sao.')
 
         copy = Copy.objects.select_for_update().select_related('book').get(id=reservation.copy_id)
 
@@ -449,7 +452,7 @@ def renew_loan(loan_id: int, user: User, request=None) -> Loan:
             status__in=[ReservationStatus.PENDING, ReservationStatus.READY]
         ).exclude(user=loan.user).exists()
         if has_pending_reservation:
-            raise BusinessLogicError('RENEWAL_HAS_RESERVATION', detail='Không thể gia hạn vì đầu sách này đang có bạn đọc khác đặt trước trong hàng chờ.')
+            raise BusinessLogicError('RENEWAL_HAS_RESERVATION', detail='Không thể gia hạn vì đầu sách này đang có bạn đọc khác mượn sách trong hàng chờ.')
 
         # BR05 assumption: check unpaid fines
         has_unpaid_fines = Fine.objects.filter(
@@ -490,7 +493,7 @@ def process_reservation_queue_for_copy(copy: Copy, admin_user: User = None):
     Section 6.4 step 3:
     Khi trả sách bình thường mà có pending cùng đầu sách:
     Lần lượt xét từ người đầu hàng:
-    - Nếu không đủ điều kiện (thẻ hết hạn / bị khóa / đang bị khóa đặt trước) -> Reservation -> cancelled (cancel_reason, thông báo, không tính no-show) và xét người kế tiếp;
+    - Nếu không đủ điều kiện (thẻ hết hạn / bị khóa mượn) -> yêu cầu mượn sách bị hủy và xét người kế tiếp;
     - Người đủ điều kiện -> ready, gán copy, reserved_hold, đặt hold_expires_at, thông báo.
     - Không còn ai -> copy available.
     """
@@ -513,8 +516,6 @@ def process_reservation_queue_for_copy(copy: Copy, admin_user: User = None):
             ineligible_reason = 'Thẻ bạn đọc đã hết hạn sử dụng'
         elif patron.is_currently_locked:
             ineligible_reason = 'Tài khoản bạn đọc đang bị tạm khóa'
-        elif patron.is_reservation_locked:
-            ineligible_reason = 'Tài khoản bạn đọc đang bị khóa chức năng đặt trước do quá số lần no-show'
 
         if ineligible_reason:
             res.status = ReservationStatus.CANCELLED
@@ -546,7 +547,7 @@ def process_reservation_queue_for_copy(copy: Copy, admin_user: User = None):
         Notification.objects.create(
             user=patron,
             type='reservation_ready',
-            content=f'Sách "{copy.book.title}" bạn đặt trước đã có sẵn tại quầy thư viện. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
+            content=f'Sách "{copy.book.title}" bạn mượn sách đã có sẵn tại quầy thư viện. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
             link='/reservations'
         )
 

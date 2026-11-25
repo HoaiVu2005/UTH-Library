@@ -199,7 +199,7 @@ export const DashboardPage: React.FC = () => {
         (r: any) => r.status === 'ready' || r.status === 'pending'
       ).map((r: any) => ({
         id: r.id,
-        book_title: r.book?.title || 'Sách đặt trước',
+        book_title: r.book?.title || 'Sách mượn sách',
         status: r.status,
         queue_position: r.queue_position,
         hold_expires_at: r.hold_expires_at,
@@ -461,7 +461,7 @@ export const DashboardPage: React.FC = () => {
             </span>
           </Link>
 
-          {/* Card 3: Đặt trước */}
+          {/* Card 3: Mượn sách */}
           <Link
             to="/reservations"
             className="bg-white border border-border rounded-xl p-3 flex flex-col items-center text-center justify-center hover:border-primary/40 transition-all group h-[115px] card-hover shadow-xs"
@@ -470,7 +470,7 @@ export const DashboardPage: React.FC = () => {
               <BookmarkPlus className="w-6 h-6 text-emerald-600 group-hover:scale-110 transition-transform" />
             </div>
             <span className="text-xs font-bold text-textPrimary leading-tight">
-              Đặt trước
+              Mượn sách
             </span>
           </Link>
 
@@ -791,13 +791,13 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </Card>
 
-        {/* Sách đặt trước / Giữ chỗ (3 cols) */}
+        {/* Sách mượn sách / Chờ nhận sách (3 cols) */}
         <Card variant="elevated" className="lg:col-span-3 p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
               <div className="flex items-center space-x-1.5">
                 <BookmarkCheck className="w-4 h-4 text-primary" />
-                <h3 className="font-bold text-xs sm:text-sm text-textPrimary">Sách đặt trước</h3>
+                <h3 className="font-bold text-xs sm:text-sm text-textPrimary">Sách mượn sách</h3>
               </div>
               <Link to="/reservations" className="text-xs text-primary hover:underline font-semibold">
                 Tất cả
@@ -808,7 +808,7 @@ export const DashboardPage: React.FC = () => {
               <div className="py-5 text-center text-xs text-textSecondary">Đang tải...</div>
             ) : reservations.length === 0 ? (
               <div className="py-5 text-center text-xs text-textSecondary">
-                Không có sách đang đặt trước.
+                Không có sách đang mượn sách.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -840,7 +840,7 @@ export const DashboardPage: React.FC = () => {
             to="/reservations"
             className="mt-3 block text-center text-xs text-primary font-bold border border-primary/30 py-2 rounded-lg hover:bg-primary-light transition-colors"
           >
-            Quản lý đặt trước ({reservations.length})
+            Quản lý mượn sách ({reservations.length})
           </Link>
         </Card>
       </div>

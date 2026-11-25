@@ -132,7 +132,6 @@ class Command(BaseCommand):
                 expiry = today + timedelta(days=365)
                 is_locked = False
                 lock_reason = None
-                reservation_locked_until = None
 
                 # SV018: Thẻ hết hạn (BR20 test)
                 if i == 18:
@@ -141,9 +140,10 @@ class Command(BaseCommand):
                 elif i == 19:
                     is_locked = True
                     lock_reason = LockReason.MANUAL
-                # SV020: Bị khóa đặt trước do no-show (BR19 test)
+                # SV020: Bị khóa quyền mượn do no-show (BR19 test)
                 elif i == 20:
-                    reservation_locked_until = now + timedelta(days=30)
+                    is_locked = True
+                    lock_reason = LockReason.NO_SHOW_THRESHOLD
 
                 stu, _ = User.objects.get_or_create(
                     username=username,
@@ -156,7 +156,6 @@ class Command(BaseCommand):
                         'card_expiry': expiry,
                         'is_locked': is_locked,
                         'lock_reason': lock_reason,
-                        'reservation_locked_until': reservation_locked_until,
                     }
                 )
                 stu.set_password('Password123')
@@ -738,7 +737,7 @@ class Command(BaseCommand):
                 type=NotificationType.RESERVATION_READY,
                 dedupe_key=f"res_ready_demo_{students[7].id}",
                 defaults={
-                    'content': f'Sách "{c_ready.book.title}" bạn đặt trước đã sẵn sàng tại quầy A. Vui lòng đến nhận trước 23:59 ngày {(today + timedelta(days=3)).strftime("%d/%m/%Y")}.',
+                    'content': f'Sách "{c_ready.book.title}" bạn mượn sách đã sẵn sàng tại quầy A. Vui lòng đến nhận trước 23:59 ngày {(today + timedelta(days=3)).strftime("%d/%m/%Y")}.',
                     'link': '/reservations',
                 }
             )
@@ -749,6 +748,6 @@ class Command(BaseCommand):
             self.stdout.write('  - Sinh viên bình thường:   sv001 -> sv017 / Password123')
             self.stdout.write('  - Sinh viên thẻ hết hạn:   sv018 / Password123 (BR20)')
             self.stdout.write('  - Sinh viên bị khóa tài khoản: sv019 / Password123 (BR01)')
-            self.stdout.write('  - Sinh viên bị khóa đặt trước: sv020 / Password123 (BR19)')
+            self.stdout.write('  - Sinh viên bị khóa mượn sách: sv020 / Password123 (BR19)')
             self.stdout.write('  - Giảng viên:              gv01 -> gv05 / Password123')
 

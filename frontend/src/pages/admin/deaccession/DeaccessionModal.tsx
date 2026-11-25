@@ -277,7 +277,7 @@ export const DeaccessionModal: React.FC<DeaccessionModalProps> = ({
       }
       if (copy.status === 'reserved_hold' || copy.status === 'reserved') {
         playSound('error');
-        setScanError(`Bản sao "${code}" đang được giữ chỗ đặt trước. Không thể đưa vào biên bản thanh lý.`);
+        setScanError(`Bản sao "${code}" đang chờ bạn đọc đến nhận để mượn. Không thể đưa vào biên bản thanh lý.`);
         return;
       }
       if (copy.status === 'withdrawn') {

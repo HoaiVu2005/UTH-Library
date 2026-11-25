@@ -105,7 +105,7 @@ export const AdminReservationsPage: React.FC = () => {
       fetchReservations();
       broadcastRealtimeSync('reservations');
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Lỗi khi quét xử lý giữ chỗ quá hạn.');
+      toast.error(err.response?.data?.detail || 'Lỗi khi quét xử lý chờ nhận sách quá hạn.');
     } finally {
       setIsExpiring(false);
     }
@@ -179,7 +179,7 @@ export const AdminReservationsPage: React.FC = () => {
     if (!checkoutTarget) return;
     const barcode = checkoutTarget.copy?.barcode || checkoutTarget.copy_barcode;
     if (!barcode) {
-      toast.error('Yêu cầu giữ chỗ này chưa có mã vạch bản sao để xuất mượn.');
+      toast.error('Yêu cầu chờ nhận sách này chưa có mã vạch bản sao để xuất mượn.');
       return;
     }
 
@@ -200,7 +200,7 @@ export const AdminReservationsPage: React.FC = () => {
       broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Không thể xuất mượn từ yêu cầu giữ chỗ này.');
+      toast.error(err.response?.data?.detail || 'Không thể xuất mượn từ yêu cầu chờ nhận sách này.');
     } finally {
       setIsActionLoading(false);
     }
@@ -211,14 +211,14 @@ export const AdminReservationsPage: React.FC = () => {
     try {
       setIsActionLoading(true);
       await api.delete(`/reservations/${cancelTarget.id}`);
-      toast.success('Đã hủy yêu cầu giữ chỗ. Bản sao đã được chuyển cho bạn đọc tiếp theo (nếu có)!');
+      toast.success('Đã hủy yêu cầu chờ nhận sách. Bản sao đã được chuyển cho bạn đọc tiếp theo (nếu có)!');
       setCancelTarget(null);
       fetchReservations(true);
       broadcastRealtimeSync('reservations');
       broadcastRealtimeSync('notifications');
       broadcastRealtimeSync('dashboard');
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu đặt trước.');
+      toast.error(err.response?.data?.detail || 'Không thể hủy yêu cầu mượn sách.');
     } finally {
       setIsActionLoading(false);
     }
@@ -248,7 +248,7 @@ export const AdminReservationsPage: React.FC = () => {
           <div>
             <h1 className="text-xl font-bold text-[#008B8B] tracking-tight flex items-center">
               <span className="text-orange-500 font-bold mr-2 select-none">&gt;</span>
-              <span>Hàng chờ Đặt trước</span>
+              <span>Hàng chờ Mượn sách</span>
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
               Theo dõi sách đang giữ tại quầy (quy định 3 ngày) và điều phối thứ tự hàng chờ của bạn đọc
@@ -261,7 +261,7 @@ export const AdminReservationsPage: React.FC = () => {
             onClick={handleExpireStale}
             disabled={isExpiring || isLoading}
             className="text-xs h-9 px-3.5 border border-amber-300 text-amber-800 hover:bg-amber-100/70 rounded-xl bg-amber-50/70 transition-colors inline-flex items-center gap-1.5 shadow-2xs font-semibold cursor-pointer disabled:opacity-50 shrink-0"
-            title="Tự động hủy các yêu cầu giữ chỗ quá hạn 3 ngày và chuyển tiếp bản sao cho bạn đọc kế tiếp"
+            title="Tự động hủy các yêu cầu chờ nhận sách quá hạn 3 ngày và chuyển tiếp bản sao cho bạn đọc kế tiếp"
           >
             <Clock className={cn('w-3.5 h-3.5 text-amber-600', isExpiring && 'animate-spin')} />
             <span>Quét hết hạn (3 ngày)</span>
@@ -304,7 +304,7 @@ export const AdminReservationsPage: React.FC = () => {
                 )}
               >
                 <Clock className="w-3.5 h-3.5" />
-                <span>Đang giữ chỗ</span>
+                <span>Đang chờ nhận sách</span>
               </button>
 
               <button
@@ -352,7 +352,7 @@ export const AdminReservationsPage: React.FC = () => {
                 )}
               >
                 <XCircle className="w-3.5 h-3.5" />
-                <span>Hết hạn giữ</span>
+                <span>Hết hạn nhận sách</span>
               </button>
 
               <button
@@ -451,13 +451,13 @@ export const AdminReservationsPage: React.FC = () => {
       {isLoading ? (
         <div className="p-16 text-center text-xs text-gray-500 bg-white border border-gray-200/80 rounded-2xl shadow-xs space-y-2">
           <RotateCw className="w-6 h-6 animate-spin text-brand mx-auto mb-2" />
-          <p className="font-semibold text-gray-700">Đang tải danh sách đặt trước...</p>
-          <p className="text-[11px] text-gray-400">Đang đồng bộ tình trạng giữ chỗ tại quầy</p>
+          <p className="font-semibold text-gray-700">Đang tải danh sách mượn sách...</p>
+          <p className="text-[11px] text-gray-400">Đang đồng bộ tình trạng chờ nhận sách tại quầy</p>
         </div>
       ) : reservations.length === 0 ? (
         <EmptyState
-          title="Không có yêu cầu đặt trước nào"
-          description={appliedSearch ? `Không có bản ghi nào khớp với từ khóa "${appliedSearch}".` : 'Hiện không có yêu cầu đặt trước nào trong mục này.'}
+          title="Không có yêu cầu mượn sách nào"
+          description={appliedSearch ? `Không có bản ghi nào khớp với từ khóa "${appliedSearch}".` : 'Hiện không có yêu cầu mượn sách nào trong mục này.'}
         />
       ) : (
         <Card className="shadow-xs border-gray-200/80">
@@ -645,7 +645,7 @@ export const AdminReservationsPage: React.FC = () => {
                                 onClick: () => setCheckoutTarget(r),
                               },
                               {
-                                label: 'Hủy giữ chỗ',
+                                label: 'Hủy chờ nhận sách',
                                 icon: <XCircle className="w-3.5 h-3.5" />,
                                 variant: 'danger',
                                 isDividerBefore: true,
@@ -667,7 +667,7 @@ export const AdminReservationsPage: React.FC = () => {
                                 onClick: () => handleAdvance(r.id),
                               },
                               {
-                                label: 'Hủy đặt trước',
+                                label: 'Hủy mượn sách',
                                 icon: <XCircle className="w-3.5 h-3.5" />,
                                 variant: 'danger',
                                 isDividerBefore: true,
@@ -689,7 +689,7 @@ export const AdminReservationsPage: React.FC = () => {
           {/* Pagination with Limit 5 */}
           <div className="p-3.5 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
             <div>
-              Hiển thị trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng <strong>{totalRecords}</strong> yêu cầu đặt trước, giới hạn <strong>{pageSize}</strong>/trang)
+              Hiển thị trang <strong>{page}</strong> / <strong>{totalPages}</strong> (Tổng <strong>{totalRecords}</strong> yêu cầu mượn sách, giới hạn <strong>{pageSize}</strong>/trang)
             </div>
             <Pagination
               currentPage={page}
@@ -706,7 +706,7 @@ export const AdminReservationsPage: React.FC = () => {
         isOpen={Boolean(barcodeModalItem)}
         onClose={() => setBarcodeModalItem(null)}
         title="Tem nhãn Mã vạch Bản sao Sách UTH"
-        description="Mã vạch chuẩn Code128 phục vụ nhận sách đặt trước tại Quầy lưu thông"
+        description="Mã vạch chuẩn Code128 phục vụ nhận sách mượn sách tại Quầy lưu thông"
         size="md"
       >
         {barcodeModalItem && (
@@ -773,7 +773,7 @@ export const AdminReservationsPage: React.FC = () => {
       {/* Confirm Checkout Dialog */}
       <ConfirmDialog
         isOpen={Boolean(checkoutTarget)}
-        title="Xác nhận phát sách giữ chỗ"
+        title="Xác nhận phát sách chờ nhận sách"
         message={
           checkoutTarget
             ? `Bạn có muốn hoàn tất thủ tục xuất mượn sách "${checkoutTarget.book?.title || checkoutTarget.book_title}" (Mã vạch: ${checkoutTarget.copy?.barcode || checkoutTarget.copy_barcode}) cho bạn đọc ${checkoutTarget.user?.full_name || checkoutTarget.patron_name} (${checkoutTarget.user?.card_code || checkoutTarget.patron_card_code})?`
@@ -790,7 +790,7 @@ export const AdminReservationsPage: React.FC = () => {
       {/* Confirm Cancel Dialog */}
       <ConfirmDialog
         isOpen={Boolean(cancelTarget)}
-        title="Xác nhận hủy yêu cầu giữ chỗ / đặt trước"
+        title="Xác nhận hủy yêu cầu chờ nhận sách / mượn sách"
         message={
           cancelTarget
             ? `Hủy yêu cầu #${cancelTarget.id} của bạn đọc ${cancelTarget.user?.full_name || cancelTarget.patron_name}? Sách sẽ tự động được chuyển cho bạn đọc tiếp theo trong hàng chờ (nếu có) hoặc trả về kệ sẵn sàng.`

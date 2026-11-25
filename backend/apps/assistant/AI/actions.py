@@ -107,15 +107,15 @@ def get_reservation_workflow_action(
     patron_context: dict | None = None,
     relevant_books: list | None = None,
 ) -> dict | None:
-    """Xử lý quy trình đặt trước / giữ chỗ sách thông minh qua UTHie AI."""
+    """Xử lý quy trình mượn sách / chờ nhận sách thông minh qua UTHie AI."""
     message = user_message.strip().lower()
     reservation_markers = (
-        'đặt trước', 'dat truoc',
-        'giữ chỗ', 'giu cho',
+        'mượn sách', 'dat truoc',
+        'chờ nhận sách', 'giu cho',
         'đặt mượn', 'dat muon',
         'mượn trước', 'muon truoc',
         'đặt sách', 'dat sach',
-        'đăng ký mượn', 'dang ky muon',
+        'mượn sách', 'dang ky muon',
         'đăng ký giữ', 'dang ky giu',
         'giữ sách', 'giu sach',
     )
@@ -123,13 +123,23 @@ def get_reservation_workflow_action(
         return None
 
     if is_admin:
+        # A staff sentence that merely contains "mượn sách" is usually a data
+        # question (locked patrons, overdue loans, borrower lists, statistics).
+        # Only open the management workflow when the librarian explicitly asks
+        # to operate that workflow.
+        admin_management_markers = (
+            'quản lý mượn', 'mở quản lý', 'xử lý yêu cầu',
+            'duyệt yêu cầu', 'phân phối sách', 'điều phối hàng chờ',
+        )
+        if not any(marker in message for marker in admin_management_markers):
+            return None
         return {
             'reply': (
-                'Thủ thư có thể quản lý, duyệt và phân phối sách đặt trước tại màn hình **Quản lý Đặt trước** '
+                'Thủ thư có thể quản lý, duyệt và phân phối yêu cầu mượn tại màn hình **Quản lý Mượn sách** '
                 'hoặc trực tiếp tại **Quầy lưu thông**.'
             ),
             'action': {
-                'label': 'Mở quản lý đặt trước',
+                'label': 'Mở quản lý mượn sách',
                 'path': '/admin/reservations',
             },
             'suggested_tab': 'overview',
@@ -138,7 +148,7 @@ def get_reservation_workflow_action(
     if not patron_context:
         return {
             'reply': (
-                'Để thực hiện đặt trước hoặc giữ chỗ sách, bạn vui lòng đăng nhập vào tài khoản bạn đọc UTH trước nhé.'
+                'Để thực hiện mượn sách hoặc chờ nhận sách, bạn vui lòng đăng nhập vào tài khoản bạn đọc UTH trước nhé.'
             ),
             'action': {
                 'label': 'Đăng nhập ngay',
@@ -163,7 +173,7 @@ def get_reservation_workflow_action(
         return {
             'reply': (
                 f'Bạn đang có **{overdue_count} cuốn sách quá hạn** chưa trả. '
-                'Theo quy chế Thư viện UTH, bạn cần hoàn trả sách quá hạn trước khi có thể đặt trước hoặc giữ chỗ sách mới.'
+                'Theo quy chế Thư viện UTH, bạn cần hoàn trả sách quá hạn trước khi có thể mượn sách hoặc chờ nhận sách mới.'
             ),
             'action': {
                 'label': 'Xem sách đang mượn',
@@ -179,7 +189,7 @@ def get_reservation_workflow_action(
         return {
             'reply': (
                 f'Bạn đang có **{unpaid_count} khoản phạt** chưa thanh toán (tổng nợ: **{formatted_amount} VNĐ**). '
-                'Vui lòng thanh toán phí phạt trước khi thực hiện đặt trước hoặc mượn sách nhé.'
+                'Vui lòng thanh toán phí phạt trước khi thực hiện mượn sách hoặc mượn sách nhé.'
             ),
             'action': {
                 'label': 'Xem và nộp phạt',
@@ -188,7 +198,7 @@ def get_reservation_workflow_action(
             'suggested_tab': None,
         }
 
-    # 2. Tìm sách phù hợp nhất để đặt trước
+    # 2. Tìm sách phù hợp nhất để mượn sách
     target_book = None
     if relevant_books and len(relevant_books) > 0:
         target_book = relevant_books[0]
@@ -218,11 +228,11 @@ def get_reservation_workflow_action(
             return {
                 'reply': (
                     f'Đầu sách **"{book_title}"** hiện đang hết bản sẵn sàng (toàn bộ đang được mượn).\n\n'
-                    f'Bạn có muốn **đặt trước vào hàng chờ** không? Nhấn nút xác nhận bên dưới, hệ thống sẽ xếp số ưu tiên và gửi thông báo ngay khi có sách hoàn trả!'
+                    f'Bạn có muốn **mượn sách vào hàng chờ** không? Nhấn nút xác nhận bên dưới, hệ thống sẽ xếp số ưu tiên và gửi thông báo ngay khi có sách hoàn trả!'
                 ),
                 'action': {
                     'type': 'reservation',
-                    'label': '⏳ Xác nhận đặt trước vào hàng chờ',
+                    'label': '⏳ Xác nhận mượn sách vào hàng chờ',
                     'path': f'/books/{book_id}',
                     'book_id': book_id,
                     'book_title': book_title,
@@ -234,8 +244,8 @@ def get_reservation_workflow_action(
     # 3. Nếu người dùng muốn đặt sách nhưng chưa rõ cuốn nào
     return {
         'reply': (
-            'Để UTHie giúp bạn đặt trước, bạn hãy cho mình biết tên đầu sách bạn muốn mượn nhé '
-            '(ví dụ: *"Đặt trước sách Giải tích 1"* hoặc *"Giữ chỗ sách Lập trình Python"*), '
+            'Để UTHie giúp bạn mượn sách, bạn hãy cho mình biết tên đầu sách bạn muốn mượn nhé '
+            '(ví dụ: *"Mượn sách Giải tích 1"* hoặc *"Chờ nhận sách Lập trình Python"*), '
             'hoặc mở kho sách để chọn cuốn ưng ý.'
         ),
         'action': {

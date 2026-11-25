@@ -36,9 +36,9 @@ class CreateReservationView(APIView):
         reservation = create_reservation(user=request.user, book_id=book_id, request=request)
 
         msg = (
-            'Đăng ký mượn sách thành công! Sách đang được giữ cho bạn tại Quầy lưu thông trong 3 ngày.'
+            'Mượn sách thành công! Sách đang được giữ cho bạn tại Quầy lưu thông trong 3 ngày.'
             if reservation.status == 'ready'
-            else f'Đặt trước thành công! Bạn đã được thêm vào hàng chờ (Vị trí #{reservation.queue_position}).'
+            else f'Mượn sách thành công! Bạn đã được thêm vào hàng chờ (Vị trí #{reservation.queue_position}).'
         )
 
         return Response({
@@ -93,7 +93,7 @@ class CancelReservationView(APIView):
 
     def delete(self, request, pk):
         cancelled = cancel_reservation(reservation_id=pk, user=request.user, request=request)
-        msg = 'Hủy yêu cầu đặt trước thành công.'
+        msg = 'Hủy yêu cầu mượn sách thành công.'
         if cancelled.no_show_counted:
           msg += ' Chú ý: Việc hủy sách khi đã sẵn sàng nhận tính là 1 lần no-show.'
 
@@ -171,7 +171,7 @@ class AdvanceReservationView(APIView):
     def post(self, request, pk):
         advanced = advance_reservation(reservation_id=pk, admin_user=request.user, request=request)
         return Response({
-            'detail': 'Đã đưa yêu cầu đặt trước lên đầu hàng chờ.',
+            'detail': 'Đã đưa yêu cầu mượn sách lên đầu hàng chờ.',
             'data': ReservationSerializer(advanced).data
         }, status=status.HTTP_200_OK)
 
@@ -181,7 +181,7 @@ class ExpireStaleReservationsView(APIView):
     def post(self, request):
         result = expire_stale_reservations(admin_user=request.user, request=request)
         return Response({
-            'detail': f"Đã quét và xử lý thành công: Hủy {result['expired_count']} yêu cầu giữ chỗ quá hạn 3 ngày; Chuyển tiếp thành công cho {result['forwarded_count']} bạn đọc kế tiếp trong hàng chờ.",
+            'detail': f"Đã quét và xử lý thành công: Hủy {result['expired_count']} yêu cầu chờ nhận sách quá hạn 3 ngày; Chuyển tiếp thành công cho {result['forwarded_count']} bạn đọc kế tiếp trong hàng chờ.",
             'data': result
         }, status=status.HTTP_200_OK)
 

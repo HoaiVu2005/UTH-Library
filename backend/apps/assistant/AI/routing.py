@@ -14,8 +14,8 @@ def is_pure_casual_message(user_message: str) -> bool:
     """Kiểm tra xem tin nhắn có phải là câu chào hỏi, cảm ơn, xã giao thuần túy hay không."""
     msg_lower = user_message.strip().lower()
     book_keywords = [
-        "sách", "giáo trình", "tài liệu", "đầu sách", "cuốn", "mượn", "đọc", "đặt trước",
-        "giữ chỗ", "tìm", "đề xuất", "gợi ý", "khoa học", "kỹ thuật", "lập trình", "chuyên ngành"
+        "sách", "giáo trình", "tài liệu", "đầu sách", "cuốn", "mượn", "đọc", "mượn sách",
+        "chờ nhận sách", "tìm", "đề xuất", "gợi ý", "khoa học", "kỹ thuật", "lập trình", "chuyên ngành"
     ]
     if any(k in msg_lower for k in book_keywords):
         return False
@@ -60,12 +60,12 @@ EXPLICIT_BOOK_SEARCH_INDICATORS = [
     "sách lập trình", "sách toán", "sách ai", "sách marketing", "sách tiếng anh",
     "tôi muốn mượn sách", "muốn mượn sách", "muốn tìm sách", "cần tìm sách", "cần mượn sách",
     "tôi cần sách", "tìm giúp tôi cuốn", "thư viện có cuốn", "thư viện có sách",
-    "đặt mượn sách", "đặt trước sách", "giữ chỗ sách"
+    "đặt mượn sách", "mượn sách", "chờ nhận sách"
 ]
 
 ADMIN_STATS_KEYWORDS = [
     "chưa trả", "chưa được trả", "đang mượn", "thống kê", "bao nhiêu sách", "quá hạn",
-    "tiền phạt", "đặt trước", "tồn kho", "bản sao", "báo cáo", "hư hỏng", "mất",
+    "tiền phạt", "mượn sách", "tồn kho", "bản sao", "báo cáo", "hư hỏng", "mất",
     "tổng số", "admin", "thủ thư", "sinh viên", "danh sách", "gần hết", "sắp hết",
     "hết bản sao", "mượn nhiều", "sách hot", "khóa thẻ", "đề xuất", "chuyên ngành",
     "giảng viên", "thầy cô", "giáo viên", "ai mượn", "ai đang mượn", "mượn sách"
@@ -126,7 +126,7 @@ def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
         'thư viện', 'giáo trình', 'tài liệu', 'đầu sách', 'isbn', 'mượn sách', 'trả sách', 'hoàn trả', 'trả hộ',
         'sách của tôi', 'tôi đang mượn', 'hạn trả', 'hạn nộp', 'tới hạn', 'đến hạn', 'gia hạn', 'quá hạn',
         'tiền phạt', 'phí phạt', 'phiếu phạt', 'khoản phạt', 'công nợ', 'nợ phạt', 'phạt nợ',
-        'bị phạt', 'thanh toán phạt', 'nộp phạt', 'thu phạt', 'đặt trước', 'mã thẻ', 'giờ mở cửa',
+        'bị phạt', 'thanh toán phạt', 'nộp phạt', 'thu phạt', 'mượn sách', 'mã thẻ', 'giờ mở cửa',
         'cơ sở uth', 'kho sách', 'vị trí kệ', 'mấy cơ sở', 'các cơ sở', 'quy trình mượn', 'quy trình trả', 'cách mượn', 'cách trả',
     ]
     has_campus_query = (

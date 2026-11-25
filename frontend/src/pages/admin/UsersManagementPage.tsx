@@ -19,6 +19,8 @@ import { api } from '@/lib/api';
 
 import { Input } from '@/components/ui/Input';
 
+import { Textarea } from '@/components/ui/Textarea';
+
 import { Select } from '@/components/ui/Select';
 
 import { Button } from '@/components/ui/Button';
@@ -42,6 +44,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ActionMenu } from '@/components/ui/ActionMenu';
 
 import { cn, formatDateVN } from '@/lib/utils';
+import { validateUnlockReviewReason } from '@/lib/unlockReview';
 
 import { format } from 'date-fns';
 
@@ -85,7 +88,6 @@ interface UserItem {
 
   is_currently_locked: boolean;
 
-  reservation_locked_until?: string;
 
   active_loans_count?: number;
 
@@ -172,6 +174,8 @@ export const UsersManagementPage: React.FC = () => {
   const [lockingUser, setLockingUser] = useState<UserItem | null>(null);
 
   const [lockReason, setLockReason] = useState<string>('Thủ thư tạm khóa');
+  const [unlockReviewReason, setUnlockReviewReason] = useState<string>('');
+  const [unlockReviewError, setUnlockReviewError] = useState<string | null>(null);
 
 
 
@@ -577,9 +581,19 @@ export const UsersManagementPage: React.FC = () => {
 
       if (lockingUser.is_locked) {
 
-        await api.post(`/users/${lockingUser.id}/unlock`, { is_locked: false });
+        const validationError = validateUnlockReviewReason(unlockReviewReason);
+        if (validationError) {
+          setUnlockReviewError(validationError);
+          setIsSubmitting(false);
+          return;
+        }
 
-        toast.success(`Đã mở khóa tài khoản cho ${lockingUser.full_name}.`);
+        await api.post(`/users/${lockingUser.id}/unlock`, {
+          is_locked: false,
+          review_reason: unlockReviewReason.trim(),
+        });
+
+        toast.success(`Đã mở khóa và khôi phục quyền mượn 30 ngày cho ${lockingUser.full_name}.`);
 
       } else {
 
@@ -590,6 +604,8 @@ export const UsersManagementPage: React.FC = () => {
       }
 
       setLockingUser(null);
+      setUnlockReviewReason('');
+      setUnlockReviewError(null);
 
       fetchUsers();
 
@@ -1728,7 +1744,11 @@ export const UsersManagementPage: React.FC = () => {
 
                                 variant: u.is_locked ? 'primary' : 'warning',
 
-                                onClick: () => setLockingUser(u),
+                                onClick: () => {
+                                  setUnlockReviewReason('');
+                                  setUnlockReviewError(null);
+                                  setLockingUser(u);
+                                },
 
                               },
 
@@ -2500,7 +2520,11 @@ export const UsersManagementPage: React.FC = () => {
 
         isOpen={Boolean(lockingUser)}
 
-        onClose={() => setLockingUser(null)}
+        onClose={() => {
+          setLockingUser(null);
+          setUnlockReviewReason('');
+          setUnlockReviewError(null);
+        }}
 
         title={lockingUser?.is_locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản bạn đọc'}
 
@@ -2520,7 +2544,7 @@ export const UsersManagementPage: React.FC = () => {
 
                   <Alert variant="warning">
 
-                    Khóa tài khoản sẽ chặn bạn đọc mượn sách mới và đặt chỗ trực tuyến.
+                    Khóa tài khoản sẽ chặn bạn đọc mượn sách mới và mượn sách trực tuyến.
 
                   </Alert>
 
@@ -2545,13 +2569,25 @@ export const UsersManagementPage: React.FC = () => {
                 </div>
 
               ) : (
-
-                <Alert variant="info">
-
-                  Mở khóa sẽ phục hồi đầy đủ quyền tự phục vụ của bạn đọc theo đúng chính sách thư viện.
-
-                </Alert>
-
+                <div className="space-y-3">
+                  <Alert variant="info">
+                    Mở khóa sẽ khôi phục quyền mượn trong 30 ngày. Nghĩa vụ quá hạn, tiền phạt và hạn chế mượn sách do no-show vẫn được giữ nguyên.
+                  </Alert>
+                  <Textarea
+                    label="Lý do xem xét mở khóa"
+                    value={unlockReviewReason}
+                    onChange={(event) => {
+                      setUnlockReviewReason(event.target.value);
+                      if (unlockReviewError) setUnlockReviewError(null);
+                    }}
+                    placeholder="Ví dụ: Sinh viên có xác nhận điều trị dài ngày và đã cam kết hoàn tất nghĩa vụ..."
+                    error={unlockReviewError || undefined}
+                    helperText="Nội dung này sẽ được lưu trong nhật ký kiểm toán của ngoại lệ 30 ngày."
+                    maxLength={500}
+                    showCount
+                    isRequired
+                  />
+                </div>
               )}
 
             </ModalBody>
@@ -2560,7 +2596,15 @@ export const UsersManagementPage: React.FC = () => {
 
             <ModalFooter>
 
-              <Button variant="ghost" size="md" onClick={() => setLockingUser(null)}>
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => {
+                  setLockingUser(null);
+                  setUnlockReviewReason('');
+                  setUnlockReviewError(null);
+                }}
+              >
 
                 Hủy
 

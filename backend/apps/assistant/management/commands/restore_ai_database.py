@@ -1,7 +1,8 @@
+import json
 import os
 from django.conf import settings
 from django.core.management import call_command
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connection
 
 from apps.accounts.models import User
@@ -11,32 +12,87 @@ from apps.fines.models import Fine
 from apps.assistant.models import AssistantConversation, AssistantMessage
 
 
+PUBLIC_SEED_MODELS = {
+    'accounts.user',
+    'catalog.author',
+    'catalog.barcodesequence',
+    'catalog.book',
+    'catalog.category',
+    'catalog.copy',
+    'circulation.loan',
+    'core.policy',
+    'core.systemconfig',
+    'fines.fine',
+    'fines.finepayment',
+    'reservations.reservation',
+    'suggestions.suggestion',
+}
+
+
+def validate_public_seed(fixture_path: str) -> None:
+    try:
+        with open(fixture_path, encoding='utf-8') as fixture_file:
+            payload = json.load(fixture_file)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CommandError(f'Không thể đọc fixture UTHie: {exc}') from exc
+
+    models = {item.get('model') for item in payload if isinstance(item, dict)}
+    forbidden_models = sorted(model for model in models if model not in PUBLIC_SEED_MODELS)
+    if forbidden_models:
+        raise CommandError(
+            'Fixture chứa dữ liệu runtime không được phép phát hành: '
+            + ', '.join(forbidden_models)
+        )
+
+    missing_models = sorted(PUBLIC_SEED_MODELS - models)
+    if missing_models:
+        raise CommandError(
+            'Fixture UTHie thiếu dữ liệu grounding bắt buộc: '
+            + ', '.join(missing_models)
+        )
+
+
 class Command(BaseCommand):
-    help = 'Khôi phục 100% dữ liệu hoàn chỉnh của Thư viện và UTHie AI từ fixture backup_data.json'
+    help = 'Nạp dữ liệu grounding công khai để UTHie sẵn sàng sau khi clone repository'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--fixture',
             type=str,
-            default=os.path.join(settings.BASE_DIR, 'fixtures', 'backup_data.json'),
-            help='Đường dẫn tới file backup_data.json'
+            default=os.path.join(settings.BASE_DIR, 'fixtures', 'uthie_seed_data.json'),
+            help='Đường dẫn tới fixture grounding công khai của UTHie'
+        )
+        parser.add_argument(
+            '--if-empty',
+            action='store_true',
+            help='Chỉ nạp fixture khi database chưa có đầu sách nào',
         )
 
     def handle(self, *args, **options):
-        fixture_path = options['fixture']
-        if not os.path.exists(fixture_path):
-            self.stderr.write(self.style.ERROR(f'Không tìm thấy file fixture tại: {fixture_path}'))
+        output_stream = getattr(self.stdout, '_out', None)
+        if hasattr(output_stream, 'reconfigure'):
+            output_stream.reconfigure(errors='replace')
+
+        if options.get('if_empty') and Book.objects.exists():
+            self.stdout.write(self.style.SUCCESS(
+                'Database đã có dữ liệu thư viện; bỏ qua bước nạp seed UTHie.'
+            ))
             return
 
-        self.stdout.write(self.style.NOTICE('=== BẮT ĐẦU ĐỒNG BỘ DỮ LIỆU UTHIE AI & THƯ VIỆN UTH ==='))
+        fixture_path = options['fixture']
+        if not os.path.exists(fixture_path):
+            raise CommandError(f'Không tìm thấy file fixture tại: {fixture_path}')
+
+        validate_public_seed(fixture_path)
+
+        self.stdout.write(self.style.NOTICE('=== BẮT ĐẦU NẠP DỮ LIỆU GROUNDING CÔNG KHAI CHO UTHIE ==='))
         self.stdout.write(f'Nạp dữ liệu từ: {fixture_path}')
 
         try:
             call_command('loaddata', fixture_path)
             self.stdout.write(self.style.SUCCESS('✓ Đã nạp thành công fixture JSON!'))
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Lỗi khi nạp dữ liệu: {e}'))
-            return
+            raise CommandError(f'Lỗi khi nạp dữ liệu: {e}') from e
 
         # Cập nhật Postgres sequence nếu dùng postgresql
         if 'postgresql' in settings.DATABASES['default']['ENGINE']:
@@ -70,7 +126,7 @@ class Command(BaseCommand):
         conv_count = AssistantConversation.objects.count()
         msg_count = AssistantMessage.objects.count()
 
-        self.stdout.write(self.style.SUCCESS('=== DỮ LIỆU ĐÃ ĐỒNG BỘ 100% HOÀN CHỈNH ==='))
+        self.stdout.write(self.style.SUCCESS('=== DỮ LIỆU GROUNDING UTHIE ĐÃ SẴN SÀNG ==='))
         self.stdout.write(f'- Người dùng (User): {user_count}')
         self.stdout.write(f'- Đầu sách (Book): {book_count}')
         self.stdout.write(f'- Bản sao sách (Copy): {copy_count}')
@@ -78,4 +134,10 @@ class Command(BaseCommand):
         self.stdout.write(f'- Phiếu phạt (Fine): {fine_count}')
         self.stdout.write(f'- Hội thoại AI (AssistantConversation): {conv_count}')
         self.stdout.write(f'- Lịch sử tin nhắn AI (AssistantMessage): {msg_count}')
-        self.stdout.write(self.style.SUCCESS('UTHie AI đã sẵn sàng hoạt động trên máy này với dữ liệu đồng nhất 100%!'))
+        if not os.getenv('GEMINI_API_KEY', '').strip():
+            self.stdout.write(self.style.WARNING(
+                '- GEMINI_API_KEY chưa được cấu hình; UTHie sẽ chạy bằng fallback nội bộ.'
+            ))
+        self.stdout.write(self.style.SUCCESS(
+            'UTHie đã có dữ liệu nghiệp vụ. Cấu hình GEMINI_API_KEY riêng để bật mô hình Gemini.'
+        ))

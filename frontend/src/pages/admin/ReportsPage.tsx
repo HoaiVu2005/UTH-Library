@@ -239,7 +239,7 @@ export const ReportsPage: React.FC = () => {
             item.name,
             `${formatNumberVN(item.value)} bản`,
             `${Math.round((item.value / (summary?.total_copies || 1)) * 100)}%`,
-            item.name === 'Sẵn sàng mượn' ? 'Đang trên kệ sẵn sàng phục vụ' : item.name === 'Đang lưu thông' ? 'Độc giả đang giữ' : item.name === 'Đang giữ chỗ' ? 'Chờ bạn đọc đến lấy' : 'Đang xử lý biên bản đền bù',
+            item.name === 'Sẵn sàng mượn' ? 'Đang trên kệ sẵn sàng phục vụ' : item.name === 'Đang lưu thông' ? 'Độc giả đang giữ' : item.name === 'Đang chờ nhận sách' ? 'Chờ bạn đọc đến lấy' : 'Đang xử lý biên bản đền bù',
           ]),
           summaryRow: ['TỔNG CỘNG', 'Toàn bộ kho sách UTH', `${formatNumberVN(summary?.total_copies || 0)} bản`, '100%', 'Mã vạch Code128'],
         },
@@ -301,7 +301,7 @@ export const ReportsPage: React.FC = () => {
         // Phần 5: Kiểm kê Hiện trạng Kho theo Chuyên ngành
         {
           sectionTitle: 'Kiểm kê Bản sao theo Chuyên ngành đào tạo',
-          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng', 'Đang mượn', 'Đang giữ chỗ', 'Hỏng/Mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
+          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng', 'Đang mượn', 'Đang chờ nhận sách', 'Hỏng/Mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
           rows: inventoryList.map((c, idx) => [
             idx + 1,
             c.category_code,
@@ -457,7 +457,7 @@ export const ReportsPage: React.FC = () => {
       sections: [
         {
           sectionTitle: 'Chi tiết Hiện trạng Bản sao theo Chuyên ngành',
-          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng phục vụ', 'Đang lưu thông', 'Đang giữ chỗ', 'Hỏng / Báo mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
+          headers: ['STT', 'Mã khoa', 'Tên chuyên ngành', 'Tổng bản sao', 'Sẵn sàng phục vụ', 'Đang lưu thông', 'Đang chờ nhận sách', 'Hỏng / Báo mất', 'Đã thanh lý', 'Tỷ lệ khả dụng (%)'],
           rows: inventoryList.map((c, idx) => [
             idx + 1,
             c.category_code,
@@ -502,7 +502,7 @@ export const ReportsPage: React.FC = () => {
     return [
       { name: 'Sẵn sàng mượn', value: summary.available_copies || 0, color: '#008B8B' },
       { name: 'Đang lưu thông', value: summary.borrowed_copies || 0, color: '#3B82F6' },
-      { name: 'Đang giữ chỗ', value: summary.reserved_copies || 0, color: '#F59E0B' },
+      { name: 'Đang chờ nhận sách', value: summary.reserved_copies || 0, color: '#F59E0B' },
       { name: 'Hỏng / Báo mất', value: summary.damaged_lost_copies || 0, color: '#EF4444' },
     ].filter((item) => item.value > 0);
   }, [summary]);
@@ -1527,7 +1527,7 @@ export const ReportsPage: React.FC = () => {
                     <TableHead className="w-28 text-center">Tổng bản sao</TableHead>
                     <TableHead className="w-28 text-center">Sẵn sàng</TableHead>
                     <TableHead className="w-28 text-center">Đang mượn</TableHead>
-                    <TableHead className="w-28 text-center">Đang giữ chỗ</TableHead>
+                    <TableHead className="w-28 text-center">Đang chờ nhận sách</TableHead>
                     <TableHead className="w-28 text-center">Hỏng / Mất</TableHead>
                     <TableHead className="w-28 text-center">Đã thanh lý</TableHead>
                   </TableRow>

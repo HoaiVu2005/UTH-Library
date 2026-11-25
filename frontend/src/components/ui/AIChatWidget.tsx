@@ -31,6 +31,8 @@ import {
   Wrench,
   PackageX,
   UserX,
+  Unlock,
+  ShieldCheck,
   Inbox,
   GraduationCap,
   MessageSquare,
@@ -44,7 +46,9 @@ import {
   Lightbulb,
   GripHorizontal,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, formatApiError } from '@/lib/api';
+import { toast } from './Toast';
+import { validateUnlockReviewReason } from '@/lib/unlockReview';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import uthieAvatarImg from '@/assets/uthie-avatar.jpg';
@@ -142,6 +146,19 @@ interface LecturerBorrowerItem {
   renew_count: number;
 }
 
+interface LockedBorrowerItem {
+  user_id: number;
+  student_name: string;
+  card_code: string;
+  department: string;
+  lock_reason: string;
+  lock_reason_label: string;
+  active_loans_count: number;
+  overdue_loans_count: number;
+  unpaid_fines_count: number;
+  unpaid_amount: number;
+}
+
 interface AdminStats {
   active_loans_count: number;
   overdue_loans_count: number;
@@ -163,6 +180,7 @@ interface AdminStats {
   top_borrowed_books?: TopBorrowedBook[];
   issue_copies_list?: IssueCopyItem[];
   locked_users_count?: number;
+  locked_users?: LockedBorrowerItem[];
   pending_suggestions_count?: number;
 }
 
@@ -173,7 +191,7 @@ interface Message {
   suggested_books?: SuggestedBook[];
   overdue_students?: OverdueStudent[];
   admin_stats?: AdminStats;
-  active_tab?: 'overdue' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview';
+  active_tab?: 'overdue' | 'locked_users' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview';
   action?: ChatAction;
   timestamp: string;
 }
@@ -313,16 +331,21 @@ export const AIChatWidget: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [searchOverdueQuery, setSearchOverdueQuery] = useState('');
   const [overdueSeverityFilter, setOverdueSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'new'>('all');
+  const [lockedBorrowerSearch, setLockedBorrowerSearch] = useState('');
+  const [reviewingLockedUserId, setReviewingLockedUserId] = useState<number | null>(null);
+  const [unlockReviewReason, setUnlockReviewReason] = useState('');
+  const [unlockReviewError, setUnlockReviewError] = useState<string | null>(null);
+  const [unlockingUserId, setUnlockingUserId] = useState<number | null>(null);
 
   // Quản lý tab thống kê bên phải (mở rộng đầy đủ danh mục dữ liệu bao gồm Giảng viên)
-  const [sideTab, setSideTab] = useState<'overdue' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview'>('overdue');
+  const [sideTab, setSideTab] = useState<'overdue' | 'locked_users' | 'lecturers' | 'inventory' | 'low_stock' | 'fines' | 'top_books' | 'damaged' | 'overview'>('overdue');
   const [latestAdminStats, setLatestAdminStats] = useState<AdminStats | null>(null);
   // Bảng điều phối nghiệp vụ bên phải cho thủ thư: mặc định ẩn để khung chat rộng rãi, thoáng đãng,
   // khi hỏi nghiệp vụ mới tự động mở lên hoặc chủ động bật tắt qua nút header.
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'librarian';
   const isLecturer = user?.role === 'lecturer';
   const chatRole: ChatRole = user?.role || 'student';
   const chatGreeting = getChatGreeting({
@@ -361,7 +384,7 @@ export const AIChatWidget: React.FC = () => {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [showGreetingBubble, setShowGreetingBubble] = useState(true);
 
-  // Trạng thái xử lý đặt trước sách 1-click
+  // Trạng thái xử lý mượn sách 1-click
   const [isReservingBookId, setIsReservingBookId] = useState<number | null>(null);
   const [reservedBookIds, setReservedBookIds] = useState<Set<number>>(new Set());
 
@@ -384,15 +407,15 @@ export const AIChatWidget: React.FC = () => {
       const resId = res.data?.id;
 
       const confirmText = isReadyResult
-        ? `🎉 **Đăng ký mượn sách thành công!**\n\nCuốn **${bookTitle || 'sách'}** đã được giữ riêng cho bạn tại Quầy lưu thông trong **3 ngày**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Bạn có thể ghé thư viện nhận sách nhé!`
-        : `🎉 **Đặt trước vào hàng chờ thành công!**\n\nBạn đang ở vị trí **#${queuePos || 1}** trong hàng chờ cuốn **${bookTitle || 'sách'}**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!`;
+        ? `🎉 **Mượn sách thành công!**\n\nCuốn **${bookTitle || 'sách'}** đã được giữ riêng cho bạn tại Quầy lưu thông trong **3 ngày**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Bạn có thể ghé thư viện nhận sách nhé!`
+        : `🎉 **Mượn sách vào hàng chờ thành công!**\n\nBạn đang ở vị trí **#${queuePos || 1}** trong hàng chờ cuốn **${bookTitle || 'sách'}**${resId ? ` (Mã yêu cầu: #${resId})` : ''}. Thư viện sẽ gửi thông báo ngay khi có sách hoàn trả!`;
 
       const confirmMsg: Message = {
         id: `res-confirm-${Date.now()}`,
         sender: 'ai',
         text: confirmText,
         action: {
-          label: 'Xem danh sách mượn / đặt trước',
+          label: 'Xem danh sách mượn / mượn sách',
           path: '/reservations',
         },
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -405,11 +428,11 @@ export const AIChatWidget: React.FC = () => {
       const errorDetail =
         err.response?.data?.detail ||
         err.response?.data?.error ||
-        'Không thể đặt trước sách lúc này. Vui lòng kiểm tra lại điều kiện thẻ hoặc thử lại sau.';
+        'Không thể mượn sách lúc này. Vui lòng kiểm tra lại điều kiện thẻ hoặc thử lại sau.';
       const errorMsg: Message = {
         id: `res-err-${Date.now()}`,
         sender: 'ai',
-        text: `⚠️ **Không thể đặt trước sách**\n\n${errorDetail}`,
+        text: `⚠️ **Không thể mượn sách**\n\n${errorDetail}`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setSessions((prev) =>
@@ -698,6 +721,50 @@ export const AIChatWidget: React.FC = () => {
       return true;
     });
   }, [latestOverdueStudents, searchOverdueQuery, overdueSeverityFilter]);
+
+  const filteredLockedBorrowers = useMemo(() => {
+    const query = lockedBorrowerSearch.trim().toLocaleLowerCase('vi-VN');
+    const lockedUsers = latestAdminStats?.locked_users ?? [];
+    if (!query) return lockedUsers;
+    return lockedUsers.filter((student) =>
+      [student.student_name, student.card_code, student.department, student.lock_reason_label]
+        .some((value) => value.toLocaleLowerCase('vi-VN').includes(query))
+    );
+  }, [latestAdminStats?.locked_users, lockedBorrowerSearch]);
+
+  const handleUnlockBorrower = async (student: LockedBorrowerItem) => {
+    const validationError = validateUnlockReviewReason(unlockReviewReason);
+    if (validationError) {
+      setUnlockReviewError(validationError);
+      return;
+    }
+
+    setUnlockingUserId(student.user_id);
+    try {
+      await api.post(`/users/${student.user_id}/unlock`, {
+        review_reason: unlockReviewReason.trim(),
+      });
+      setLatestAdminStats((previous) => {
+        if (!previous) return previous;
+        const lockedUsers = (previous.locked_users ?? []).filter(
+          (item) => item.user_id !== student.user_id,
+        );
+        return {
+          ...previous,
+          locked_users: lockedUsers,
+          locked_users_count: lockedUsers.length,
+        };
+      });
+      setReviewingLockedUserId(null);
+      setUnlockReviewReason('');
+      setUnlockReviewError(null);
+      toast.success(`Đã khôi phục quyền mượn trong 30 ngày cho ${student.student_name}.`);
+    } catch (error) {
+      toast.error(formatApiError(error));
+    } finally {
+      setUnlockingUserId(null);
+    }
+  };
 
   const handleChatScroll = useCallback(() => {
     if (scrollRafRef.current) return;
@@ -1182,13 +1249,13 @@ export const AIChatWidget: React.FC = () => {
             <div className="w-full h-3 bg-black/20 rounded-full overflow-hidden flex shadow-inner">
               <div style={{ width: `${availPct}%` }} className="bg-emerald-400 transition-all duration-500" title={`Sẵn sàng: ${stats.available_copies}`} />
               <div style={{ width: `${borrowPct}%` }} className="bg-blue-400 transition-all duration-500" title={`Đang mượn: ${stats.borrowed_copies}`} />
-              <div style={{ width: `${reservedPct}%` }} className="bg-amber-400 transition-all duration-500" title={`Giữ chỗ: ${stats.reserved_copies}`} />
+              <div style={{ width: `${reservedPct}%` }} className="bg-amber-400 transition-all duration-500" title={`Chờ nhận sách: ${stats.reserved_copies}`} />
               <div style={{ width: `${issuesPct}%` }} className="bg-rose-400 transition-all duration-500" title={`Hỏng/Mất: ${stats.damaged_copies + stats.lost_copies}`} />
             </div>
             <div className="flex flex-wrap items-center gap-3 text-[10px] text-teal-200 mt-2">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Sẵn sàng ({stats.available_copies})</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" /> Đang mượn ({stats.borrowed_copies})</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Giữ chỗ ({stats.reserved_copies})</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /> Chờ nhận sách ({stats.reserved_copies})</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400" /> Hỏng/Mất ({stats.damaged_copies + stats.lost_copies})</span>
             </div>
           </div>
@@ -1217,11 +1284,11 @@ export const AIChatWidget: React.FC = () => {
 
           <div className="bg-white p-3.5 rounded-2xl border border-amber-100 shadow-xs hover:shadow-sm transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600">Đang giữ chỗ / Đặt trước</span>
+              <span className="text-xs font-semibold text-gray-600">Đang chờ nhận sách / Mượn sách</span>
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             </div>
             <p className="text-xl font-bold text-amber-700 mt-1">{stats.reserved_copies} bản</p>
-            <p className="text-[11px] text-gray-500 mt-1">Dành riêng cho sinh viên đã đặt trước tại quầy lưu thông.</p>
+            <p className="text-[11px] text-gray-500 mt-1">Dành cho sách đã sẵn sàng để bạn đọc nhận tại quầy lưu thông.</p>
           </div>
 
           <div className="bg-white p-3.5 rounded-2xl border border-rose-100 shadow-xs hover:shadow-sm transition-all">
@@ -1402,6 +1469,193 @@ export const AIChatWidget: React.FC = () => {
     );
   };
 
+  // ─── Render Tab Sinh Viên Bị Khóa Quyền Mượn ─────────────────────────────
+  const renderLockedBorrowersPanel = () => {
+    if (!latestAdminStats) return renderAdminDataUnavailable();
+    const lockedUsers = latestAdminStats.locked_users ?? [];
+
+    return (
+      <div className="flex-1 overflow-y-auto p-4 ai-smooth-scroll ai-chat-scrollbar">
+        <div className="mb-4 rounded-2xl bg-[#E6F4F3] p-4 ring-1 ring-teal-200/80">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-teal-700">
+                Xem xét ngoại lệ tại quầy
+              </p>
+              <h3 className="mt-1 text-lg font-bold text-slate-950">
+                {lockedUsers.length} sinh viên đang bị khóa mượn
+              </h3>
+              <p className="mt-1 max-w-2xl text-xs leading-relaxed text-teal-950/70">
+                Kiểm tra nghĩa vụ còn tồn và ghi rõ căn cứ trước khi khôi phục quyền mượn sách.
+              </p>
+            </div>
+            <div className="rounded-xl bg-white/80 p-2 text-teal-700 ring-1 ring-teal-200">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={lockedBorrowerSearch}
+            onChange={(event) => setLockedBorrowerSearch(event.target.value)}
+            placeholder="Tìm theo họ tên, MSSV, khoa hoặc lý do khóa..."
+            className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-3 text-xs text-slate-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+          />
+        </div>
+
+        {filteredLockedBorrowers.length === 0 ? (
+          <div className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center">
+            <CheckCheck className="mb-2 h-9 w-9 text-emerald-500" />
+            <p className="text-sm font-semibold text-slate-700">
+              {lockedUsers.length === 0 ? 'Không có sinh viên bị khóa quyền mượn.' : 'Không tìm thấy sinh viên phù hợp.'}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">Danh sách sẽ cập nhật theo dữ liệu tài khoản thực tế.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredLockedBorrowers.map((student) => {
+              const isReviewing = reviewingLockedUserId === student.user_id;
+              const hasOutstandingObligations = student.overdue_loans_count > 0 || student.unpaid_amount > 0;
+              return (
+                <article
+                  key={student.user_id}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs"
+                >
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-xs font-bold text-rose-700 ring-1 ring-rose-200">
+                          {student.student_name.trim().charAt(0).toLocaleUpperCase('vi-VN')}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-950">{student.student_name}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">
+                            <span className="font-mono">{student.card_code}</span>
+                            <span className="mx-1.5 text-slate-300">•</span>
+                            {student.department}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-200">
+                        Đang khóa mượn
+                      </span>
+                    </div>
+
+                    <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Lý do khóa</p>
+                      <p className="mt-1 text-xs font-medium text-slate-700">{student.lock_reason_label}</p>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-white py-2.5 text-center">
+                      <div className="px-2">
+                        <p className="text-sm font-bold text-slate-900">{student.active_loans_count}</p>
+                        <p className="text-[10px] text-slate-500">Đang mượn</p>
+                      </div>
+                      <div className="px-2">
+                        <p className={`text-sm font-bold ${student.overdue_loans_count > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                          {student.overdue_loans_count}
+                        </p>
+                        <p className="text-[10px] text-slate-500">Quá hạn</p>
+                      </div>
+                      <div className="px-2">
+                        <p className={`text-sm font-bold ${student.unpaid_amount > 0 ? 'text-amber-700' : 'text-slate-900'}`}>
+                          {student.unpaid_amount.toLocaleString('vi-VN')}đ
+                        </p>
+                        <p className="text-[10px] text-slate-500">Nợ phạt</p>
+                      </div>
+                    </div>
+
+                    {!isReviewing && (
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-[10px] leading-relaxed text-slate-500">
+                          {hasOutstandingObligations
+                            ? 'Còn nghĩa vụ chưa hoàn tất — chỉ mở khóa khi có căn cứ ngoại lệ rõ ràng.'
+                            : 'Không còn nghĩa vụ tồn đọng trong hệ thống.'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewingLockedUserId(student.user_id);
+                            setUnlockReviewReason('');
+                            setUnlockReviewError(null);
+                          }}
+                          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-teal-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                        >
+                          <Unlock className="h-3.5 w-3.5" />
+                          Xem xét mở khóa
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {isReviewing && (
+                    <div className="border-t border-teal-100 bg-teal-50/60 p-4">
+                      <label htmlFor={`unlock-reason-${student.user_id}`} className="text-xs font-semibold text-slate-800">
+                        Căn cứ mở khóa <span className="text-rose-600">*</span>
+                      </label>
+                      <textarea
+                        id={`unlock-reason-${student.user_id}`}
+                        value={unlockReviewReason}
+                        onChange={(event) => {
+                          setUnlockReviewReason(event.target.value);
+                          if (unlockReviewError) setUnlockReviewError(null);
+                        }}
+                        maxLength={500}
+                        rows={3}
+                        placeholder="Ghi rõ tình huống chính đáng và bằng chứng đã kiểm tra..."
+                        className={`mt-1.5 w-full resize-none rounded-xl border bg-white p-3 text-xs leading-relaxed text-slate-800 outline-none transition focus:ring-2 ${
+                          unlockReviewError
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-100'
+                            : 'border-teal-200 focus:border-teal-500 focus:ring-teal-100'
+                        }`}
+                      />
+                      <div className="mt-1 flex items-start justify-between gap-3">
+                        <p className={`text-[10px] ${unlockReviewError ? 'font-medium text-rose-600' : 'text-slate-500'}`}>
+                          {unlockReviewError || 'Ngoại lệ có hiệu lực 30 ngày; lý do được lưu vào nhật ký kiểm toán.'}
+                        </p>
+                        <span className="text-[10px] tabular-nums text-slate-400">{unlockReviewReason.length}/500</span>
+                      </div>
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReviewingLockedUserId(null);
+                            setUnlockReviewReason('');
+                            setUnlockReviewError(null);
+                          }}
+                          disabled={unlockingUserId === student.user_id}
+                          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-white disabled:opacity-50"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUnlockBorrower(student)}
+                          disabled={unlockingUserId === student.user_id}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-teal-800 disabled:cursor-wait disabled:opacity-60"
+                        >
+                          {unlockingUserId === student.user_id ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                          )}
+                          Xác nhận khôi phục quyền mượn
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ─── Render Tab Top Sách Mượn Nhiều Nhất ────────────────────────────────────
   const renderTopBooksPanel = () => {
     if (!latestAdminStats) return renderAdminDataUnavailable();
@@ -1532,7 +1786,7 @@ export const AIChatWidget: React.FC = () => {
             <span className="text-[10px] text-rose-500">Cần đôn đốc thu hồi</span>
           </div>
           <div className="bg-white p-3 rounded-2xl border border-gray-200">
-            <p className="text-[11px] text-gray-500 font-medium">Đặt trước đang chờ</p>
+            <p className="text-[11px] text-gray-500 font-medium">Mượn sách đang chờ</p>
             <p className="text-lg font-bold text-gray-900 mt-0.5">{stats.pending_reservations} yêu cầu</p>
             <span className="text-[10px] text-gray-400">Giữ 3 ngày tại quầy</span>
           </div>
@@ -2009,7 +2263,7 @@ export const AIChatWidget: React.FC = () => {
                                       {reservedBookIds.has(msg.action.book_id) ? (
                                         <>
                                           <Check className="w-4 h-4 text-emerald-200" />
-                                          <span>Đã đăng ký mượn sách thành công!</span>
+                                          <span>Đã ghi nhận yêu cầu mượn!</span>
                                         </>
                                       ) : isReservingBookId === msg.action.book_id ? (
                                         <>
@@ -2033,7 +2287,7 @@ export const AIChatWidget: React.FC = () => {
                                     type="button"
                                     onClick={() => {
                                       const targetPath =
-                                        msg.action!.label.toLowerCase().includes('đặt trước') && msg.action!.path === '/profile'
+                                        msg.action!.label.toLowerCase().includes('mượn sách') && msg.action!.path === '/profile'
                                           ? '/reservations'
                                           : msg.action!.path;
                                       navigate(targetPath);
@@ -2135,7 +2389,7 @@ export const AIChatWidget: React.FC = () => {
                                                   ? 'bg-[#008B8B] hover:bg-[#006F70] text-white hover:shadow-sm'
                                                   : 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-sm'
                                               }`}
-                                              title={b.available_copies > 0 ? 'Mượn sách tại quầy (giữ 3 ngày)' : 'Đặt trước vào hàng chờ'}
+                                              title={b.available_copies > 0 ? 'Mượn sách tại quầy (giữ 3 ngày)' : 'Mượn sách vào hàng chờ'}
                                             >
                                               {reservedBookIds.has(b.id) ? (
                                                 <>
@@ -2155,7 +2409,7 @@ export const AIChatWidget: React.FC = () => {
                                               ) : (
                                                 <>
                                                   <RotateCcw className="w-3.5 h-3.5" />
-                                                  <span>Đặt trước</span>
+                                                  <span>Mượn sách</span>
                                                 </>
                                               )}
                                             </button>
@@ -2284,6 +2538,25 @@ export const AIChatWidget: React.FC = () => {
                             }`}
                           >
                             {latestOverdueStudents.length}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => setSideTab('locked_users')}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
+                            sideTab === 'locked_users'
+                              ? 'bg-teal-800 text-white shadow-sm'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <UserX className="w-3.5 h-3.5" />
+                          <span>Khóa mượn</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                              sideTab === 'locked_users' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                            }`}
+                          >
+                            {getAdminMetricLabel(latestAdminStats?.locked_users_count)}
                           </span>
                         </button>
 
@@ -2501,6 +2774,7 @@ export const AIChatWidget: React.FC = () => {
                       </div>
                     )}
 
+                    {sideTab === 'locked_users' && renderLockedBorrowersPanel()}
                     {sideTab === 'lecturers' && renderLecturersPanel()}
                     {sideTab === 'inventory' && renderInventoryPanel()}
                     {sideTab === 'low_stock' && renderLowStockPanel()}

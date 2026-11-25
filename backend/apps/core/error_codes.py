@@ -36,11 +36,6 @@ ERROR_CODE_MAPPING = {
         'status': status.HTTP_403_FORBIDDEN,
         'detail': 'Thẻ bạn đọc đã hết hạn sử dụng. Vui lòng liên hệ quầy thư viện để gia hạn thẻ.',
     },
-    'USER_NO_SHOW_LOCKED': {
-        'status': status.HTTP_403_FORBIDDEN,
-        'detail': 'Tài khoản bị tạm khóa chức năng đặt trước/giữ chỗ do quá 3 lần không đến nhận sách đúng hẹn.',
-    },
-
     # Không tìm thấy (404 / 400)
     'NOT_FOUND': {
         'status': status.HTTP_404_NOT_FOUND,
@@ -58,11 +53,11 @@ ERROR_CODE_MAPPING = {
     # Quy tắc nghiệp vụ không thỏa (422)
     'LOAN_LIMIT_REACHED': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Bạn đọc đã đạt giới hạn số sách được mượn/giữ chỗ tối đa.',
+        'detail': 'Bạn đọc đã đạt giới hạn số sách được mượn/chờ nhận sách tối đa.',
     },
     'LOAN_HAS_OVERDUE': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Bạn đọc hiện có sách quá hạn chưa trả. Vui lòng trả sách trước khi thực hiện mượn hoặc giữ chỗ.',
+        'detail': 'Bạn đọc hiện có sách quá hạn chưa trả. Vui lòng trả sách trước khi thực hiện mượn hoặc chờ nhận sách.',
     },
     'LOAN_HAS_UNPAID_FINE': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -78,27 +73,27 @@ ERROR_CODE_MAPPING = {
     },
     'RENEWAL_HAS_RESERVATION': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Không thể gia hạn vì đầu sách này đang có bạn đọc khác xếp hàng đặt trước.',
+        'detail': 'Không thể gia hạn vì đầu sách này đang có bạn đọc khác xếp hàng mượn sách.',
     },
     'RESERVATION_LIMIT_REACHED': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Bạn đã đạt giới hạn số lượng đặt trước đang chờ tối đa.',
+        'detail': 'Bạn đã đạt giới hạn số lượng mượn sách đang chờ tối đa.',
     },
     'RESERVATION_HAS_OVERDUE': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Không thể đặt trước do tài khoản đang có sách quá hạn.',
+        'detail': 'Không thể mượn sách do tài khoản đang có sách quá hạn.',
     },
     'RESERVATION_EXPIRED': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Yêu cầu giữ chỗ này đã hết thời gian hiệu lực.',
+        'detail': 'Yêu cầu chờ nhận sách này đã hết thời gian hiệu lực.',
     },
     'COPY_READING_ROOM_ONLY': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Bản sao này chỉ dành để đọc tại chỗ, không thể mượn về nhà hoặc đặt trước.',
+        'detail': 'Bản sao này chỉ dành để đọc tại chỗ, không thể mượn về nhà hoặc mượn sách.',
     },
     'COPY_NOT_AVAILABLE': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
-        'detail': 'Bản sao hiện không ở trạng thái sẵn sàng để mượn hoặc giữ chỗ.',
+        'detail': 'Bản sao hiện không ở trạng thái sẵn sàng để mượn hoặc chờ nhận sách.',
     },
     'FINE_AMOUNT_INVALID': {
         'status': status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -128,7 +123,7 @@ ERROR_CODE_MAPPING = {
     },
     'COPY_HELD_FOR_OTHER': {
         'status': status.HTTP_409_CONFLICT,
-        'detail': 'Bản sao này đang được giữ chỗ ưu tiên cho một bạn đọc khác.',
+        'detail': 'Bản sao này đang chờ một bạn đọc khác đến nhận để mượn.',
     },
     'LOAN_DUPLICATE_BOOK': {
         'status': status.HTTP_409_CONFLICT,
@@ -140,15 +135,15 @@ ERROR_CODE_MAPPING = {
     },
     'RESERVATION_DUPLICATE': {
         'status': status.HTTP_409_CONFLICT,
-        'detail': 'Bạn đọc đã có một yêu cầu đặt trước hoặc giữ chỗ cho đầu sách này.',
+        'detail': 'Bạn đọc đã có một yêu cầu mượn sách hoặc chờ nhận sách cho đầu sách này.',
     },
     'BOOK_HAS_ACTIVE_LOANS': {
         'status': status.HTTP_409_CONFLICT,
-        'detail': 'Không thể xóa đầu sách do vẫn còn các bản sao đang được mượn hoặc giữ chỗ.',
+        'detail': 'Không thể xóa đầu sách do vẫn còn các bản sao đang được mượn hoặc chờ nhận sách.',
     },
     'BOOK_HAS_ACTIVE_RESERVATIONS': {
         'status': status.HTTP_409_CONFLICT,
-        'detail': 'Không thể xóa đầu sách do đang có bạn đọc xếp hàng đặt trước.',
+        'detail': 'Không thể xóa đầu sách do đang có bạn đọc xếp hàng mượn sách.',
     },
     'USER_DUPLICATE': {
         'status': status.HTTP_409_CONFLICT,

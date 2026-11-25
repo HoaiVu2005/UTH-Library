@@ -29,7 +29,7 @@ class SystemConfig(BaseModel):
     # No-show Policy
     noshow_limit = models.IntegerField(default=3, help_text='Giới hạn số lần no-show trước khi bị khóa')
     noshow_window_days = models.IntegerField(default=90, help_text='Cửa sổ ngày xét no-show (VD: 90 ngày)')
-    noshow_lock_days = models.IntegerField(default=30, help_text='Thời gian khóa đặt trước (VD: 30 ngày)')
+    noshow_lock_days = models.IntegerField(default=30, help_text='Thời gian khóa mượn sách (VD: 30 ngày)')
 
     # Upload and Session
     upload_max_size = models.BigIntegerField(default=5242880, help_text='Dung lượng upload tối đa (5MB)')
@@ -69,7 +69,7 @@ class Policy(BaseModel):
     
     # Reservation rules
     hold_days = models.PositiveIntegerField(default=3, help_text='Số ngày giữ sách sau khi ready')
-    max_reservations_pending = models.PositiveIntegerField(default=3, help_text='Số lượng đặt trước pending tối đa')
+    max_reservations_pending = models.PositiveIntegerField(default=3, help_text='Số lượng mượn sách pending tối đa')
     max_ready_reservations = models.PositiveIntegerField(default=3, help_text='Số lượng ready tối đa')
 
     # Damage compensation percentages

@@ -58,15 +58,15 @@ interface CategoryConfig {
 
 const CATEGORY_MAP: Record<string, CategoryConfig> = {
   reservation_ready: {
-    label: 'Giữ chỗ sách',
-    categoryName: 'Sách đặt trước đã sẵn sàng',
+    label: 'Chờ nhận sách',
+    categoryName: 'Sách mượn sách đã sẵn sàng',
     icon: BookmarkCheck,
     iconBg: 'bg-teal-50',
     iconColor: 'text-primary',
     borderAccent: 'border-l-primary',
     badgeStatus: 'ready',
     badgeText: 'Sẵn sàng nhận',
-    actionText: 'Xem sách đang giữ chỗ',
+    actionText: 'Xem sách đang chờ nhận sách',
     guideNote:
       'Quầy lưu thông đã chuẩn bị sẵn tài liệu cho bạn. Vui lòng mang Thẻ sinh viên hoặc Thẻ bạn đọc số đến quầy nhận sách trước thời hạn đã thông báo.',
   },
@@ -81,7 +81,7 @@ const CATEGORY_MAP: Record<string, CategoryConfig> = {
     badgeText: 'Sắp đến hạn',
     actionText: 'Xem sách đang mượn & Gia hạn',
     guideNote:
-      'Sách của bạn sắp đến hạn trả. Bạn có thể gia hạn trực tuyến 1-click thêm 7 ngày tại mục "Sách đang mượn" (nếu chưa có bạn đọc khác xếp hàng đặt trước).',
+      'Sách của bạn sắp đến hạn trả. Bạn có thể gia hạn trực tuyến 1-click thêm 7 ngày tại mục "Sách đang mượn" (nếu chưa có bạn đọc khác xếp hàng mượn sách).',
   },
   overdue: {
     label: 'Quá hạn',
@@ -354,7 +354,7 @@ export const NotificationsPage: React.FC = () => {
                 <span>Hộp thư thông báo UTH</span>
               </h1>
               <p className="text-xs text-gray-500 mt-0.5">
-                Theo dõi hạn trả tài liệu, nhận thông báo giữ chỗ sách sẵn sàng tại quầy và kết quả xét duyệt
+                Theo dõi hạn trả tài liệu, nhận thông báo chờ nhận sách sẵn sàng tại quầy và kết quả xét duyệt
               </p>
             </div>
           </div>
@@ -432,7 +432,7 @@ export const NotificationsPage: React.FC = () => {
                   : 'bg-teal-50/60 text-brand border-teal-200/80 hover:bg-teal-100/70'
               )}
             >
-              <span>Giữ chỗ</span>
+              <span>Chờ nhận sách</span>
               {tabCounts.reservation > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white border border-teal-200 text-brand font-bold">
                   {tabCounts.reservation}

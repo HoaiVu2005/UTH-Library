@@ -137,7 +137,7 @@ def check_and_create_admin_notifications(user):
     ready_res_count = Reservation.objects.filter(status=ReservationStatus.READY).count()
     if ready_res_count > 0:
         dedupe_key = f"admin_ready_res_{user.id}_{today_str}_{ready_res_count}"
-        content = f"Hiện có {ready_res_count} sách giữ chỗ sẵn sàng tại quầy lưu thông đang chờ bạn đọc đến nhận."
+        content = f"Hiện có {ready_res_count} sách chờ nhận sách sẵn sàng tại quầy lưu thông đang chờ bạn đọc đến nhận."
         notif, created = Notification.objects.get_or_create(
             dedupe_key=dedupe_key,
             defaults={

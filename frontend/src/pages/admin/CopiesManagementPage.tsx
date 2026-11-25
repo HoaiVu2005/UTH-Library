@@ -646,7 +646,7 @@ export const CopiesManagementPage: React.FC = () => {
               <span>Đang mượn</span>
             </button>
 
-            {/* Đang giữ chỗ */}
+            {/* Đang chờ nhận sách */}
             <button
               type="button"
               onClick={() => {
@@ -660,7 +660,7 @@ export const CopiesManagementPage: React.FC = () => {
                   : 'bg-blue-50/60 text-blue-700 border-blue-200/80 hover:bg-blue-100/70'
               )}
             >
-              <span>Đang giữ chỗ</span>
+              <span>Đang chờ nhận sách</span>
             </button>
 
             {/* Hư hỏng */}
@@ -1003,7 +1003,7 @@ export const CopiesManagementPage: React.FC = () => {
                             ) : (statusFilter === 'reserved' || statusFilter === 'reserved_hold') ? (
                               <div>
                                 <Badge variant="info" size="sm" className="bg-blue-50 text-blue-800 border-blue-300">
-                                  {(group.reserved_quantity ?? group.copies.filter((c) => c.status === 'reserved' || c.status === 'reserved_hold').length)}/{group.total_quantity} Đang giữ chỗ
+                                  {(group.reserved_quantity ?? group.copies.filter((c) => c.status === 'reserved' || c.status === 'reserved_hold').length)}/{group.total_quantity} Đang chờ nhận sách
                                 </Badge>
                                 {group.available_quantity > 0 && (
                                   <span className="block text-[10px] text-gray-400 mt-0.5">({group.available_quantity} bản còn sẵn)</span>

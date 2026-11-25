@@ -197,7 +197,7 @@ export const MyFinesPage: React.FC = () => {
             </div>
             <p className="text-[11px] text-gray-400 leading-snug">
               {totalDebt > 0
-                ? 'Vui lòng thanh toán để tránh bị tạm khóa quyền mượn/đặt trước sách.'
+                ? 'Vui lòng thanh toán để tránh bị tạm khóa quyền mượn sách.'
                 : 'Tài khoản sạch, không có công nợ nào cần thanh toán.'}
             </p>
           </div>

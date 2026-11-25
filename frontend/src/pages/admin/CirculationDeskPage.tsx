@@ -16,10 +16,13 @@ import {
   Camera,
   Bookmark,
   Search,
+  Unlock,
+  ShieldCheck,
 } from 'lucide-react';
 import { api, formatApiError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs } from '@/components/ui/Tabs';
 import { Alert } from '@/components/ui/Alert';
@@ -29,6 +32,7 @@ import { CameraBarcodeScannerModal } from '@/components/ui/CameraBarcodeScannerM
 import { cn, formatCurrencyVND, formatDateVN } from '@/lib/utils';
 import { toast } from '@/components/ui/Toast';
 import { broadcastRealtimeSync } from '@/lib/realtime';
+import { validateUnlockReviewReason } from '@/lib/unlockReview';
 
 interface PatronInfo {
   id: number;
@@ -41,11 +45,17 @@ interface PatronInfo {
   card_expiry?: string;
   is_card_valid: boolean;
   is_currently_locked: boolean;
+  lock_reason?: string;
+  lock_reason_label?: string;
+  has_active_borrow_override?: boolean;
+  borrow_override_until?: string;
   active_loans_count: number;
+  overdue_loans_count?: number;
   max_loans: number;
   remaining_quota: number;
   has_overdue: boolean;
   has_unpaid_fines: boolean;
+  unpaid_fines_count?: number;
   unpaid_fines_total: number;
   ready_reservations?: Array<{
     id: number;
@@ -97,6 +107,10 @@ export const CirculationDeskPage: React.FC = () => {
   const [patron, setPatron] = useState<PatronInfo | null>(null);
   const [patronLoading, setPatronLoading] = useState(false);
   const [patronError, setPatronError] = useState<string | null>(null);
+  const [isUnlockReviewOpen, setIsUnlockReviewOpen] = useState(false);
+  const [unlockReviewReason, setUnlockReviewReason] = useState('');
+  const [unlockReviewError, setUnlockReviewError] = useState<string | null>(null);
+  const [unlockLoading, setUnlockLoading] = useState(false);
 
   const [bookScanInput, setBookScanInput] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -133,26 +147,29 @@ export const CirculationDeskPage: React.FC = () => {
     setPatronLoading(true);
     setPatronError(null);
     setBorrowSuccess(null);
+    setIsUnlockReviewOpen(false);
+    setUnlockReviewReason('');
+    setUnlockReviewError(null);
 
     try {
       try {
-        console.log('[CirculationDesk] Looking up patron:', code);
         const deskRes = await api.get<{ data: PatronInfo }>(`/circulation/desk/patron?card_code=${encodeURIComponent(code)}`);
         if (deskRes.data?.data) {
-          console.log('[CirculationDesk] Patron found:', deskRes.data.data);
           setPatron(deskRes.data.data);
           setPatronScanInput(deskRes.data.data.card_code || code);
           setCart([]);
           setCartError(null);
           setBorrowSuccess(`Đã nhận diện hồ sơ bạn đọc: ${deskRes.data.data.full_name} (${deskRes.data.data.card_code})`);
-          setTimeout(() => {
-            bookInputRef.current?.focus();
-            bookInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          }, 150);
+          if (!deskRes.data.data.is_currently_locked) {
+            setTimeout(() => {
+              bookInputRef.current?.focus();
+              bookInputRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+            }, 150);
+          }
           return;
         }
-      } catch (err: any) {
-        console.warn('[CirculationDesk] Desk patron endpoint fallback:', err);
+      } catch {
+        // Fall back to the general user lookup for older API deployments.
       }
 
       const res = await api.get<{ data: any[] }>(`/users?card_code=${encodeURIComponent(code)}&search=${encodeURIComponent(code)}`);
@@ -193,11 +210,17 @@ export const CirculationDeskPage: React.FC = () => {
         card_expiry: userObj.card_expiry,
         is_card_valid: userObj.is_card_valid,
         is_currently_locked: userObj.is_currently_locked,
+        lock_reason: userObj.lock_reason,
+        lock_reason_label: userObj.lock_reason_label,
+        has_active_borrow_override: userObj.has_active_borrow_override,
+        borrow_override_until: userObj.borrow_override_until,
         active_loans_count: activeLoans.length,
+        overdue_loans_count: activeLoans.filter((loan) => loan.is_overdue).length,
         max_loans: maxLimit,
         remaining_quota: remainingQuota,
         has_overdue: hasOverdue,
         has_unpaid_fines: unpaidFines.length > 0,
+        unpaid_fines_count: unpaidFines.length,
         unpaid_fines_total: unpaidTotal,
         ready_reservations: readyReservations.map((r: any) => ({
           id: r.id,
@@ -213,10 +236,12 @@ export const CirculationDeskPage: React.FC = () => {
       setCart([]);
       setCartError(null);
       setBorrowSuccess(`Đã nhận diện hồ sơ bạn đọc: ${userObj.full_name} (${userObj.card_code || code})`);
-      setTimeout(() => {
-        bookInputRef.current?.focus();
-        bookInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 150);
+      if (!userObj.is_currently_locked) {
+        setTimeout(() => {
+          bookInputRef.current?.focus();
+          bookInputRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+        }, 150);
+      }
     } catch (err) {
       setPatronError(formatApiError(err));
       setPatron(null);
@@ -272,6 +297,40 @@ export const CirculationDeskPage: React.FC = () => {
     await executePatronLookup(patronScanInput.trim());
   };
 
+  const handleUnlockPatron = async () => {
+    if (!patron) return;
+    const validationError = validateUnlockReviewReason(unlockReviewReason);
+    if (validationError) {
+      setUnlockReviewError(validationError);
+      return;
+    }
+
+    setUnlockLoading(true);
+    setUnlockReviewError(null);
+    try {
+      await api.post(`/users/${patron.id}/unlock`, {
+        review_reason: unlockReviewReason.trim(),
+      });
+      setPatron((current) => current ? {
+        ...current,
+        is_currently_locked: false,
+        has_active_borrow_override: true,
+        borrow_override_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      } : current);
+      setIsUnlockReviewOpen(false);
+      setUnlockReviewReason('');
+      toast.success(`Đã mở khóa và khôi phục quyền mượn 30 ngày cho ${patron.full_name}.`);
+      broadcastRealtimeSync('dashboard');
+      setTimeout(() => bookInputRef.current?.focus(), 100);
+    } catch (error) {
+      const message = formatApiError(error);
+      setUnlockReviewError(message);
+      toast.error(message);
+    } finally {
+      setUnlockLoading(false);
+    }
+  };
+
   // Helper to add barcode into cart
   const addBarcode = async (rawCode: string) => {
     const bc = rawCode.trim().toUpperCase();
@@ -304,11 +363,11 @@ export const CirculationDeskPage: React.FC = () => {
         if (nonReservedInCart >= patron.remaining_quota) {
           if (patron.remaining_quota === 0) {
             setCartError(
-              `Bạn đọc chỉ có thể mượn các cuốn sách đã đặt trước tại quầy (đang mượn: ${patron.active_loans_count}, đang giữ: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
+              `Bạn đọc chỉ có thể nhận các cuốn đã sẵn sàng tại quầy (đang mượn: ${patron.active_loans_count}, chờ nhận: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
             );
           } else {
             setCartError(
-              `Bạn đọc chỉ còn được mượn thêm tối đa ${patron.remaining_quota} cuốn ngoài danh sách đặt trước (đang mượn: ${patron.active_loans_count}, đang giữ: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
+              `Bạn đọc chỉ còn được mượn thêm tối đa ${patron.remaining_quota} cuốn ngoài danh sách mượn sách (đang mượn: ${patron.active_loans_count}, đang giữ: ${patron.ready_reservations?.length || 0} / tối đa: ${patron.max_loans} cuốn).`
             );
           }
           setBookScanInput('');
@@ -536,7 +595,10 @@ export const CirculationDeskPage: React.FC = () => {
       {activeTab === 'borrow' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Patron card scan + Patron details */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-5">
+          <div className={cn(
+            'space-y-5',
+            patron?.is_currently_locked ? 'lg:col-span-12' : 'lg:col-span-5 xl:col-span-4'
+          )}>
             {/* Patron Scan Box */}
             <Card>
               <CardHeader className="pb-3">
@@ -590,7 +652,164 @@ export const CirculationDeskPage: React.FC = () => {
             </Card>
 
             {/* Patron Details Card */}
-            {patron ? (
+            {patron ? (patron.is_currently_locked ? (
+              <section className="overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-sm animate-page-enter">
+                <div className="border-b border-rose-100 bg-rose-50/70 px-5 py-4 sm:px-6">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                        <ShieldAlert className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-rose-700">
+                          Dừng quy trình lập phiếu mượn
+                        </p>
+                        <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+                          Tài khoản đang bị khóa quyền mượn
+                        </h2>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                          Hệ thống đã nhận diện bạn đọc nhưng tạm ẩn khu vực quét sách để tránh lập phiếu sai chính sách.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex w-fit items-center rounded-full bg-rose-100 px-3 py-1.5 text-xs font-bold text-rose-700 ring-1 ring-rose-200">
+                      Không đủ điều kiện mượn
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid gap-0 lg:grid-cols-[1.05fr_1.25fr_0.9fr]">
+                  <div className="border-b border-slate-200 p-5 sm:p-6 lg:border-b-0 lg:border-r">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Hồ sơ bạn đọc</p>
+                    <div className="mt-4 flex items-start gap-4">
+                      <div className="flex h-24 w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        {patron.avatar ? (
+                          <img src={patron.avatar} alt={patron.full_name} className="h-full w-full object-cover" />
+                        ) : (
+                          <User className="h-8 w-8 text-slate-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold leading-snug text-slate-950">{patron.full_name}</h3>
+                        <p className="mt-1 font-mono text-sm font-bold text-teal-700">{patron.card_code}</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-500">{patron.department || 'Trường Đại học GTVT TP.HCM'}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Hạn thẻ: <strong className="text-slate-700">{patron.card_expiry ? formatDateVN(patron.card_expiry) : 'Vĩnh viễn'}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPatron(null);
+                        setCart([]);
+                        setIsUnlockReviewOpen(false);
+                        setUnlockReviewReason('');
+                        patronInputRef.current?.focus();
+                      }}
+                      className="mt-5 text-slate-500"
+                    >
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                      Quét bạn đọc khác
+                    </Button>
+                  </div>
+
+                  <div className="border-b border-slate-200 p-5 sm:p-6 lg:border-b-0 lg:border-r">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Căn cứ hệ thống</p>
+                    <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <p className="text-[11px] font-medium text-slate-500">Lý do khóa</p>
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {patron.lock_reason_label || 'Chưa ghi nhận lý do khóa cụ thể'}
+                      </p>
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 py-3 text-center">
+                      <div className="px-2">
+                        <p className="text-lg font-bold tabular-nums text-slate-950">{patron.active_loans_count}</p>
+                        <p className="text-[10px] text-slate-500">Đang mượn</p>
+                      </div>
+                      <div className="px-2">
+                        <p className="text-lg font-bold tabular-nums text-rose-600">{patron.overdue_loans_count || 0}</p>
+                        <p className="text-[10px] text-slate-500">Quá hạn</p>
+                      </div>
+                      <div className="px-2">
+                        <p className="text-sm font-bold tabular-nums text-amber-700">{formatCurrencyVND(patron.unpaid_fines_total)}</p>
+                        <p className="text-[10px] text-slate-500">Nợ phạt</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900 ring-1 ring-amber-200">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <p>Các nghĩa vụ quá hạn và tiền phạt vẫn được giữ nguyên sau khi mở khóa ngoại lệ.</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 sm:p-6">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quyết định tại quầy</p>
+                    <ol className="mt-4 space-y-3 text-xs text-slate-600">
+                      <li className="flex gap-2.5"><span className="font-bold text-teal-700">01</span><span>Đối chiếu sinh viên và giấy tờ chứng minh.</span></li>
+                      <li className="flex gap-2.5"><span className="font-bold text-teal-700">02</span><span>Ghi căn cứ xử lý vào nhật ký kiểm toán.</span></li>
+                      <li className="flex gap-2.5"><span className="font-bold text-teal-700">03</span><span>Khôi phục quyền mượn ngoại lệ trong 30 ngày.</span></li>
+                    </ol>
+                    {!isUnlockReviewOpen && (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => setIsUnlockReviewOpen(true)}
+                        className="mt-5 w-full justify-center"
+                      >
+                        <Unlock className="mr-2 h-4 w-4" />
+                        Xem xét mở khóa
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {isUnlockReviewOpen && (
+                  <div className="border-t border-teal-200 bg-teal-50/60 p-5 sm:p-6">
+                    <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+                      <Textarea
+                        id="desk-unlock-review-reason"
+                        label="Căn cứ mở khóa"
+                        value={unlockReviewReason}
+                        onChange={(event) => {
+                          setUnlockReviewReason(event.target.value);
+                          if (unlockReviewError) setUnlockReviewError(null);
+                        }}
+                        placeholder="Ví dụ: Đã kiểm tra giấy xác nhận điều trị và cam kết hoàn tất nghĩa vụ..."
+                        error={unlockReviewError || undefined}
+                        helperText="Tối thiểu 10 ký tự. Nội dung được lưu vào nhật ký kiểm toán."
+                        maxLength={500}
+                        showCount
+                        isRequired
+                      />
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="md"
+                          disabled={unlockLoading}
+                          onClick={() => {
+                            setIsUnlockReviewOpen(false);
+                            setUnlockReviewReason('');
+                            setUnlockReviewError(null);
+                          }}
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="md"
+                          isLoading={unlockLoading}
+                          onClick={handleUnlockPatron}
+                        >
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          Xác nhận mở khóa 30 ngày
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+            ) : (
               <Card className="border-teal-200 bg-teal-50/20 shadow-xs animate-page-enter">
                 <CardHeader className="border-b border-teal-100 pb-3">
                   <div className="flex items-start justify-between gap-3">
@@ -642,7 +861,7 @@ export const CirculationDeskPage: React.FC = () => {
                       <span className="font-bold text-gray-900">{patron.active_loans_count} / {patron.max_loans} cuốn</span>
                       {patron.ready_reservations && patron.ready_reservations.length > 0 && (
                         <span className="text-[10px] text-amber-700 block mt-0.5 font-semibold">
-                          + {patron.ready_reservations.length} cuốn đặt trước tại quầy
+                          + {patron.ready_reservations.length} cuốn mượn sách tại quầy
                         </span>
                       )}
                     </div>
@@ -652,14 +871,20 @@ export const CirculationDeskPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {patron.has_active_borrow_override && (
+                    <Alert variant="info" title="Đã khôi phục quyền mượn ngoại lệ">
+                      Bạn đọc được tiếp tục mượn trong 30 ngày. Các khoản quá hạn và tiền phạt vẫn được theo dõi riêng.
+                    </Alert>
+                  )}
+
                   {/* Conditions & Warnings */}
-                  {(!patron.is_card_valid || patron.is_currently_locked || patron.has_overdue || patron.has_unpaid_fines) && (
+                  {(!patron.is_card_valid || (!patron.has_active_borrow_override && (patron.is_currently_locked || patron.has_overdue || patron.has_unpaid_fines))) && (
                     <Alert variant="warning" title="Cảnh báo điều kiện mượn:">
                       <div className="space-y-1 mt-1">
                         {!patron.is_card_valid && <p>• Thẻ bạn đọc đã hết hạn sử dụng.</p>}
-                        {patron.is_currently_locked && <p>• Tài khoản đang bị tạm khóa.</p>}
-                        {patron.has_overdue && <p>• Bạn đọc có sách quá hạn chưa hoàn trả.</p>}
-                        {patron.has_unpaid_fines && (
+                        {!patron.has_active_borrow_override && patron.is_currently_locked && <p>• Tài khoản đang bị tạm khóa.</p>}
+                        {!patron.has_active_borrow_override && patron.has_overdue && <p>• Bạn đọc có sách quá hạn chưa hoàn trả.</p>}
+                        {!patron.has_active_borrow_override && patron.has_unpaid_fines && (
                           <p>• Có nợ phạt chưa thanh toán ({formatCurrencyVND(patron.unpaid_fines_total)}).</p>
                         )}
                       </div>
@@ -683,7 +908,7 @@ export const CirculationDeskPage: React.FC = () => {
                   </div>
                 </CardContent>
               </Card>
-            ) : (
+            )) : (
               <div className="bg-gray-50/80 border border-dashed border-gray-200 rounded-2xl p-8 text-center text-xs text-gray-500">
                 <User className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                 <p className="font-medium text-gray-600">Chưa có thông tin bạn đọc</p>
@@ -693,6 +918,7 @@ export const CirculationDeskPage: React.FC = () => {
           </div>
 
           {/* Right Column: Scan Books into Cart & Confirm */}
+          {!patron?.is_currently_locked && (
           <div className="lg:col-span-7 xl:col-span-8 space-y-5">
             <Card>
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -711,12 +937,12 @@ export const CirculationDeskPage: React.FC = () => {
               </CardHeader>
 
               <CardContent className="space-y-4 pt-0">
-                {/* Sách đặt trước đang chờ nhận tại quầy */}
+                {/* Sách mượn sách đang chờ nhận tại quầy */}
                 {patron?.ready_reservations && patron.ready_reservations.length > 0 && (
                   <div className="p-3 bg-teal-50/90 border border-teal-200 rounded-xl space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-teal-800">
                       <Bookmark className="w-4 h-4 text-brand shrink-0" />
-                      <span>Sách bạn đọc đã đặt trước đang chờ lấy tại quầy:</span>
+                      <span>Sách đã sẵn sàng để bạn đọc nhận tại quầy:</span>
                     </div>
                     {patron.ready_reservations.map((res) => (
                       <div
@@ -897,6 +1123,7 @@ export const CirculationDeskPage: React.FC = () => {
               </CardContent>
             </Card>
           </div>
+          )}
         </div>
       )}
 

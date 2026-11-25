@@ -46,7 +46,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     locked_until = models.DateTimeField(blank=True, null=True)
     failed_login_count = models.PositiveIntegerField(default=0)
     last_failed_login_at = models.DateTimeField(blank=True, null=True)
-    reservation_locked_until = models.DateTimeField(blank=True, null=True)
+    borrow_override_until = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Cho phép mượn ngoại lệ đến',
+    )
+    borrow_override_reason = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Lý do cho phép mượn ngoại lệ',
+    )
     password_changed_at = models.DateTimeField(default=timezone.now)
     must_change_password = models.BooleanField(default=False)
     
@@ -88,10 +97,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         return False
 
     @property
-    def is_reservation_locked(self):
-        if self.reservation_locked_until and self.reservation_locked_until > timezone.now():
-            return True
-        return False
+    def has_active_borrow_override(self):
+        return bool(self.borrow_override_until and self.borrow_override_until > timezone.now())
 
 class RefreshToken(BaseModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='refresh_tokens')

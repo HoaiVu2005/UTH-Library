@@ -1,4 +1,4 @@
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 
 from apps.catalog.models import Book, Copy
@@ -98,7 +98,7 @@ def get_admin_library_statistics():
                 "created_at": f.created_at.strftime("%d/%m/%Y") if hasattr(f, 'created_at') and f.created_at else "",
             })
 
-        # 4. Đặt trước đang chờ
+        # 4. Mượn sách đang chờ
         pending_reservations = Reservation.objects.filter(status__in=[ReservationStatus.PENDING, ReservationStatus.READY]).count()
 
         # 5. Sách gần hết bản sao (available <= 1)
@@ -138,10 +138,58 @@ def get_admin_library_statistics():
                 "status_code": c.status,
             })
 
-        # 8. Người dùng bị khóa thẻ & Đề xuất mua sách
+        # 8. Sinh viên bị khóa quyền mượn & Đề xuất mua sách
         from apps.accounts.models import User
         from apps.suggestions.models import Suggestion
-        locked_users_count = User.objects.filter(is_locked=True).count()
+        locked_students = list(
+            User.objects.filter(
+                role='student',
+                is_locked=True,
+                deleted_at__isnull=True,
+            ).filter(
+                Q(locked_until__isnull=True) | Q(locked_until__gt=now),
+            ).order_by('-updated_at')[:50]
+        )
+        locked_user_ids = [user.id for user in locked_students]
+
+        loan_obligations = {
+            row['user_id']: row
+            for row in Loan.objects.filter(user_id__in=locked_user_ids).values('user_id').annotate(
+                active_loans_count=Count('id', filter=Q(status=LoanStatus.ACTIVE)),
+                overdue_loans_count=Count(
+                    'id',
+                    filter=Q(status=LoanStatus.ACTIVE, due_at__lt=now),
+                ),
+            )
+        }
+        fine_obligations = {
+            row['user_id']: row
+            for row in Fine.objects.filter(
+                user_id__in=locked_user_ids,
+                status__in=[FineStatus.UNPAID, FineStatus.PARTIAL],
+            ).values('user_id').annotate(
+                unpaid_fines_count=Count('id'),
+                unpaid_amount=Sum(F('amount') - F('paid_amount')),
+            )
+        }
+        locked_users = []
+        for user in locked_students:
+            loan_stats = loan_obligations.get(user.id, {})
+            fine_stats = fine_obligations.get(user.id, {})
+            locked_users.append({
+                'user_id': user.id,
+                'student_name': user.full_name or user.username,
+                'card_code': user.card_code or '',
+                'department': user.department or 'Sinh viên UTH',
+                'lock_reason': user.lock_reason or '',
+                'lock_reason_label': user.get_lock_reason_display() if user.lock_reason else 'Chưa ghi nhận lý do',
+                'active_loans_count': loan_stats.get('active_loans_count', 0),
+                'overdue_loans_count': loan_stats.get('overdue_loans_count', 0),
+                'unpaid_fines_count': fine_stats.get('unpaid_fines_count', 0),
+                'unpaid_amount': fine_stats.get('unpaid_amount', 0) or 0,
+            })
+
+        locked_users_count = len(locked_users)
         pending_suggestions_count = Suggestion.objects.filter(status='pending').count()
 
         return {
@@ -165,6 +213,7 @@ def get_admin_library_statistics():
             "top_borrowed_books": top_borrowed_books,
             "issue_copies_list": issue_copies_list,
             "locked_users_count": locked_users_count,
+            "locked_users": locked_users,
             "pending_suggestions_count": pending_suggestions_count,
         }
     except Exception as e:

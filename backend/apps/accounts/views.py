@@ -532,7 +532,7 @@ class UserAdminDetailView(APIView):
 
         # Check ready reservations
         if Reservation.objects.filter(user=user, status=ReservationStatus.READY).exists():
-            raise BusinessLogicError('USER_HAS_READY_RESERVATIONS', detail='Không thể xóa bạn đọc đang có sách giữ chỗ sẵn sàng tại quầy.')
+            raise BusinessLogicError('USER_HAS_READY_RESERVATIONS', detail='Không thể xóa bạn đọc đang có sách chờ nhận sách sẵn sàng tại quầy.')
 
         user.deleted_at = timezone.now()
         user.is_active = False
@@ -573,20 +573,33 @@ class UserLockToggleView(APIView):
         else:
             should_lock = request.data.get('is_locked', not user.is_locked)
         reason = request.data.get('lock_reason') or request.data.get('reason') or ('Thủ thư khóa tài khoản' if should_lock else None)
+        review_reason = str(request.data.get('review_reason') or '').strip()
+        previous_lock_reason = user.lock_reason
+
+        if not should_lock and len(review_reason) < 10:
+            raise BusinessLogicError(
+                'VALIDATION_ERROR',
+                detail='Vui lòng ghi lý do xem xét mở khóa (ít nhất 10 ký tự).',
+            )
 
         if should_lock:
             user.is_locked = True
             user.lock_reason = reason
-            user.save(update_fields=['is_locked', 'lock_reason'])
+            user.borrow_override_until = None
+            user.borrow_override_reason = None
+            user.save(update_fields=[
+                'is_locked', 'lock_reason', 'borrow_override_until', 'borrow_override_reason'
+            ])
         else:
             user.is_locked = False
             user.lock_reason = None
             user.locked_until = None
-            user.reservation_locked_until = None
             user.failed_login_count = 0
+            user.borrow_override_until = timezone.now() + timedelta(days=30)
+            user.borrow_override_reason = review_reason
             user.save(update_fields=[
-                'is_locked', 'lock_reason', 'locked_until',
-                'reservation_locked_until', 'failed_login_count'
+                'is_locked', 'lock_reason', 'locked_until', 'failed_login_count',
+                'borrow_override_until', 'borrow_override_reason',
             ])
 
         log_action(
@@ -594,13 +607,25 @@ class UserLockToggleView(APIView):
             action='ADMIN_LOCK_USER' if should_lock else 'ADMIN_UNLOCK_USER',
             entity_type='User',
             entity_id=user.id,
-            detail={'is_locked': should_lock, 'reason': reason},
+            detail={
+                'is_locked': should_lock,
+                'reason': reason,
+                'review_reason': review_reason if not should_lock else None,
+                'previous_lock_reason': previous_lock_reason,
+                'borrow_override_until': (
+                    user.borrow_override_until.isoformat() if not should_lock else None
+                ),
+            },
             request=request
         )
 
         return Response({
             'data': UserAdminSerializer(user).data,
-            'detail': 'Đã khóa tài khoản thành công.' if should_lock else 'Đã mở khóa tài khoản thành công.'
+            'detail': (
+                'Đã khóa tài khoản thành công.'
+                if should_lock
+                else 'Đã mở khóa và cho phép mượn ngoại lệ trong 30 ngày.'
+            )
         }, status=status.HTTP_200_OK)
 
 class UserCardExtendView(APIView):

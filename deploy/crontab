@@ -1,6 +1,7 @@
 # Daily cron jobs for UTH Library System (supercronic format, TZ=Asia/Ho_Chi_Minh)
 0 8 * * * cd /app && python manage.py send_due_reminders
 5 8 * * * cd /app && python manage.py send_overdue_notices
+7 8 * * * cd /app && python manage.py auto_suspend_users
 10 8 * * * cd /app && python manage.py expire_reservations
 15 8 * * * cd /app && python manage.py auto_lost_loans
 20 8 * * * cd /app && python manage.py notify_card_expiring

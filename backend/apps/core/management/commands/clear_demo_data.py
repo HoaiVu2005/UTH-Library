@@ -57,7 +57,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING('====================================================='))
         self.stdout.write('Lệnh này sẽ xóa toàn bộ:')
         self.stdout.write('  - Toàn bộ Sách, Tác giả, Bản sao barcode, Biên bản thanh lý')
-        self.stdout.write('  - Toàn bộ Phiếu mượn, Đặt trước, Tiền phạt và Lịch sử thu phí')
+        self.stdout.write('  - Toàn bộ Phiếu mượn, Mượn sách, Tiền phạt và Lịch sử thu phí')
         self.stdout.write('  - Toàn bộ Danh sách sinh viên Roster & Bạn đọc mẫu (SV, GV)')
         self.stdout.write('  - Toàn bộ Học liệu số, Giáo trình điện tử và Phiên đọc')
         self.stdout.write('  - Toàn bộ Thông báo, Đề xuất mua sách, Lịch sử Chatbot & Audit Logs')
@@ -84,12 +84,12 @@ class Command(BaseCommand):
             Fine.objects.all().delete()
             self.stdout.write(f'  ✓ Đã xóa {fine_payments_count} lượt thanh toán phạt & {fines_count} khoản phạt.')
 
-            # 2. Mượn trả & Đặt trước
+            # 2. Mượn trả & Mượn sách
             reservations_count = Reservation.objects.count()
             Reservation.objects.all().delete()
             loans_count = Loan.objects.count()
             Loan.objects.all().delete()
-            self.stdout.write(f'  ✓ Đã xóa {reservations_count} yêu cầu đặt trước & {loans_count} lượt mượn sách.')
+            self.stdout.write(f'  ✓ Đã xóa {reservations_count} yêu cầu mượn sách & {loans_count} lượt mượn sách.')
 
             # 3. Đề xuất & Thông báo
             suggestions_count = Suggestion.objects.count()

@@ -3,5 +3,5 @@ from django.apps import AppConfig
 class ReservationsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.reservations'
-    verbose_name = 'Đặt trước & Giữ chỗ'
+    verbose_name = 'Mượn sách & Chờ nhận sách'
 

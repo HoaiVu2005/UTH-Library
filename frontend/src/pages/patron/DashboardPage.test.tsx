@@ -65,7 +65,7 @@ describe('DashboardPage', () => {
     // 8-cell function card grid checks
     expect(screen.getByText('Tra cứu sách')).toBeInTheDocument();
     expect(screen.getByText('Sách của tôi')).toBeInTheDocument();
-    expect(screen.getByText('Đặt trước')).toBeInTheDocument();
+    expect(screen.getByText('Mượn sách')).toBeInTheDocument();
     expect(screen.getByText('Gia hạn sách')).toBeInTheDocument();
     expect(screen.getByText('Tiền phạt')).toBeInTheDocument();
     expect(screen.getByText('Đề xuất sách')).toBeInTheDocument();

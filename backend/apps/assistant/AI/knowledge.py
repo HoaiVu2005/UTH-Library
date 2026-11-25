@@ -59,7 +59,7 @@ CIRCULATION_POLICIES_DATA = {
     "fine_rate_vnd_per_day": 2000,
     "fine_rule": "2.000 VNĐ / cuốn / ngày trễ hạn. Bạn đọc nợ phạt có thể xem chi tiết và nộp phạt trực tuyến tại mục 'Tiền phạt' (/fines) hoặc quầy lưu thông.",
     "reservation_hold_hours": 48,
-    "reservation_rule": "Sách đặt trước khi sẵn sàng tại quầy sẽ được giữ chỗ riêng trong 48 giờ (hoặc 3 ngày làm việc). Sau thời gian này nếu bạn đọc không đến nhận, hệ thống sẽ tự động chuyển lượt giữ chỗ cho người tiếp theo trong hàng chờ.",
+    "reservation_rule": "Khi yêu cầu mượn có sách sẵn sàng, thư viện chờ bạn đọc đến nhận trong 48 giờ (hoặc 3 ngày làm việc). Quá thời hạn, lượt mượn được chuyển cho người tiếp theo trong hàng chờ.",
 }
 
 # ─── 3. QUY TRÌNH MƯỢN TRẢ SÁCH TẠI THƯ VIỆN UTH ──────────────────────────────
@@ -82,11 +82,11 @@ CIRCULATION_PROCEDURES_DATA = {
     "renew": [
         "Đăng nhập cổng Thư viện UTH, vào mục 'Sách của tôi' (/loans).",
         "Tại cuốn sách còn hạn mượn, bấm nút 'Gia hạn +7d'. Sách sẽ được cộng thêm 7 ngày vào hạn trả.",
-        "Lưu ý: Sách đã quá hạn hoặc sách đang có người khác đặt trước trong hàng chờ sẽ không thể gia hạn online.",
+        "Lưu ý: Sách đã quá hạn hoặc sách đang có người khác mượn sách trong hàng chờ sẽ không thể gia hạn online.",
     ],
     "reserve": [
-        "Khi sách hết bản sẵn hoặc muốn giữ sách trước, bấm nút 'Đặt trước' / 'Giữ chỗ' trên thẻ sách hoặc trang chi tiết.",
-        "Nếu còn bản sẵn: Sách chuyển trạng thái sẵn sàng giữ chỗ tại quầy trong 48 giờ.",
+        "Khi sách hết bản sẵn hoặc muốn giữ sách trước, bấm nút 'Mượn sách' / 'Chờ nhận sách' trên thẻ sách hoặc trang chi tiết.",
+        "Nếu còn bản sẵn: Sách chuyển trạng thái sẵn sàng chờ nhận sách tại quầy trong 48 giờ.",
         "Nếu hết bản sẵn: Bạn đọc được xếp số thứ tự trong hàng chờ và nhận thông báo ngay khi có sách trả lại.",
     ],
 }
@@ -195,13 +195,13 @@ def build_uth_knowledge_prompt() -> str:
    - Sinh viên: {CIRCULATION_POLICIES_DATA['student']['policy_note']}
    - Giảng viên: {CIRCULATION_POLICIES_DATA['lecturer']['policy_note']}
    - Phí phạt quá hạn: {CIRCULATION_POLICIES_DATA['fine_rule']}
-   - Giữ chỗ đặt trước: {CIRCULATION_POLICIES_DATA['reservation_rule']}
+   - Chờ nhận sách mượn sách: {CIRCULATION_POLICIES_DATA['reservation_rule']}
 
 3. Quy trình lưu thông:
    - Mượn sách: Tìm mã kệ trên cổng (/search) -> Đến kho lấy sách -> Quét mã thẻ sinh viên và mã sách tại Quầy lưu thông.
    - Trả sách: Sinh viên PHẢI TRỰC TIẾP mang sách cùng Thẻ sinh viên đến Quầy lưu thông. Thủ thư sẽ quét mã thẻ của chính sinh viên và mã vạch Code128 trên sách để ghi nhận trả sách. TUYỆT ĐỐI KHÔNG ĐƯỢC NHỜ BẠN BÈ TRẢ HỘ (vì bắt buộc phải quét mã thẻ của sinh viên chính chủ tại quầy) và Thư viện UTH KHÔNG DÙNG tủ trả sách tự động.
-   - Gia hạn: Bạn đọc vào 'Sách của tôi' (/loans) bấm 'Gia hạn +7d' (sách quá hạn hoặc bị người khác đặt trước thì không gia hạn được).
-   - Đặt trước: Bấm giữ chỗ trực tiếp trên hệ thống; giữ chỗ trong 48 giờ khi sách có sẵn tại quầy.
+   - Gia hạn: Bạn đọc vào 'Sách của tôi' (/loans) bấm 'Gia hạn +7d' (sách quá hạn hoặc bị người khác mượn sách thì không gia hạn được).
+   - Mượn sách: Bấm chờ nhận sách trực tiếp trên hệ thống; chờ nhận sách trong 48 giờ khi sách có sẵn tại quầy.
 
 4. Cơ cấu đào tạo và chuyên ngành tại UTH:
 {faculties_text}

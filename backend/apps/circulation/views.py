@@ -4,7 +4,7 @@ from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 from apps.accounts.models import User
 from apps.accounts.permissions import IsAdminUserRole
@@ -68,7 +68,7 @@ class ReservationBorrowView(APIView):
         )
 
         return Response({
-            'detail': f'Nhận sách đặt trước thành công cho bạn đọc {loan.user.card_code}.',
+            'detail': f'Nhận sách mượn sách thành công cho bạn đọc {loan.user.card_code}.',
             'data': LoanSerializer(loan).data
         }, status=status.HTTP_201_CREATED)
 
@@ -237,7 +237,7 @@ class MarkLostView(APIView):
         }, status=status.HTTP_200_OK)
 
 class DeskPatronView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAdminUserRole]
 
     def get(self, request):
         card_code = request.query_params.get('card_code')
@@ -262,8 +262,12 @@ class DeskPatronView(APIView):
         has_overdue = active_loans.filter(due_at__lt=timezone.now()).exists()
 
         # Unpaid fines
-        unpaid_fines = Fine.objects.filter(user=user, status=FineStatus.UNPAID)
+        unpaid_fines = Fine.objects.filter(
+            user=user,
+            status__in=[FineStatus.UNPAID, FineStatus.PARTIAL],
+        )
         unpaid_total = sum(f.amount - f.paid_amount for f in unpaid_fines)
+        overdue_count = active_loans.filter(due_at__lt=timezone.now()).count()
 
         # Ready reservations (held copies waiting for patron pickup)
         ready_reservations = Reservation.objects.filter(
@@ -296,11 +300,19 @@ class DeskPatronView(APIView):
                 'card_expiry': user.card_expiry,
                 'is_card_valid': user.is_card_valid,
                 'is_currently_locked': user.is_currently_locked,
+                'lock_reason': user.lock_reason or '',
+                'lock_reason_label': (
+                    user.get_lock_reason_display() if user.lock_reason else 'Chưa ghi nhận lý do'
+                ),
+                'has_active_borrow_override': user.has_active_borrow_override,
+                'borrow_override_until': user.borrow_override_until,
                 'active_loans_count': active_count,
+                'overdue_loans_count': overdue_count,
                 'max_loans': max_limit,
                 'remaining_quota': max(0, max_limit - (active_count + ready_count)),
                 'has_overdue': has_overdue,
                 'has_unpaid_fines': unpaid_fines.exists(),
+                'unpaid_fines_count': unpaid_fines.count(),
                 'unpaid_fines_total': unpaid_total,
                 'ready_reservations': ready_res_list,
             }
@@ -340,7 +352,7 @@ class DeskReturnLookupView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
                 elif copy_obj.status in ('reserved', 'reserved_hold'):
                     return Response({
-                        'detail': f'Bản sao "{bc_clean}" ({book_title}) hiện đang được giữ chỗ theo phiếu đặt trước của bạn đọc.'
+                        'detail': f'Bản sao "{bc_clean}" ({book_title}) đang chờ bạn đọc đã yêu cầu mượn đến nhận.'
                     }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Kiểm tra xem sách đã từng được hoàn trả gần đây chưa
@@ -438,11 +450,11 @@ class BatchCheckoutView(APIView):
         if len(non_reserved_barcodes) > remaining_quota:
             if remaining_quota == 0:
                 return Response({
-                    'detail': f'Bạn đọc đã đạt giới hạn tối đa {policy.max_loans} cuốn (hiện đang mượn {active_loans_count} cuốn và có {ready_reservations_count} cuốn đặt trước đang giữ tại quầy). Chỉ có thể mượn sách đã đặt trước.'
+                    'detail': f'Bạn đọc đã đạt giới hạn tối đa {policy.max_loans} cuốn (đang mượn {active_loans_count} cuốn và có {ready_reservations_count} cuốn chờ nhận tại quầy). Chỉ có thể nhận những cuốn đã sẵn sàng.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({
-                    'detail': f'Bạn đọc chỉ còn được mượn thêm {remaining_quota} cuốn ngoài danh sách đặt trước (hiện đang mượn: {active_loans_count}, đang giữ chỗ: {ready_reservations_count} / tối đa: {policy.max_loans} cuốn).'
+                    'detail': f'Bạn đọc chỉ còn được mượn thêm {remaining_quota} cuốn ngoài danh sách mượn sách (hiện đang mượn: {active_loans_count}, đang chờ nhận sách: {ready_reservations_count} / tối đa: {policy.max_loans} cuốn).'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         if active_loans_count + len(barcodes) > policy.max_loans:

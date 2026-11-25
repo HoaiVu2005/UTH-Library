@@ -28,8 +28,8 @@ class Reservation(BaseModel):
 
     class Meta:
         db_table = 'reservations'
-        verbose_name = 'Yêu cầu đặt trước / giữ chỗ'
-        verbose_name_plural = 'Yêu cầu đặt trước / giữ chỗ'
+        verbose_name = 'Yêu cầu mượn sách / chờ nhận sách'
+        verbose_name_plural = 'Yêu cầu mượn sách / chờ nhận sách'
         ordering = ['queue_position', 'created_at']
         indexes = [
             models.Index(fields=['book', 'status']),

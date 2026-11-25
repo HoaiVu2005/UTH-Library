@@ -51,7 +51,7 @@ const BADGE_MAP: Record<string, { text: string; bg: string; textCol: string; bor
   // Copy Status
   available: { text: 'Sẵn sàng', bg: 'bg-emerald-50', textCol: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
   borrowed: { text: 'Đang mượn', bg: 'bg-sky-50', textCol: 'text-sky-700', border: 'border-sky-200', dot: 'bg-sky-500' },
-  reserved_hold: { text: 'Đang giữ chỗ', bg: 'bg-teal-50', textCol: 'text-teal-800', border: 'border-teal-200', dot: 'bg-teal-600' },
+  reserved_hold: { text: 'Đang chờ nhận sách', bg: 'bg-teal-50', textCol: 'text-teal-800', border: 'border-teal-200', dot: 'bg-teal-600' },
   reading_room: { text: 'Chỉ đọc tại chỗ', bg: 'bg-amber-50', textCol: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500' },
   damaged: { text: 'Hư hỏng', bg: 'bg-orange-50', textCol: 'text-orange-700', border: 'border-orange-200', dot: 'bg-orange-500' },
   lost: { text: 'Đã mất', bg: 'bg-rose-50', textCol: 'text-rose-700', border: 'border-rose-200', dot: 'bg-rose-500' },
@@ -66,7 +66,7 @@ const BADGE_MAP: Record<string, { text: string; bg: string; textCol: string; bor
   pending: { text: 'Chờ sách (Hàng chờ)', bg: 'bg-amber-50', textCol: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
   ready: { text: 'Sẵn sàng nhận', bg: 'bg-teal-50', textCol: 'text-teal-800', border: 'border-teal-300 font-semibold', dot: 'bg-teal-600' },
   fulfilled: { text: 'Đã nhận sách', bg: 'bg-emerald-50', textCol: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
-  expired: { text: 'Hết hạn giữ', bg: 'bg-slate-100', textCol: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
+  expired: { text: 'Hết hạn nhận sách', bg: 'bg-slate-100', textCol: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
   cancelled: { text: 'Đã hủy', bg: 'bg-slate-100', textCol: 'text-slate-600', border: 'border-slate-200', dot: 'bg-slate-400' },
 
   // Fine Status

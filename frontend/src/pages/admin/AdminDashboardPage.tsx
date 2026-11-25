@@ -290,7 +290,7 @@ export const AdminDashboardPage: React.FC = () => {
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-gray-800 flex items-center space-x-1.5">
                     <BookmarkCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Giữ chỗ sắp hết hạn (3 ngày)</span>
+                    <span>Chờ nhận sách sắp hết hạn (3 ngày)</span>
                   </span>
                   <Badge variant="danger" size="sm">{actionItems?.expiring_holds?.length || 0} bản</Badge>
                 </div>
@@ -302,7 +302,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <p className="text-[11px] text-gray-400">Không có sách giữ sắp hết hạn.</p>
                 )}
                 <Link to="/admin/reservations" className="text-[11px] text-brand font-semibold hover:underline mt-1 inline-flex items-center gap-0.5">
-                  Quản lý giữ chỗ <ChevronRight className="w-3 h-3" />
+                  Quản lý chờ nhận sách <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
 
@@ -342,8 +342,8 @@ export const AdminDashboardPage: React.FC = () => {
               { title: 'Biên mục sách', desc: 'Thêm & sửa đầu sách', icon: BookOpen, to: '/admin/books', color: 'text-blue-600 bg-blue-50' },
               { title: 'Quản lý bản sao', desc: 'In mã vạch & xếp giá', icon: Layers, to: '/admin/copies', color: 'text-indigo-600 bg-indigo-50' },
               {
-                title: 'Hàng chờ giữ chỗ',
-                desc: 'Điều phối đặt trước',
+                title: 'Hàng chờ chờ nhận sách',
+                desc: 'Điều phối mượn sách',
                 icon: BookmarkCheck,
                 to: '/admin/reservations',
                 color: 'text-amber-600 bg-amber-50',
@@ -397,7 +397,7 @@ export const AdminDashboardPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-textSecondary flex items-center">
                   <span className="w-2.5 h-2.5 rounded-full bg-primary mr-2" />
-                  Đang giữ chỗ tại quầy:
+                  Đang chờ nhận sách tại quầy:
                 </span>
                 <span className="font-bold text-primary">{summary.reserved_copies}</span>
               </div>

@@ -4,7 +4,7 @@ const STORAGE_KEY_ACCESS = 'uth_access_token';
 const STORAGE_KEY_REFRESH = 'uth_refresh_token';
 
 let currentAccessToken: string | null =
-  typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_ACCESS) : null;
+  typeof window !== 'undefined' ? window.localStorage?.getItem(STORAGE_KEY_ACCESS) ?? null : null;
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
@@ -26,9 +26,9 @@ export const setAccessToken = (token: string | null) => {
   currentAccessToken = token;
   if (typeof window !== 'undefined') {
     if (token) {
-      localStorage.setItem(STORAGE_KEY_ACCESS, token);
+      window.localStorage?.setItem(STORAGE_KEY_ACCESS, token);
     } else {
-      localStorage.removeItem(STORAGE_KEY_ACCESS);
+      window.localStorage?.removeItem(STORAGE_KEY_ACCESS);
     }
   }
 };

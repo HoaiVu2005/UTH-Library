@@ -167,24 +167,26 @@ def test_noshow_lockout_after_3_strikes(setup_data):
     r1 = Reservation.objects.create(user=u1, book=book, status=ReservationStatus.READY, no_show_counted=True)
     record_no_show_and_check_lockout(u1)
     u1.refresh_from_db()
-    assert u1.is_reservation_locked is False
+    assert u1.is_currently_locked is False
 
     # Strike 2
     r2 = Reservation.objects.create(user=u1, book=book, status=ReservationStatus.READY, no_show_counted=True)
     record_no_show_and_check_lockout(u1)
     u1.refresh_from_db()
-    assert u1.is_reservation_locked is False
+    assert u1.is_currently_locked is False
 
     # Strike 3
     r3 = Reservation.objects.create(user=u1, book=book, status=ReservationStatus.READY, no_show_counted=True)
     record_no_show_and_check_lockout(u1)
     u1.refresh_from_db()
-    assert u1.is_reservation_locked is True
+    assert u1.is_currently_locked is True
+    assert u1.lock_reason == 'no_show_threshold'
 
-    # Attempt to reserve while locked fails (BR19)
+    # A no-show lock is a single borrowing lock, so every way to register a
+    # borrowing request must reject the patron consistently (BR19).
     with pytest.raises(BusinessLogicError) as exc_info:
         create_reservation(user=u1, book_id=book.id)
-    assert exc_info.value.code == 'USER_NO_SHOW_LOCKED'
+    assert exc_info.value.code == 'USER_LOCKED'
 
 def test_expire_reservations_cron(setup_data):
     u1 = setup_data['u1']

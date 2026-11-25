@@ -237,8 +237,8 @@ const ToastCard: React.FC<{
     typeof item.message === 'string'
       ? item.message
           .replace(/^[✨🎉⚠️⏰🔔📦📚ℹ️]\s*/g, '')
-          .replace(/^(sách đặt trước đã sẵn sàng nhận!?:?|thông báo thư viện:?|thông báo:?)\s*/gi, '')
-          .replace(/^Giữ chỗ thành công!\s*Giữ chỗ thành công!/gi, 'Giữ chỗ thành công!')
+          .replace(/^(sách mượn sách đã sẵn sàng nhận!?:?|thông báo thư viện:?|thông báo:?)\s*/gi, '')
+          .replace(/^Chờ nhận sách thành công!\s*Chờ nhận sách thành công!/gi, 'Chờ nhận sách thành công!')
           .trim()
       : item.message;
 

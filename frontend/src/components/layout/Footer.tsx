@@ -76,7 +76,7 @@ export const Footer: React.FC = () => {
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-textSecondary text-xs">
               <Link to="/search" className="hover:text-primary transition-colors">Tra cứu sách</Link>
               <Link to="/loans" className="hover:text-primary transition-colors">Mượn trả & Gia hạn</Link>
-              <Link to="/reservations" className="hover:text-primary transition-colors">Đặt trước</Link>
+              <Link to="/reservations" className="hover:text-primary transition-colors">Mượn sách</Link>
               <Link to="/fines" className="hover:text-primary transition-colors">Nộp phạt VietQR</Link>
               <Link to="/suggestions" className="hover:text-primary transition-colors">Đề xuất mua sách</Link>
             </div>

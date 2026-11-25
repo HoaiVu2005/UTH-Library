@@ -239,7 +239,7 @@ export const ProfilePage: React.FC = () => {
                 ) : (
                   <span className="text-success font-bold inline-flex items-center space-x-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Được phép mượn và đặt trước</span>
+                    <span>Được phép mượn và mượn sách</span>
                   </span>
                 )}
               </div>

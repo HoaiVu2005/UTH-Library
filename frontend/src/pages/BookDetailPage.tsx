@@ -163,14 +163,14 @@ export const BookDetailPage: React.FC = () => {
       setJustReservedStatus(isReady ? 'ready' : 'pending');
 
       if (isReady) {
-        toast.success('Đăng ký mượn sách thành công! Sách được giữ tại Quầy lưu thông trong 3 ngày.', {
+        toast.success('Mượn sách thành công! Sách được giữ tại Quầy lưu thông trong 3 ngày.', {
           action: {
             label: 'Xem danh sách mượn / đặt',
             onClick: () => navigate('/reservations'),
           },
         });
       } else {
-        toast.success('Đặt trước thành công! Bạn đã được xếp vào hàng chờ ưu tiên.', {
+        toast.success('Mượn sách thành công! Bạn đã được xếp vào hàng chờ ưu tiên.', {
           action: {
             label: 'Xem hàng chờ',
             onClick: () => navigate('/reservations'),
@@ -189,11 +189,11 @@ export const BookDetailPage: React.FC = () => {
       const errDetail = err?.response?.data?.detail || '';
       if (
         errCode === 'RESERVATION_DUPLICATE' ||
-        errDetail.includes('đã có một yêu cầu đặt trước') ||
-        errDetail.includes('giữ chỗ cho đầu sách này')
+        errDetail.includes('đã có một yêu cầu mượn sách') ||
+        errDetail.includes('chờ nhận sách cho đầu sách này')
       ) {
         setHasJustReserved(true);
-        toast.info('Bạn đã đặt trước đầu sách này rồi.');
+        toast.info('Bạn đã gửi yêu cầu mượn đầu sách này rồi.');
       } else {
         toast.error(formatApiError(err));
       }
@@ -418,13 +418,13 @@ export const BookDetailPage: React.FC = () => {
                       className="bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold cursor-default hover:bg-emerald-50 opacity-100"
                       leftIcon={<Check className="w-4 h-4 text-emerald-600" />}
                     >
-                      {currentReservationStatus === 'ready' ? 'Đã đăng ký mượn' : 'Đã đặt trước'}
+                      {currentReservationStatus === 'ready' ? 'Sẵn sàng nhận sách' : 'Đã yêu cầu mượn'}
                     </Button>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-700">
                       <span>
                         {currentReservationStatus === 'ready'
                           ? '✓ Sách đã sẵn sàng cho bạn đến mượn tại Quầy lưu thông (giữ trong 3 ngày).'
-                          : '✓ Bạn đã đặt trước đầu sách này (Hàng chờ ưu tiên).'}
+                          : '✓ Yêu cầu mượn của bạn đang trong hàng chờ ưu tiên.'}
                       </span>
                       <Link
                         to="/reservations"
@@ -475,10 +475,10 @@ export const BookDetailPage: React.FC = () => {
                       leftIcon={<Bookmark className="w-4 h-4" />}
                       className="bg-amber-600 hover:bg-amber-700 text-white border-amber-600 focus:ring-amber-500 shadow-sm"
                     >
-                      Xếp hàng đặt trước
+                      Xếp hàng mượn sách
                     </Button>
                     <span className="text-xs text-amber-700 font-medium">
-                      Tất cả bản sao đang được mượn. Bấm để xếp vào hàng chờ ưu tiên (tự động giữ chỗ 3 ngày khi có sách trả).
+                      Tất cả bản sao đang được mượn. Bấm để xếp vào hàng chờ ưu tiên (tự động chờ nhận sách 3 ngày khi có sách trả).
                     </span>
                   </div>
                 )}
@@ -691,7 +691,7 @@ export const BookDetailPage: React.FC = () => {
                 <TableHead>Vị trí lưu kho</TableHead>
                 <TableHead>Hình thức phục vụ</TableHead>
                 <TableHead>Trạng thái bản sao</TableHead>
-                <TableHead>Ghi chú mượn / giữ chỗ</TableHead>
+                <TableHead>Ghi chú mượn / chờ nhận sách</TableHead>
                 <TableHead className="w-32 text-center whitespace-nowrap">Tem mã vạch</TableHead>
               </TableRow>
             </TableHeader>

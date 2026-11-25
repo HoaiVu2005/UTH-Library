@@ -204,7 +204,7 @@ def delete_book(book_id: int):
         if in_circulation > 0:
             raise BusinessLogicError(
                 'BOOK_HAS_ACTIVE_LOANS',
-                detail=f'Không thể xóa: Đầu sách đang có {in_circulation} bản sao đang được sinh viên mượn hoặc giữ chỗ.'
+                detail=f'Không thể xóa: Đầu sách đang có {in_circulation} bản sao đang được sinh viên mượn hoặc chờ nhận sách.'
             )
 
         active_copies = book.copies.filter(deleted_at__isnull=True).exclude(status=CopyStatus.WITHDRAWN).count()
@@ -228,7 +228,7 @@ def delete_book(book_id: int):
     if has_active_reservations:
         raise BusinessLogicError(
             'BOOK_HAS_ACTIVE_RESERVATIONS',
-            detail='Không thể xóa đầu sách: Đang có bạn đọc xếp hàng đặt trước tựa sách này.'
+            detail='Không thể xóa đầu sách: Đang có bạn đọc xếp hàng mượn sách tựa sách này.'
         )
 
     from apps.circulation.models import Loan

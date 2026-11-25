@@ -43,7 +43,7 @@ class AIChatView(APIView):
         # payload để tránh đọc dữ liệu hoặc bộ nhớ của tài khoản khác.
         current_user = request.user if request.user and request.user.is_authenticated else None
 
-        is_admin = bool(current_user and ((current_user.role == 'admin') or current_user.is_staff))
+        is_admin = bool(current_user and (current_user.role in ('admin', 'librarian') or current_user.is_staff))
 
         if not message:
             return Response({'error': 'Vui lòng nhập nội dung tin nhắn.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -73,6 +73,8 @@ class AIChatView(APIView):
                 active_tab = "inventory"
             elif any(k in msg_l for k in ["phạt", "tiền phạt", "phiếu phạt"]):
                 active_tab = "fines"
+            elif any(k in msg_l for k in ["khóa mượn", "bị khóa", "mở khóa", "khóa thẻ"]):
+                active_tab = "locked_users"
             elif any(k in msg_l for k in ["quá hạn", "chưa trả", "sinh viên", "đôn đốc"]):
                 active_tab = "overdue"
             elif any(k in msg_l for k in ["thống kê", "lưu thông", "báo cáo", "tổng quan"]):
@@ -97,7 +99,7 @@ class AIChatView(APIView):
             else []
         )
 
-        # Nếu không phải quy trình tiền phạt, kiểm tra quy trình đặt trước / giữ chỗ
+        # Nếu không phải quy trình tiền phạt, kiểm tra quy trình mượn sách / chờ nhận sách
         if not workflow:
             workflow = get_reservation_workflow_action(
                 message,

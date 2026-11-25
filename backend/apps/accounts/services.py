@@ -181,6 +181,13 @@ def check_and_suspend_user(user: User, admin_user: User = None, request=None) ->
     if user.role in ['admin', 'librarian']:
         return {'status': 'skipped', 'reason': 'staff_exempt'}
 
+    if user.has_active_borrow_override and not user.is_currently_locked:
+        return {
+            'status': 'skipped',
+            'reason': 'documented_borrow_override',
+            'until': user.borrow_override_until.isoformat(),
+        }
+
     from apps.circulation.models import Loan
     from apps.fines.models import Fine
     from apps.notifications.models import Notification
@@ -189,6 +196,16 @@ def check_and_suspend_user(user: User, admin_user: User = None, request=None) ->
     now = timezone.now()
     threshold_date = now - timedelta(days=7)
     fine_threshold = 50000
+
+    # No-show uses the same borrowing lock as every other violation, but it is
+    # time-bound. Keep it active until the configured deadline, then clear it.
+    if user.lock_reason == LockReason.NO_SHOW_THRESHOLD:
+        if user.locked_until and user.locked_until > now:
+            return {'status': 'already_suspended', 'reason': user.lock_reason}
+        user.is_locked = False
+        user.lock_reason = None
+        user.locked_until = None
+        user.save(update_fields=['is_locked', 'lock_reason', 'locked_until'])
 
     overdue_loans_count = Loan.objects.filter(
         user=user,

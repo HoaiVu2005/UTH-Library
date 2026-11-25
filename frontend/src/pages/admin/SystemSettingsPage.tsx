@@ -279,7 +279,7 @@ export const SystemSettingsPage: React.FC = () => {
                 </div>
                 <div>
                   <Input
-                    label="Số ngày khóa đặt trước do quá hạn nhận sách"
+                    label="Số ngày khóa mượn sách do quá hạn nhận sách"
                     type="number"
                     value={noshowLockDays}
                     onChange={(e) => setNoshowLockDays(Number(e.target.value))}
@@ -386,7 +386,7 @@ export const SystemSettingsPage: React.FC = () => {
 
                 <div>
                   <Input
-                    label="Thời gian giữ chỗ tại quầy (ngày)"
+                    label="Thời gian chờ nhận sách tại quầy (ngày)"
                     type="number"
                     value={holdDays}
                     onChange={(e) => setHoldDays(Number(e.target.value))}

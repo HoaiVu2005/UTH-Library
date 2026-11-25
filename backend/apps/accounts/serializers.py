@@ -15,7 +15,8 @@ class UserSummarySerializer(serializers.ModelSerializer):
             'id', 'username', 'full_name', 'email', 'phone', 'avatar',
             'role', 'card_code', 'department', 'card_expiry',
             'is_locked', 'locked_until', 'is_card_valid', 'is_currently_locked',
-            'reservation_locked_until', 'must_change_password',
+            'borrow_override_until',
+            'has_active_borrow_override', 'must_change_password',
         ]
         read_only_fields = fields
 
@@ -29,13 +30,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'id', 'username', 'full_name', 'email', 'phone', 'avatar',
             'dob', 'address', 'role', 'card_code', 'department',
             'card_expiry', 'is_locked', 'lock_reason', 'locked_until',
-            'is_card_valid', 'is_currently_locked', 'reservation_locked_until',
+            'is_card_valid', 'is_currently_locked',
+            'borrow_override_until', 'has_active_borrow_override',
             'must_change_password', 'created_at',
         ]
         read_only_fields = [
             'id', 'username', 'role', 'card_code', 'department',
             'card_expiry', 'is_locked', 'lock_reason', 'locked_until',
-            'is_card_valid', 'is_currently_locked', 'reservation_locked_until',
+            'is_card_valid', 'is_currently_locked',
+            'borrow_override_until', 'has_active_borrow_override',
             'must_change_password', 'created_at',
         ]
 
@@ -67,8 +70,9 @@ class UserAdminSerializer(serializers.ModelSerializer):
             'id', 'username', 'full_name', 'email', 'phone', 'avatar',
             'dob', 'address', 'role', 'card_code', 'department', 'major', 'class_name',
             'card_expiry', 'is_locked', 'lock_reason', 'locked_until',
-            'is_card_valid', 'is_currently_locked', 'reservation_locked_until',
-            'must_change_password', 'created_at', 'deleted_at',
+            'is_card_valid', 'is_currently_locked',
+            'borrow_override_until', 'borrow_override_reason',
+            'has_active_borrow_override', 'must_change_password', 'created_at', 'deleted_at',
             'active_loans_count', 'unpaid_fines_count', 'reservations_count',
         ]
         read_only_fields = ['id', 'created_at', 'deleted_at', 'major', 'class_name']

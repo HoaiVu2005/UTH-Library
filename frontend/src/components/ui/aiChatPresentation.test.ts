@@ -32,10 +32,10 @@ describe('AI chat presentation by role', () => {
       path: '/admin/fines',
     });
     expect(normalizeChatAction({
-      label: 'Xem danh sách đặt trước của tôi',
+      label: 'Xem danh sách mượn sách của tôi',
       path: '/profile',
     })).toEqual({
-      label: 'Xem danh sách đặt trước của tôi',
+      label: 'Xem danh sách mượn sách của tôi',
       path: '/reservations',
     });
     expect(normalizeChatAction({ label: 'Trang lạ', path: 'https://example.com' })).toBeNull();

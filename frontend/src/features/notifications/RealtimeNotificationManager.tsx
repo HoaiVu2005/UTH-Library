@@ -102,7 +102,7 @@ export const RealtimeNotificationManager: React.FC = () => {
 
             if (notif.type === 'reservation_ready') {
               toastType = 'success';
-              toastTitle = 'Sách đặt trước đã sẵn sàng';
+              toastTitle = 'Sách mượn sách đã sẵn sàng';
             } else if (notif.type === 'fine_created') {
               toastType = 'warning';
               toastTitle = 'Khoản phạt mới phát sinh';
@@ -135,8 +135,8 @@ export const RealtimeNotificationManager: React.FC = () => {
             // Clean message: strip redundant emoji, prefixes or repeated sentences
             let cleanMessage = (notif.content || '')
               .replace(/^[✨🎉⚠️⏰🔔📦📚ℹ️]\s*/g, '')
-              .replace(/^(sách đặt trước đã sẵn sàng nhận!?:?|thông báo thư viện:?|thông báo:?)\s*/gi, '')
-              .replace(/^Giữ chỗ thành công!\s*Giữ chỗ thành công!/gi, 'Giữ chỗ thành công!')
+              .replace(/^(sách mượn sách đã sẵn sàng nhận!?:?|thông báo thư viện:?|thông báo:?)\s*/gi, '')
+              .replace(/^Chờ nhận sách thành công!\s*Chờ nhận sách thành công!/gi, 'Chờ nhận sách thành công!')
               .trim();
 
             toast.custom({

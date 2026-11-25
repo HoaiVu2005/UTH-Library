@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.accounts.services import check_and_suspend_user
 from apps.core.models import Policy, SystemConfig
 from apps.core.enums import (
     UserRole,
@@ -124,6 +125,59 @@ def test_borrow_br01_locked_user_rejected(admin_user, student_user, sample_book_
         borrow_direct(student_user.card_code, copy.barcode, admin_user)
     assert exc.value.code == 'USER_LOCKED'
 
+
+@pytest.mark.django_db
+def test_desk_patron_lookup_requires_staff_and_returns_lock_review_context(
+    admin_user,
+    student_user,
+    sample_book_and_copy,
+):
+    book, _ = sample_book_and_copy
+    overdue_copy = Copy.objects.create(
+        book=book,
+        barcode='UTH-CIRC-LOCKED-LOOKUP',
+        status=CopyStatus.BORROWED,
+    )
+    Loan.objects.create(
+        user=student_user,
+        copy=overdue_copy,
+        book=book,
+        due_at=timezone.now() - timedelta(days=9),
+        status=LoanStatus.ACTIVE,
+    )
+    Fine.objects.create(
+        user=student_user,
+        type=FineType.OVERDUE,
+        amount=80000,
+        paid_amount=20000,
+        status=FineStatus.PARTIAL,
+    )
+    student_user.is_locked = True
+    student_user.lock_reason = LockReason.OVERDUE_THRESHOLD
+    student_user.save(update_fields=['is_locked', 'lock_reason'])
+
+    anonymous_client = APIClient()
+    anonymous_response = anonymous_client.get(
+        f'/api/v1/circulation/desk/patron?card_code={student_user.card_code}'
+    )
+    assert anonymous_response.status_code == 401
+
+    staff_client = APIClient()
+    staff_client.force_authenticate(admin_user)
+    response = staff_client.get(
+        f'/api/v1/circulation/desk/patron?card_code={student_user.card_code}'
+    )
+
+    assert response.status_code == 200
+    patron = response.json()['data']
+    assert patron['is_currently_locked'] is True
+    assert patron['lock_reason'] == LockReason.OVERDUE_THRESHOLD
+    assert patron['lock_reason_label'] == 'Khóa do có sách quá hạn > 7 ngày'
+    assert patron['overdue_loans_count'] == 1
+    assert patron['unpaid_fines_count'] == 1
+    assert patron['unpaid_fines_total'] == 60000
+    assert patron['has_active_borrow_override'] is False
+
 @pytest.mark.django_db
 def test_borrow_br02_limit_reached(admin_user, student_user, sample_book_and_copy):
     book, copy = sample_book_and_copy
@@ -181,6 +235,46 @@ def test_borrow_br03_has_unpaid_fine_rejected(admin_user, student_user, sample_b
     with pytest.raises(BusinessLogicError) as exc:
         borrow_direct(student_user.card_code, copy.barcode, admin_user)
     assert exc.value.code == 'LOAN_HAS_UNPAID_FINE'
+
+
+@pytest.mark.django_db
+def test_borrow_review_exception_allows_existing_overdue_and_fine(
+    admin_user,
+    student_user,
+    sample_book_and_copy,
+):
+    book, copy = sample_book_and_copy
+    old_book = Book.objects.create(title='Sách Quá Hạn Có Xác Minh', category=book.category)
+    old_copy = Copy.objects.create(
+        book=old_book,
+        barcode='UTH-CIRC-OVERRIDE-01',
+        status=CopyStatus.BORROWED,
+    )
+    Loan.objects.create(
+        user=student_user,
+        copy=old_copy,
+        book=old_book,
+        due_at=timezone.now() - timedelta(days=10),
+        status=LoanStatus.ACTIVE,
+    )
+    Fine.objects.create(
+        user=student_user,
+        type=FineType.OVERDUE,
+        amount=60000,
+        status=FineStatus.UNPAID,
+    )
+    student_user.borrow_override_until = timezone.now() + timedelta(days=30)
+    student_user.borrow_override_reason = 'Đã xác minh giấy điều trị dài ngày của sinh viên.'
+    student_user.save(update_fields=['borrow_override_until', 'borrow_override_reason'])
+
+    loan = borrow_direct(student_user.card_code, copy.barcode, admin_user)
+
+    assert loan.status == LoanStatus.ACTIVE
+    assert loan.copy == copy
+    suspension_result = check_and_suspend_user(student_user, admin_user=admin_user)
+    student_user.refresh_from_db()
+    assert suspension_result['reason'] == 'documented_borrow_override'
+    assert student_user.is_locked is False
 
 @pytest.mark.django_db
 def test_borrow_br04_duplicate_book_rejected(admin_user, student_user, sample_book_and_copy):

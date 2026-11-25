@@ -9,7 +9,7 @@ class UserRole(models.TextChoices):
 class CopyStatus(models.TextChoices):
     AVAILABLE = 'available', 'Sẵn sàng'
     BORROWED = 'borrowed', 'Đang mượn'
-    RESERVED_HOLD = 'reserved_hold', 'Đang giữ chỗ'
+    RESERVED_HOLD = 'reserved_hold', 'Chờ nhận để mượn'
     READING_ROOM = 'reading_room', 'Đọc tại chỗ'
     DAMAGED = 'damaged', 'Bị hỏng'
     LOST = 'lost', 'Đã mất'
@@ -32,10 +32,10 @@ class DamageLevel(models.TextChoices):
     HEAVY = 'heavy', 'Hỏng nặng'
 
 class ReservationStatus(models.TextChoices):
-    PENDING = 'pending', 'Chờ có sách (Hàng chờ)'
-    READY = 'ready', 'Sách đã sẵn sàng (Đang giữ)'
+    PENDING = 'pending', 'Mượn sách — chờ có sách'
+    READY = 'ready', 'Sách sẵn sàng để nhận'
     FULFILLED = 'fulfilled', 'Đã nhận sách'
-    EXPIRED = 'expired', 'Hết hạn giữ'
+    EXPIRED = 'expired', 'Hết hạn nhận sách'
     CANCELLED = 'cancelled', 'Đã hủy'
 
 class ReservationType(models.TextChoices):
@@ -56,7 +56,7 @@ class FineStatus(models.TextChoices):
 class NotificationType(models.TextChoices):
     DUE_SOON = 'due_soon', 'Sắp đến hạn trả'
     OVERDUE = 'overdue', 'Quá hạn trả'
-    RESERVATION_READY = 'reservation_ready', 'Sách đặt trước đã sẵn sàng'
+    RESERVATION_READY = 'reservation_ready', 'Sách đã sẵn sàng để nhận'
     SUGGESTION_RESULT = 'suggestion_result', 'Kết quả duyệt đề xuất'
     FINE_CREATED = 'fine_created', 'Khoản phạt mới'
     FINE_PAID = 'fine_paid', 'Thanh toán tiền phạt thành công'
@@ -84,5 +84,6 @@ class LockReason(models.TextChoices):
     UNPAID_LOST_FINE = 'unpaid_lost_fine', 'Khóa do quá hạn sách thành mất và chưa nộp phạt'
     OVERDUE_THRESHOLD = 'overdue_threshold', 'Khóa do có sách quá hạn > 7 ngày'
     UNPAID_FINE_THRESHOLD = 'unpaid_fine_threshold', 'Khóa do nợ phạt vượt ngưỡng (> 50.000đ)'
+    NO_SHOW_THRESHOLD = 'no_show_threshold', 'Khóa do 3 lần không đến nhận sách đúng hẹn'
 
 

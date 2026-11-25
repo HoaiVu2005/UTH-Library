@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.core.cache import cache
 from rest_framework.test import APIClient
 from apps.accounts.models import User, RefreshToken
+from apps.audit.models import AuditLog
 from apps.core.enums import UserRole, LockReason
 from apps.accounts.services import create_access_token, create_refresh_token, hash_token
 
@@ -133,24 +134,23 @@ def test_refresh_token_rotation(api_client, student_user):
     assert token_inst.revoked_at is not None
 
 @pytest.mark.django_db
-def test_refresh_token_reuse_family_revocation(api_client, student_user):
+def test_refresh_token_reuse_within_grace_period_returns_current_session(api_client, student_user):
     raw_token, token_inst = create_refresh_token(student_user)
 
     # 1st rotation - valid
     api_client.cookies['refresh_token'] = raw_token
     res1 = api_client.post('/api/v1/auth/refresh')
     assert res1.status_code == 200
-    new_token = res1.cookies['refresh_token'].value
+    assert res1.cookies['refresh_token'].value
 
-    # Re-using the OLD (revoked) token -> theft detection!
+    # A just-rotated token may be replayed by concurrent tabs/React StrictMode.
+    # The 60-second grace period must return a valid continuation instead of
+    # revoking the whole family.
     api_client.cookies['refresh_token'] = raw_token
     res2 = api_client.post('/api/v1/auth/refresh')
-    assert res2.status_code == 401
-    assert res2.json()['code'] == 'AUTH_REFRESH_REVOKED'
-
-    # The entire family should now be revoked, even new_token
-    new_token_inst = RefreshToken.objects.get(token_hash=hash_token(new_token))
-    assert new_token_inst.revoked_at is not None
+    assert res2.status_code == 200
+    assert res2.cookies['refresh_token'].value
+    assert 'access_token' in res2.json()['data']
 
 @pytest.mark.django_db
 def test_logout(api_client, student_user):
@@ -202,6 +202,54 @@ def test_role_permission_forbidden_for_students(api_client, student_user, admin_
 
 
 @pytest.mark.django_db
+def test_unlock_requires_a_documented_review_reason(api_client, admin_user, student_user):
+    student_user.is_locked = True
+    student_user.lock_reason = LockReason.MANUAL
+    student_user.save(update_fields=['is_locked', 'lock_reason'])
+    api_client.force_authenticate(admin_user)
+
+    response = api_client.post(
+        f'/api/v1/users/{student_user.id}/unlock',
+        {'review_reason': '  '},
+        format='json',
+    )
+
+    assert response.status_code == 400
+    student_user.refresh_from_db()
+    assert student_user.is_locked is True
+
+
+@pytest.mark.django_db
+def test_unlock_records_the_review_and_clears_the_single_borrowing_lock(
+    api_client,
+    admin_user,
+    student_user,
+):
+    student_user.is_locked = True
+    student_user.lock_reason = LockReason.OVERDUE_THRESHOLD
+    student_user.locked_until = timezone.now() + timedelta(days=20)
+    student_user.save(update_fields=['is_locked', 'lock_reason', 'locked_until'])
+    api_client.force_authenticate(admin_user)
+
+    response = api_client.post(
+        f'/api/v1/users/{student_user.id}/unlock',
+        {'review_reason': 'Sinh viên có xác nhận điều trị dài ngày từ phòng công tác sinh viên.'},
+        format='json',
+    )
+
+    assert response.status_code == 200
+    student_user.refresh_from_db()
+    assert student_user.is_locked is False
+    assert student_user.locked_until is None
+    assert student_user.borrow_override_until > timezone.now() + timedelta(days=29)
+    assert student_user.borrow_override_reason == 'Sinh viên có xác nhận điều trị dài ngày từ phòng công tác sinh viên.'
+    audit = AuditLog.objects.get(action='ADMIN_UNLOCK_USER', entity_id=str(student_user.id))
+    assert audit.detail['review_reason'] == 'Sinh viên có xác nhận điều trị dài ngày từ phòng công tác sinh viên.'
+    assert audit.detail['previous_lock_reason'] == LockReason.OVERDUE_THRESHOLD
+    assert audit.detail['borrow_override_until'] == student_user.borrow_override_until.isoformat()
+
+
+@pytest.mark.django_db
 def test_admin_user_crud_and_br28_delete_protection(api_client, admin_user):
     admin_token = create_access_token(admin_user)
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {admin_token}')
@@ -230,6 +278,7 @@ def test_admin_user_crud_and_br28_delete_protection(api_client, admin_user):
     # Unlock user
     unlock_res = api_client.post(f'/api/v1/users/{user_id}/lock', {
         'is_locked': False,
+        'review_reason': 'Đã xác minh yêu cầu mở khóa trong kiểm thử quản trị.',
     }, format='json')
     assert unlock_res.status_code == 200
     assert unlock_res.json()['data']['is_locked'] is False

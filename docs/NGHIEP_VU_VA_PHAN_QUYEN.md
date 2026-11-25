@@ -35,7 +35,7 @@
 | Mã vai trò | Tên vai trò | Nhiệm vụ chính trong hệ thống | Nguồn gốc / Cơ chế cấp tài khoản | Nơi định nghĩa code |
 | :--- | :--- | :--- | :--- | :--- |
 | *Khách vãng lai* | Khách (Guest) | Tra cứu OPAC, xem mục lục, xem thông tin thư viện. Không có mã bạn đọc. | Truy cập tự do không cần đăng nhập. | `frontend/src/app/Router.tsx` (Public Routes) |
-| `student` | Sinh viên | Bạn đọc tiêu chuẩn: mượn sách, gia hạn, đặt trước, đọc học liệu số, nộp phạt, đề xuất sách. Hạn mức: 5 cuốn / 14 ngày. | 1. Import danh sách từ Phòng Đào tạo (`StudentRoster`).<br>2. Cấp thẻ 1-click tại quầy (`IssueStudentCardView`). | `apps/core/enums.py:4`<br>`apps/accounts/views.py:495` |
+| `student` | Sinh viên | Bạn đọc tiêu chuẩn: mượn sách, gia hạn, mượn sách, đọc học liệu số, nộp phạt, đề xuất sách. Hạn mức: 5 cuốn / 14 ngày. | 1. Import danh sách từ Phòng Đào tạo (`StudentRoster`).<br>2. Cấp thẻ 1-click tại quầy (`IssueStudentCardView`). | `apps/core/enums.py:4`<br>`apps/accounts/views.py:495` |
 | `lecturer` | Giảng viên | Bạn đọc ưu tiên: nghiên cứu, giảng dạy, đề xuất sách theo học phần. Hạn mức: 10 cuốn / 30 ngày. | Quản trị viên tạo tài khoản thủ công trong trang Quản lý Người dùng (`POST /api/v1/users`). | `apps/core/enums.py:5`<br>`apps/core/models.py:64` |
 | `librarian` | Thủ thư | Vận hành hằng ngày: lưu thông mượn/trả, biên mục sách & bản sao, kiểm kê, lập dự thảo biên bản thanh lý, xử lý đề xuất sách. | Trưởng thư viện / Admin tạo tài khoản hoặc qua lệnh CLI `python manage.py create_librarian`. | `apps/core/enums.py:6`<br>`apps/accounts/management/commands/create_librarian.py` |
 | `admin` | Trưởng TV / Quản trị | Duyệt nghiệp vụ cấp cao (thanh lý theo QĐ BGH, miễn phạt, đề xuất $\ge$ 2 triệu, tài liệu số bên thứ ba), quản trị nhân sự, chính sách, cấu hình. | Tạo lúc triển khai hệ thống (`createsuperuser`). | `apps/core/enums.py:7`<br>`apps/accounts/permissions.py:10` |
@@ -91,7 +91,7 @@ stateDiagram-v2
     [*] --> DuThao: Thủ thư chọn bản sao hư hỏng -> Tạo biên bản
     note right of DuThao
       Bản sao chuyển sang PENDING_DEACCESSION
-      Chặn mượn và đặt trước ngay lập tức
+      Chặn mượn và mượn sách ngay lập tức
     end note
 
     DuThao --> ChoDuyet: Thủ thư hoàn thiện danh mục, hội đồng -> Gửi duyệt
@@ -185,7 +185,7 @@ flowchart TD
 Khi bạn đọc làm mất hoặc làm rách nát tài liệu, cho phép nộp đền **sách cùng tên, cùng hoặc cao hơn phiên bản xuất bản**. Thủ thư tiếp nhận tại quầy ghi nhận biên bản, Trưởng thư viện bấm chấp thuận chuyển trạng thái.
 
 ### 8.3. Khóa thẻ tự động & Thu phí
-- **Tự động khóa thẻ:** Hệ thống tự động khóa quyền mượn sách và đặt trước khi bạn đọc có sách quá hạn $> 7$ ngày hoặc nợ phạt tích lũy $> 50.000$ VNĐ (`AutoSuspendCheckView`).
+- **Tự động khóa thẻ:** Hệ thống tự động khóa quyền mượn sách và mượn sách khi bạn đọc có sách quá hạn $> 7$ ngày hoặc nợ phạt tích lũy $> 50.000$ VNĐ (`AutoSuspendCheckView`).
 - **Phí làm thẻ & Thu phạt:** Thu phí cấp thẻ mới 100.000 VNĐ hoặc thu phạt tại quầy bằng tiền mặt (in biên lai) hoặc chuyển khoản tự động VietQR SePay đối soát thời gian thực.
 - **Miễn giảm tiền phạt:** Chỉ **Trưởng thư viện** có thẩm quyền quyết định miễn giảm (`WaiveFineView`), bắt buộc nhập lý do cứu xét vào hệ thống.
 

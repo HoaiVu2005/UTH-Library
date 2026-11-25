@@ -10,7 +10,8 @@ from rest_framework.test import APITestCase
 from apps.accounts.models import User
 from apps.catalog.models import Book, Category, Copy
 from apps.circulation.models import Loan
-from apps.core.enums import CopyStatus, LoanStatus
+from apps.core.enums import CopyStatus, FineStatus, LoanStatus, LockReason
+from apps.fines.models import Fine
 from apps.notifications.models import Notification
 from apps.assistant.AI import (
     call_gemini_api,
@@ -18,6 +19,7 @@ from apps.assistant.AI import (
     compact_simple_reply,
     get_conversation_tone,
     get_generation_max_output_tokens,
+    get_admin_library_statistics,
     get_ai_role_profile,
     normalize_assistant_voice,
 )
@@ -81,6 +83,22 @@ class AIRoleProfileTests(APITestCase):
 
 
 class AssistantVoiceTests(APITestCase):
+    def test_capitalizes_the_first_word_of_each_markdown_prose_line(self):
+        reply = (
+            'hiện tại Thư viện UTH đang có sẵn các đầu sách chuyên sâu.\n\n'
+            'dưới đây là các tài liệu bạn có thể mượn ngay:\n\n'
+            '1. **quản trị Dự án Đầu tư Công trình Giao thông**'
+        )
+
+        self.assertEqual(
+            normalize_assistant_voice(reply),
+            (
+                'Hiện tại Thư viện UTH đang có sẵn các đầu sách chuyên sâu.\n\n'
+                'Dưới đây là các tài liệu bạn có thể mượn ngay:\n\n'
+                '1. **Quản trị Dự án Đầu tư Công trình Giao thông**'
+            ),
+        )
+
     def test_removes_repeated_generic_greeting_after_conversation_has_started(self):
         reply = 'Chào bạn! Mình nghe đây. Khu Võ Oanh có nhiều lựa chọn trà sữa.'
 
@@ -139,6 +157,20 @@ class AssistantVoiceTests(APITestCase):
 
 class GeminiLatencyBudgetTests(APITestCase):
     @patch('apps.assistant.AI.gemini.urllib.request.urlopen')
+    def test_gemini_timeout_stops_before_trying_another_remote_endpoint(self, urlopen_mock):
+        response = MagicMock()
+        response.read.return_value = json.dumps({
+            'candidates': [{'content': {'parts': [{'text': 'Phản hồi quá muộn'}]}}],
+        }).encode('utf-8')
+        urlopen_mock.side_effect = [TimeoutError('timed out'), response]
+
+        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
+            result = call_gemini_api('Câu hỏi mới', [], [])
+
+        self.assertIsNone(result)
+        self.assertEqual(urlopen_mock.call_count, 1)
+
+    @patch('apps.assistant.AI.gemini.urllib.request.urlopen')
     def test_gemini_request_has_a_short_server_timeout_and_bounded_context(self, urlopen_mock):
         response = MagicMock()
         response.read.return_value = json.dumps({
@@ -178,6 +210,57 @@ class GeminiLatencyBudgetTests(APITestCase):
         self.assertIn('không bịa', system_prompt.lower())
 
     @patch('apps.assistant.AI.gemini.urllib.request.urlopen')
+    def test_locked_student_details_are_grounded_in_staff_prompt(self, urlopen_mock):
+        response = MagicMock()
+        response.read.return_value = json.dumps({
+            'candidates': [{'content': {'parts': [{'text': 'Danh sách khóa mượn'}]}}],
+        }).encode('utf-8')
+        urlopen_mock.return_value.__enter__.return_value = response
+        admin_stats = {
+            'active_loans_count': 0,
+            'lecturer_active_loans_count': 0,
+            'lecturer_borrowers': [],
+            'student_active_loans_count': 0,
+            'overdue_loans_count': 0,
+            'overdue_students': [],
+            'total_copies': 0,
+            'available_copies': 0,
+            'borrowed_copies': 0,
+            'reserved_copies': 0,
+            'damaged_copies': 0,
+            'lost_copies': 0,
+            'unpaid_fines_count': 1,
+            'total_unpaid_amount': 60000,
+            'low_stock_books': [],
+            'top_borrowed_books': [],
+            'locked_users_count': 1,
+            'locked_users': [{
+                'student_name': 'Nguyễn Văn Minh',
+                'card_code': 'SV20260099',
+                'department': 'Khoa Công nghệ thông tin',
+                'lock_reason_label': 'Khóa do nợ phạt vượt ngưỡng',
+                'overdue_loans_count': 0,
+                'unpaid_amount': 60000,
+            }],
+            'pending_suggestions_count': 0,
+        }
+
+        with patch.dict('os.environ', {'GEMINI_API_KEY': 'test-key'}):
+            call_gemini_api(
+                'Cho tôi xem sinh viên bị khóa mượn sách',
+                [],
+                [],
+                admin_stats=admin_stats,
+                is_admin=True,
+            )
+
+        payload = json.loads(urlopen_mock.call_args.args[0].data.decode('utf-8'))
+        system_prompt = payload['system_instruction']['parts'][0]['text']
+        self.assertIn('Nguyễn Văn Minh', system_prompt)
+        self.assertIn('SV20260099', system_prompt)
+        self.assertIn('60,000 VNĐ', system_prompt)
+
+    @patch('apps.assistant.AI.gemini.urllib.request.urlopen')
     def test_casual_questions_are_answered_lightly_without_forcing_library_context(self, urlopen_mock):
         response = MagicMock()
         response.read.return_value = json.dumps({
@@ -194,7 +277,77 @@ class GeminiLatencyBudgetTests(APITestCase):
         self.assertNotIn('ƯU TIÊN CAO NHẤT', system_prompt)
 
 
+class LockedBorrowerStatisticsTests(APITestCase):
+    def test_staff_statistics_include_locked_students_and_unresolved_obligations(self):
+        student = User.objects.create_user(
+            username='locked-student',
+            password='Password123',
+            full_name='Sinh viên cần xem xét',
+            card_code='SV-LOCKED-001',
+            role='student',
+            is_locked=True,
+            lock_reason=LockReason.UNPAID_FINE_THRESHOLD,
+            department='Khoa Công nghệ thông tin',
+        )
+        Fine.objects.create(
+            user=student,
+            amount=80_000,
+            paid_amount=20_000,
+            status=FineStatus.PARTIAL,
+        )
+
+        stats = get_admin_library_statistics()
+
+        self.assertEqual(stats['locked_users_count'], 1)
+        self.assertEqual(stats['locked_users'], [{
+            'user_id': student.id,
+            'student_name': 'Sinh viên cần xem xét',
+            'card_code': 'SV-LOCKED-001',
+            'department': 'Khoa Công nghệ thông tin',
+            'lock_reason': LockReason.UNPAID_FINE_THRESHOLD,
+            'lock_reason_label': 'Khóa do nợ phạt vượt ngưỡng (> 50.000đ)',
+            'active_loans_count': 0,
+            'overdue_loans_count': 0,
+            'unpaid_fines_count': 1,
+            'unpaid_amount': 60_000,
+        }])
+
+
 class AIChatViewTests(APITestCase):
+    @patch('apps.assistant.views.get_admin_library_statistics', return_value={
+        'locked_users_count': 7,
+        'locked_users': [],
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Hiện có 7 sinh viên đang bị khóa quyền mượn sách.')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_staff_locked_borrower_query_is_not_hijacked_by_borrow_workflow(
+        self,
+        _query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_admin_stats_mock,
+    ):
+        staff = User.objects.create_user(
+            username='locked_borrower_staff',
+            password='test-password',
+            full_name='Thủ thư kiểm thử khóa mượn',
+            card_code='STAFF_LOCKED_BORROWER',
+            role='admin',
+            is_staff=True,
+        )
+        self.client.force_authenticate(staff)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'sinh viên đang bị khóa mượn sách', 'user_role': 'admin'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['reply'], 'Hiện có 7 sinh viên đang bị khóa quyền mượn sách.')
+        self.assertEqual(response.data['suggested_tab'], 'locked_users')
+        self.assertIsNone(response.data['action'])
+        call_gemini_api_mock.assert_called_once()
+
     @patch('apps.assistant.views.call_gemini_api', return_value=None)
     @patch('apps.assistant.views.query_relevant_books', return_value=[])
     def test_van_lang_stereotype_question_is_not_misclassified_as_food_because_van_contains_an(

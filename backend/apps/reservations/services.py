@@ -32,16 +32,9 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
         if not user.is_active or user.deleted_at is not None:
             raise BusinessLogicError('USER_LOCKED', detail='Tài khoản không hoạt động hoặc đã bị xóa.')
         if not user.is_card_valid:
-            raise BusinessLogicError('USER_EXPIRED', detail='Thẻ bạn đọc đã hết hạn sử dụng. Không thể đặt trước / giữ chỗ.')
+            raise BusinessLogicError('USER_EXPIRED', detail='Thẻ bạn đọc đã hết hạn sử dụng. Không thể mượn sách / chờ nhận sách.')
         if user.is_currently_locked:
             raise BusinessLogicError('USER_LOCKED', detail='Tài khoản bạn đọc đang bị tạm khóa.')
-
-        # BR19: Check no-show lockout
-        if user.is_reservation_locked:
-            raise BusinessLogicError(
-                'USER_NO_SHOW_LOCKED',
-                detail='Tài khoản bị tạm khóa chức năng đặt trước/giữ chỗ do có 3 lần không đến nhận sách đúng hẹn (no-show).'
-            )
 
         # BR03: Check overdue loans
         has_overdue = Loan.objects.filter(
@@ -50,7 +43,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             due_at__lt=timezone.now()
         ).exists()
         if has_overdue:
-            raise BusinessLogicError('RESERVATION_HAS_OVERDUE', detail='Bạn đang có sách mượn quá hạn chưa trả. Không thể đặt trước.')
+            raise BusinessLogicError('RESERVATION_HAS_OVERDUE', detail='Bạn đang có sách mượn quá hạn chưa trả. Không thể mượn sách.')
 
         # BR03: Check unpaid fines
         has_unpaid_fines = Fine.objects.filter(
@@ -76,7 +69,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             status__in=[ReservationStatus.PENDING, ReservationStatus.READY]
         ).exists()
         if existing_res:
-            raise BusinessLogicError('RESERVATION_DUPLICATE', detail='Bạn đã có một yêu cầu đặt trước hoặc giữ chỗ cho đầu sách này.')
+            raise BusinessLogicError('RESERVATION_DUPLICATE', detail='Bạn đã có một yêu cầu mượn sách hoặc chờ nhận sách cho đầu sách này.')
 
         # Check all copies: if ONLY reading room copies exist -> reject (BR08)
         all_copies = Copy.objects.filter(book=book, deleted_at__isnull=True)
@@ -85,11 +78,11 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
 
         home_copies = all_copies.filter(reading_room_only=False)
         if not home_copies.exists():
-            raise BusinessLogicError('COPY_READING_ROOM_ONLY', detail='Đầu sách này chỉ phục vụ đọc tại chỗ, không cho phép mượn về nhà hoặc đặt trước.')
+            raise BusinessLogicError('COPY_READING_ROOM_ONLY', detail='Đầu sách này chỉ phục vụ đọc tại chỗ, không cho phép mượn về nhà hoặc mượn sách.')
 
         policy = get_current_policy_for_user(user)
 
-        # Look for available copy for "GIỮ CHỖ" (ready immediately)
+        # Look for available copy for "CHỜ NHẬN SÁCH" (ready immediately)
         available_copy = home_copies.filter(
             status=CopyStatus.AVAILABLE
         ).select_for_update().first()
@@ -103,7 +96,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             if (active_loans_count + ready_res_count) >= policy.max_loans:
                 raise BusinessLogicError(
                     'LOAN_LIMIT_REACHED',
-                    detail=f'Bạn đã đạt giới hạn mượn và giữ chỗ tối đa ({policy.max_loans} cuốn).'
+                    detail=f'Bạn đã đạt giới hạn mượn và chờ nhận sách tối đa ({policy.max_loans} cuốn).'
                 )
 
             # Create Reservation READY
@@ -134,7 +127,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             Notification.objects.create(
                 user=user,
                 type=NotificationType.RESERVATION_READY,
-                content=f'Đăng ký mượn sách thành công! Sách "{book.title}" đã được chuẩn bị sẵn sàng cho bạn tại Quầy lưu thông. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
+                content=f'Mượn sách thành công! Sách "{book.title}" đã được chuẩn bị sẵn sàng cho bạn tại Quầy lưu thông. Vui lòng đến nhận trước 23:59 ngày {hold_date.strftime("%d/%m/%Y")}.',
                 link='/reservations'
             )
 
@@ -150,7 +143,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             return reservation
 
         else:
-            # No available copy -> "ĐẶT TRƯỚC" (pending into queue)
+            # No available copy -> "MƯỢN SÁCH" (pending into queue)
             # BR16: Max pending reservations limit
             current_pending = Reservation.objects.filter(
                 user=user,
@@ -159,7 +152,7 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
             if current_pending >= policy.max_reservations_pending:
                 raise BusinessLogicError(
                     'RESERVATION_LIMIT_REACHED',
-                    detail=f'Bạn đã đạt số lượng đặt trước tối đa đang chờ ({policy.max_reservations_pending} cuốn).'
+                    detail=f'Bạn đã đạt số lượng mượn sách tối đa đang chờ ({policy.max_reservations_pending} cuốn).'
                 )
 
             max_pos = Reservation.objects.filter(
@@ -189,7 +182,8 @@ def create_reservation(user: User, book_id: int, request=None) -> Reservation:
 def record_no_show_and_check_lockout(user: User):
     """
     BR19: No-show = (a) ready quá hạn, hoặc (b) chủ động hủy ready.
-    Đạt noshow_limit (3) lần trong noshow_window_days (90) -> đặt reservation_locked_until = now + 30 ngày.
+    Đạt noshow_limit (3) lần trong noshow_window_days (90) thì khóa toàn bộ
+    quyền mượn trong noshow_lock_days. Hệ thống chỉ có một trạng thái khóa mượn.
     """
     config = SystemConfig.get_solo()
     now = timezone.now()
@@ -202,13 +196,15 @@ def record_no_show_and_check_lockout(user: User):
     ).count()
 
     if no_show_count >= config.noshow_limit:
-        user.reservation_locked_until = now + timedelta(days=config.noshow_lock_days)
-        user.save(update_fields=['reservation_locked_until'])
+        user.is_locked = True
+        user.lock_reason = 'no_show_threshold'
+        user.locked_until = now + timedelta(days=config.noshow_lock_days)
+        user.save(update_fields=['is_locked', 'lock_reason', 'locked_until'])
 
         Notification.objects.create(
             user=user,
             type=NotificationType.OVERDUE,
-            content=f'Tài khoản của bạn đã bị khóa chức năng đặt trước/giữ chỗ 30 ngày do có {no_show_count} lần không đến nhận sách đúng hẹn.',
+            content=f'Quyền mượn sách của bạn đã bị khóa {config.noshow_lock_days} ngày do có {no_show_count} lần không đến nhận sách đã đăng ký đúng hẹn.',
             link='/reservations'
         )
 
@@ -219,11 +215,11 @@ def cancel_reservation(reservation_id: int, user: User, request=None) -> Reserva
         ).first()
 
         if not reservation:
-            raise BusinessLogicError('NOT_FOUND', detail='Yêu cầu đặt trước không tồn tại.')
+            raise BusinessLogicError('NOT_FOUND', detail='Yêu cầu mượn sách không tồn tại.')
 
         # Permission check
         if user.role != 'admin' and reservation.user_id != user.id:
-            raise BusinessLogicError('FORBIDDEN', detail='Bạn chỉ có thể hủy yêu cầu đặt trước của chính mình.')
+            raise BusinessLogicError('FORBIDDEN', detail='Bạn chỉ có thể hủy yêu cầu mượn sách của chính mình.')
 
         if reservation.status not in [ReservationStatus.PENDING, ReservationStatus.READY]:
             raise BusinessLogicError('CONFLICT', detail=f'Không thể hủy yêu cầu ở trạng thái "{reservation.get_status_display()}".')
@@ -267,7 +263,7 @@ def advance_reservation(reservation_id: int, admin_user: User, request=None) -> 
         ).first()
 
         if not reservation:
-            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy yêu cầu đặt trước đang chờ.')
+            raise BusinessLogicError('NOT_FOUND', detail='Không tìm thấy yêu cầu mượn sách đang chờ.')
 
         reservation.queue_position = 1
         reservation.save(update_fields=['queue_position'])
@@ -284,7 +280,7 @@ def advance_reservation(reservation_id: int, admin_user: User, request=None) -> 
 
 def expire_stale_reservations(admin_user: User = None, request=None) -> dict:
     """
-    Tự động quét và hủy các yêu cầu đặt trước (giữ chỗ) đã quá thời hạn 3 ngày tại quầy
+    Tự động quét và hủy các yêu cầu mượn sách (chờ nhận sách) đã quá thời hạn 3 ngày tại quầy
     mà bạn đọc không đến nhận. Bản sao sách sẽ được chuyển tiếp tự động cho bạn đọc
     kế tiếp trong hàng chờ, hoặc chuyển về trạng thái sẵn sàng (available) nếu không còn ai.
     """

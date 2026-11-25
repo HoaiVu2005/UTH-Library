@@ -110,8 +110,8 @@ export function normalizeChatAction(value: unknown): ChatAction | null {
     ? raw.path
     : undefined;
 
-  // Tự động chuẩn hóa đường dẫn nếu cache/lưu nhầm sang /profile cho danh sách đặt trước hoặc sách đang mượn
-  if (label.toLowerCase().includes('đặt trước') && path === '/profile') {
+  // Tự động chuẩn hóa đường dẫn nếu cache/lưu nhầm sang /profile cho danh sách mượn sách hoặc sách đang mượn
+  if (label.toLowerCase().includes('mượn sách') && path === '/profile') {
     path = '/reservations';
   } else if (label.toLowerCase().includes('đang mượn') && path === '/profile') {
     path = '/loans';

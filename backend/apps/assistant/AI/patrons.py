@@ -51,7 +51,7 @@ def get_patron_context(user) -> dict:
         unpaid_fines = Fine.objects.filter(user=user, status=FineStatus.UNPAID)
         unpaid_amount = unpaid_fines.aggregate(s=Sum('amount'))['s'] or 0
 
-        # Sách đặt trước đang chờ
+        # Sách mượn sách đang chờ
         reservations = Reservation.objects.filter(
             user=user,
             status__in=[ReservationStatus.PENDING, ReservationStatus.READY]

@@ -18,7 +18,6 @@ export interface UserSummary {
   locked_until?: string;
   is_card_valid: boolean;
   is_currently_locked: boolean;
-  reservation_locked_until?: string;
   must_change_password?: boolean;
 }
 

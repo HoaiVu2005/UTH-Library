@@ -51,6 +51,17 @@ def call_gemini_api(
         for i, tb in enumerate(admin_stats.get('top_borrowed_books', []), 1):
             top_books_text += f"  {i}. {tb['title']} ({tb['category']}) - {tb['total_loans']} lượt mượn.\n"
 
+        locked_users_text = ""
+        for i, student in enumerate(admin_stats.get('locked_users', []), 1):
+            locked_users_text += (
+                f"  {i}. Sinh viên: {student['student_name']} "
+                f"(MSSV/Mã thẻ: {student['card_code']}) - "
+                f"Khoa: {student.get('department') or 'Chưa cập nhật'} - "
+                f"Lý do khóa: {student.get('lock_reason_label') or 'Chưa ghi nhận'} - "
+                f"Sách quá hạn: {student.get('overdue_loans_count', 0)} - "
+                f"Nợ phạt: {student.get('unpaid_amount', 0):,} VNĐ.\n"
+            )
+
         admin_context = f"""
 [SỐ LIỆU LƯU THÔNG THỰC TẾ TRONG DATABASE THƯ VIỆN UTH (REAL-TIME CHO ADMIN/THỦ THƯ)]:
 - Tổng số cuốn sách đang mượn CHƯA TRẢ lại thư viện: {admin_stats['active_loans_count']} cuốn.
@@ -61,13 +72,14 @@ def call_gemini_api(
 - DANH SÁCH CHI TIẾT BẠN ĐỌC ĐANG MƯỢN QUÁ HẠN:
 {overdue_list_text or '  Hiện không có bạn đọc nào quá hạn.'}
 
-- Tổng số bản sao trong kho: {admin_stats['total_copies']} bản (Sẵn sàng: {admin_stats['available_copies']}, Đang mượn: {admin_stats['borrowed_copies']}, Giữ chỗ: {admin_stats['reserved_copies']}, Hỏng: {admin_stats['damaged_copies']}, Mất: {admin_stats['lost_copies']}).
+- Tổng số bản sao trong kho: {admin_stats['total_copies']} bản (Sẵn sàng: {admin_stats['available_copies']}, Đang mượn: {admin_stats['borrowed_copies']}, Chờ nhận sách: {admin_stats['reserved_copies']}, Hỏng: {admin_stats['damaged_copies']}, Mất: {admin_stats['lost_copies']}).
 - Phiếu phạt chưa thu: {admin_stats['unpaid_fines_count']} phiếu ({admin_stats['total_unpaid_amount']:,} VNĐ).
 - Sách gần hết bản sao (khả dụng <= 1):
 {low_stock_text or '  Không có sách nào sắp hết bản sao.'}
 - Top sách được mượn nhiều nhất:
 {top_books_text or '  Chưa có dữ liệu mượn sách.'}
-- Tài khoản bạn đọc bị khóa thẻ: {admin_stats.get('locked_users_count', 0)} tài khoản.
+- Sinh viên bị khóa quyền mượn: {admin_stats.get('locked_users_count', 0)} tài khoản.
+{locked_users_text or '  Hiện không có sinh viên nào bị khóa quyền mượn.'}
 - Đề xuất mua sách mới đang chờ duyệt: {admin_stats.get('pending_suggestions_count', 0)} đề xuất.
 """
 
@@ -89,7 +101,7 @@ def call_gemini_api(
 - Tình trạng mượn sách hiện tại: Đang mượn {patron_context['active_loans_count']}/{patron_context['max_borrow_limit']} cuốn (Có {patron_context['overdue_count']} cuốn trễ hạn).
 {loans_list_str or '  Hiện tại bạn đọc chưa mượn cuốn sách nào.'}
 - Nợ phí phạt: {patron_context['unpaid_fines_count']} phiếu ({patron_context['unpaid_amount']:,} VNĐ).
-- Đặt trước tài liệu: Đang có {len(patron_context['reservations'])} yêu cầu đặt trước.
+- Mượn sách tài liệu: Đang có {len(patron_context['reservations'])} yêu cầu mượn sách.
 """
 
     # 3. Ngữ cảnh Sách liên quan trong kho (NẾU CÓ TRUY VẤN SÁCH/CHUYÊN NGÀNH)
@@ -168,7 +180,7 @@ Người dùng đang trò chuyện: {role_desc}.
         + KHI ĐÃ CÓ [DANH SÁCH TÀI LIỆU CÓ SẴN TRONG KHO THƯ VIỆN UTH PHÙ HỢP VỚI YÊU CẦU], bạn PHẢI giới thiệu các cuốn sách này; TUYỆT ĐỐI KHÔNG được nói "thư viện chưa hiển thị các đầu sách cụ thể" hay "chưa có sách".
      c) Phân tích định hướng môn học và lộ trình đọc sách: nêu rõ môn học cốt lõi và lý do vì sao môn học/cuốn sách đó quan trọng cho tương lai nghề nghiệp.
      d) Giới thiệu các cuốn sách/giáo trình CỤ THỂ ĐANG CÓ TRONG KHO THƯ VIỆN UTH: BẮT BUỘC CHỈ lấy từ mục [DANH SÁCH TÀI LIỆU CÓ SẴN TRONG KHO THƯ VIỆN UTH PHÙ HỢP VỚI YÊU CẦU], nêu rõ tên sách, tác giả và số bản sẵn sàng phục vụ. Không tự bịa ra sách không có trong danh sách cung cấp.
-     e) Chỉ dẫn rõ ràng: Hướng dẫn bạn đọc nhấp trực tiếp vào các thẻ xem nhanh ở bên dưới tin nhắn để xem vị trí kệ sách tại thư viện UTH và bấm nút đặt trước mượn sách trực tiếp.
+     e) Chỉ dẫn rõ ràng: Hướng dẫn bạn đọc nhấp trực tiếp vào các thẻ xem nhanh ở bên dưới tin nhắn để xem vị trí kệ sách tại thư viện UTH và bấm nút mượn sách trực tiếp.
    - TUYỆT ĐỐI KHÔNG xuất bất kỳ đường link website bên ngoài nào như "opacthuvien.ut.edu.vn" hay link cũ của trường. Toàn bộ tính năng tra cứu và mượn trả đã được tích hợp trực tiếp trên Cổng Thư viện số UTH này.
 
 3. NẾU LÀ QUẢN TRỊ VIÊN / THỦ THƯ (ADMIN):
@@ -287,6 +299,9 @@ Quy tắc dùng bộ nhớ:
             print(f"[Gemini API Call Failed on {endpoint}]: HTTP {e.code}")
             if e.code in (503, 429, 404):
                 continue
+            return None
+        except TimeoutError as e:
+            print(f"[Gemini API Call Timed Out on {endpoint}]: {e}")
             return None
         except Exception as e:
             print(f"[Gemini API Call Failed on {endpoint}]: {e}")

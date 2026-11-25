@@ -28,6 +28,27 @@ def sanitize_ai_reply(reply: str) -> str:
     return reply
 
 
+def _capitalize_markdown_prose_lines(text: str) -> str:
+    lines = []
+    in_code_fence = False
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith(('```', '~~~')):
+            in_code_fence = not in_code_fence
+            lines.append(line)
+            continue
+        if in_code_fence or not stripped or stripped.startswith(('`', '|', '<')) or line.startswith('    '):
+            lines.append(line)
+            continue
+
+        for index, character in enumerate(line):
+            if character.isalpha():
+                line = line[:index] + character.upper() + line[index + 1:]
+                break
+        lines.append(line)
+    return '\n'.join(lines)
+
+
 def normalize_assistant_voice(reply: str, has_history: bool = False) -> str:
     """Remove scripted re-introductions once a conversation is underway and clean technical markup."""
     if not reply:
@@ -35,7 +56,7 @@ def normalize_assistant_voice(reply: str, has_history: bool = False) -> str:
 
     cleaned = sanitize_ai_reply(reply)
     if not has_history:
-        return cleaned
+        return _capitalize_markdown_prose_lines(cleaned)
 
     greeting_patterns = [
         r'^(?:chào|xin chào)\s+(?:bạn|thầy/?cô)[!,.:–\-\s]*',
@@ -48,7 +69,7 @@ def normalize_assistant_voice(reply: str, has_history: bool = False) -> str:
             cleaned = re.sub(pattern, '', cleaned, count=1, flags=re.IGNORECASE).lstrip()
         if cleaned == previous:
             break
-    return cleaned or reply.strip()
+    return _capitalize_markdown_prose_lines(cleaned or reply.strip())
 
 
 def get_conversation_tone(history: list, user_message: str) -> str:
