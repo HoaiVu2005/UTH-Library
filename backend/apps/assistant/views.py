@@ -18,7 +18,10 @@ from apps.assistant.AI import (
     build_long_term_memory_context,
     record_conversation_turn,
     remember_explicit_user_facts,
+    resolve_intent_message,
     get_fine_workflow_action,
+    get_overdue_policy_workflow_action,
+    get_patron_support_workflow_action,
     get_reservation_workflow_action,
 )
 from apps.assistant.models import AssistantConversation, AssistantMemoryEntry
@@ -83,26 +86,39 @@ class AIChatView(APIView):
             # Bạn đọc (Sinh viên / Giảng viên): Lấy dữ liệu cá nhân hóa thực tế
             patron_context = get_patron_context(current_user)
 
+        trusted_role = current_user.role if current_user else user_role
+        routed_message = resolve_intent_message(message, role=trusted_role)
+
         workflow = get_fine_workflow_action(
-            message,
+            routed_message,
             is_admin=is_admin,
             patron_context=patron_context,
         )
+        if not workflow:
+            workflow = get_overdue_policy_workflow_action(
+                routed_message,
+                is_admin=is_admin,
+            )
+        if not workflow and not is_admin:
+            workflow = get_patron_support_workflow_action(
+                routed_message,
+                patron_context=patron_context,
+            )
 
         # 2. Tìm sách liên quan trong kho Thư viện UTH
         # Chỉ đề xuất sách khi người dùng thực sự có nhu cầu tra cứu, mượn sách hoặc hỏi tài liệu học tập
-        chat_mode = classify_chat_mode(message, is_admin=is_admin)
+        chat_mode = classify_chat_mode(routed_message, is_admin=is_admin)
         patron_dept = patron_context.get('department', '') if patron_context else ''
         relevant_books = (
             query_relevant_books(message, patron_dept=patron_dept, limit=4, history=history)
-            if is_book_query_intent(message, history=history) and not workflow and chat_mode not in ('conversation', 'campus_life')
+            if is_book_query_intent(routed_message, history=history) and not workflow and chat_mode not in ('conversation', 'campus_life')
             else []
         )
 
         # Nếu không phải quy trình tiền phạt, kiểm tra quy trình mượn sách / chờ nhận sách
         if not workflow:
             workflow = get_reservation_workflow_action(
-                message,
+                routed_message,
                 is_admin=is_admin,
                 patron_context=patron_context,
                 relevant_books=relevant_books,

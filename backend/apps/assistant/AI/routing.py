@@ -1,5 +1,7 @@
 # Phân loại ý định để ưu tiên câu hỏi thư viện và giữ chat thường tự nhiên.
 
+from .language import contains_any_phrase, normalize_vietnamese_text
+
 CASUAL_CHAT_INDICATORS = [
     "alo", "chào", "hi", "hello", "hê lô", "hey", "ê", "ơi", "có đó không", "có đó hem",
     "có đó ko", "còn đó không", "còn đó ko", "bạn ơi", "uthie ơi", "ad ơi", "admin ơi",
@@ -10,16 +12,33 @@ CASUAL_CHAT_INDICATORS = [
     "cho mình hỏi xíu", "cho hỏi xíu", "hỏi tí", "hỏi xíu"
 ]
 
+BORROWING_GUIDANCE_INDICATORS = (
+    'cách mượn',
+    'hướng dẫn mượn',
+    'thủ tục mượn',
+    'mượn như thế nào',
+    'mượn sách như thế nào',
+    'mượn sách thế nào',
+    'quy trình mượn',
+    'mượn sách làm sao',
+    'làm sao mượn sách',
+)
+
+
+def is_borrowing_guidance_query(user_message: str) -> bool:
+    """Nhận diện câu hỏi xin hướng dẫn, không phải yêu cầu đặt một cuốn cụ thể."""
+    return contains_any_phrase(user_message, BORROWING_GUIDANCE_INDICATORS)
+
 def is_pure_casual_message(user_message: str) -> bool:
     """Kiểm tra xem tin nhắn có phải là câu chào hỏi, cảm ơn, xã giao thuần túy hay không."""
-    msg_lower = user_message.strip().lower()
+    msg_lower = normalize_vietnamese_text(user_message)
     book_keywords = [
         "sách", "giáo trình", "tài liệu", "đầu sách", "cuốn", "mượn", "đọc", "mượn sách",
         "chờ nhận sách", "tìm", "đề xuất", "gợi ý", "khoa học", "kỹ thuật", "lập trình", "chuyên ngành"
     ]
-    if any(k in msg_lower for k in book_keywords):
+    if contains_any_phrase(msg_lower, book_keywords):
         return False
-    return any(k in msg_lower for k in CASUAL_CHAT_INDICATORS)
+    return contains_any_phrase(msg_lower, CASUAL_CHAT_INDICATORS)
 
 NON_BOOK_QUERY_INDICATORS = [
     # 1. Tình trạng mượn trả cá nhân / Hạn nộp / Hạn trả / Quá hạn cá nhân
@@ -45,8 +64,7 @@ NON_BOOK_QUERY_INDICATORS = [
 
 def is_non_book_query(user_message: str) -> bool:
     """Xác định các câu hỏi về thông tin cá nhân, quy chế, giờ giấc, nợ phạt KHÔNG PHẢI là tìm kiếm tài liệu."""
-    msg_lower = user_message.strip().lower()
-    return any(k in msg_lower for k in NON_BOOK_QUERY_INDICATORS)
+    return contains_any_phrase(user_message, NON_BOOK_QUERY_INDICATORS)
 
 EXPLICIT_BOOK_SEARCH_INDICATORS = [
     "đề xuất sách", "gợi ý sách", "tìm sách", "tra cứu sách", "giới thiệu sách",
@@ -74,14 +92,18 @@ ADMIN_STATS_KEYWORDS = [
 def is_admin_query(user_role: str, user_message: str) -> bool:
     if user_role != 'admin':
         return False
-    msg_lower = user_message.strip().lower()
-    return any(k in msg_lower for k in ADMIN_STATS_KEYWORDS)
+    return contains_any_phrase(user_message, ADMIN_STATS_KEYWORDS)
 
 def is_book_query_intent(user_message: str, history: list = None) -> bool:
-    msg_lower = user_message.strip().lower()
+    msg_lower = normalize_vietnamese_text(user_message)
 
     # 1. Các câu chào hỏi, cảm ơn, nói chuyện xã giao thuần túy TUYỆT ĐỐI KHÔNG phải là tìm sách
     if is_pure_casual_message(user_message):
+        return False
+
+    # Câu hỏi về cách/thủ tục mượn cần trả quy trình, không được tự chọn một
+    # kết quả catalog rồi biến thành yêu cầu đặt sách.
+    if is_borrowing_guidance_query(user_message):
         return False
 
     # 2. Các câu hỏi về tình trạng cá nhân (hạn nộp, đang mượn, nợ phạt), giờ giấc, cơ sở, quy định TUYỆT ĐỐI KHÔNG phải là tìm sách
@@ -89,21 +111,21 @@ def is_book_query_intent(user_message: str, history: list = None) -> bool:
         return False
 
     # 3. Các câu có ý định đề xuất / tìm kiếm / giới thiệu tài liệu rõ ràng
-    if any(k in msg_lower for k in EXPLICIT_BOOK_SEARCH_INDICATORS):
+    if contains_any_phrase(msg_lower, EXPLICIT_BOOK_SEARCH_INDICATORS):
         return True
 
     # 4. Hỗ trợ câu hỏi nối tiếp trong ngữ cảnh đang tìm sách
     if history and not is_pure_casual_message(user_message) and not is_non_book_query(user_message):
         for h in reversed(history[-2:]):
             prev_text = (h.get('text') or h.get('content') or '').lower()
-            if any(k in prev_text for k in EXPLICIT_BOOK_SEARCH_INDICATORS):
+            if contains_any_phrase(prev_text, EXPLICIT_BOOK_SEARCH_INDICATORS):
                 return True
 
     return False
 
 def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
     """Route messages without letting library context hijack ordinary conversation."""
-    msg_lower = user_message.strip().lower()
+    msg_lower = normalize_vietnamese_text(user_message)
     if is_admin and is_admin_query('admin', user_message):
         return 'operations'
 
@@ -117,8 +139,8 @@ def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
     ]
     campus_anchor_keywords = ['cơ sở', 'uth', 'trường', 'võ oanh', 'tô ký', 'thủ đức']
     if (
-        any(keyword in msg_lower for keyword in nearby_place_keywords)
-        and any(keyword in msg_lower for keyword in campus_anchor_keywords)
+        contains_any_phrase(msg_lower, nearby_place_keywords)
+        and contains_any_phrase(msg_lower, campus_anchor_keywords)
     ):
         return 'campus_life'
 
@@ -130,9 +152,9 @@ def classify_chat_mode(user_message: str, is_admin: bool = False) -> str:
         'cơ sở uth', 'kho sách', 'vị trí kệ', 'mấy cơ sở', 'các cơ sở', 'quy trình mượn', 'quy trình trả', 'cách mượn', 'cách trả',
     ]
     has_campus_query = (
-        any(k in msg_lower for k in ['cơ sở', 'chi nhánh', 'trụ sở', 'địa chỉ', 'ở đâu'])
-        and any(k in msg_lower for k in ['uth', 'trường', 'đại học', 'thư viện', 'mấy cơ sở', 'các cơ sở', 'cs1', 'cs2', 'cs3'])
+        contains_any_phrase(msg_lower, ['cơ sở', 'chi nhánh', 'trụ sở', 'địa chỉ', 'ở đâu'])
+        and contains_any_phrase(msg_lower, ['uth', 'trường', 'đại học', 'thư viện', 'mấy cơ sở', 'các cơ sở', 'cs1', 'cs2', 'cs3'])
     )
-    if is_book_query_intent(user_message) or is_non_book_query(user_message) or any(k in msg_lower for k in library_context_keywords) or has_campus_query:
+    if is_book_query_intent(user_message) or is_non_book_query(user_message) or contains_any_phrase(msg_lower, library_context_keywords) or has_campus_query:
         return 'library'
     return 'conversation'

@@ -5,7 +5,12 @@ Implementation is split by responsibility so callers can keep importing from
 """
 
 from .fallback import generate_smart_fallback
-from .actions import get_fine_workflow_action, get_reservation_workflow_action
+from .actions import (
+    get_fine_workflow_action,
+    get_overdue_policy_workflow_action,
+    get_patron_support_workflow_action,
+    get_reservation_workflow_action,
+)
 from .gemini import call_gemini_api
 from .books import query_relevant_books
 from .memory import (
@@ -23,6 +28,7 @@ from .operations import get_admin_library_statistics, send_overdue_notice_to_stu
 from .patrons import get_patron_context
 from .routing import classify_chat_mode, is_admin_query, is_book_query_intent
 from .roles import AIRoleProfile, get_ai_role_profile
+from .intents import resolve_intent_message
 
 __all__ = [
     'build_long_term_memory_context',
@@ -31,6 +37,8 @@ __all__ = [
     'compact_simple_reply',
     'generate_smart_fallback',
     'get_fine_workflow_action',
+    'get_overdue_policy_workflow_action',
+    'get_patron_support_workflow_action',
     'get_reservation_workflow_action',
     'get_admin_library_statistics',
     'get_ai_role_profile',
@@ -42,6 +50,7 @@ __all__ = [
     'normalize_assistant_voice',
     'query_relevant_books',
     'record_conversation_turn',
+    'resolve_intent_message',
     'remember_explicit_user_facts',
     'send_overdue_notice_to_student',
     'AIRoleProfile',

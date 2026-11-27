@@ -13,6 +13,7 @@ from apps.circulation.models import Loan
 from apps.core.enums import CopyStatus, FineStatus, LoanStatus, LockReason
 from apps.fines.models import Fine
 from apps.notifications.models import Notification
+from apps.assistant.models import AssistantIntentExample
 from apps.assistant.AI import (
     call_gemini_api,
     classify_chat_mode,
@@ -314,6 +315,373 @@ class LockedBorrowerStatisticsTests(APITestCase):
 
 
 class AIChatViewTests(APITestCase):
+    def setUp(self):
+        AssistantIntentExample.objects.get_or_create(
+            role='any',
+            normalized_text='cho tui hoi thu tuc lay sach ve doc',
+            defaults={
+                'intent': 'borrow_guide',
+                'utterance': 'cho tui hỏi thủ tục lấy sách về đọc',
+                'source': 'seed',
+            },
+        )
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong', 'role': 'student', 'card_code': 'SV-WORDING',
+        'department': '', 'is_locked': False, 'overdue_count': 0,
+        'active_loans_count': 0,
+        'unpaid_fines_count': 1, 'unpaid_amount': 20000,
+    })
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_blocked_borrowing_reply_uses_clear_non_repetitive_vietnamese(
+        self,
+        _query_relevant_books_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='wording_student', password='test-password',
+            full_name='Phong', card_code='SV-WORDING', role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'mượn sách Clean Code', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('mượn sách hoặc mượn sách', response.data['reply'])
+        self.assertIn('đặt trước sách', response.data['reply'])
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Không nên gọi Gemini cho hướng dẫn tất định.')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[{
+        'id': 232,
+        'title': 'Lập trình Ứng dụng Web Toàn diện với React, TypeScript và Django REST',
+        'available_copies': 5,
+    }])
+    def test_generic_borrowing_how_to_does_not_reserve_an_unrequested_book(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        student = User.objects.create_user(
+            username='borrow_how_to_student',
+            password='test-password',
+            full_name='Sinh viên hỏi cách mượn',
+            card_code='SV-BORROW-HOW-TO',
+            role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'cách mượn sách', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Quy trình mượn sách', response.data['reply'])
+        self.assertEqual(response.data['suggested_books'], [])
+        self.assertEqual(response.data['action'], {
+            'label': 'Mở kho sách tra cứu',
+            'path': '/books',
+        })
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong',
+        'role': 'student',
+        'card_code': 'SV-OVERDUE-POLICY',
+        'active_loans_count': 1,
+        'active_loans': [{
+            'book_title': 'Viết Báo cáo Kỹ thuật và Đồ án Tốt nghiệp Chuẩn Khoa học',
+            'due_at': '08/12/2026',
+            'status_str': 'Còn 11 ngày',
+        }],
+        'overdue_count': 0,
+        'unpaid_fines_count': 0,
+        'unpaid_amount': 0,
+        'reservations': [],
+        'is_locked': False,
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Bạn đang mượn 1 cuốn sách tại thư viện.')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_hypothetical_overdue_question_explains_policy_instead_of_listing_current_loans(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='overdue_policy_student',
+            password='test-password',
+            full_name='Phong',
+            card_code='SV-OVERDUE-POLICY',
+            role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'nếu quá hạn trả sách thì sao', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('2.000 VNĐ/cuốn/ngày', response.data['reply'])
+        self.assertIn('không thể gia hạn', response.data['reply'].lower())
+        self.assertNotIn('Viết Báo cáo Kỹ thuật', response.data['reply'])
+        self.assertEqual(response.data['action'], {
+            'label': 'Kiểm tra sách đang mượn',
+            'path': '/loans',
+        })
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_unaccented_borrowing_guidance_is_understood(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'muon sach nhu the nao vay', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('Quy trình mượn sách', response.data['reply'])
+        self.assertEqual(response.data['action']['path'], '/books')
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_common_student_chat_abbreviation_is_understood(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'muon sach ntn vay', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('Quy trình mượn sách', response.data['reply'])
+        self.assertEqual(response.data['action']['path'], '/books')
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Câu trả lời chung từ mô hình')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_domain_intent_dataset_understands_colloquial_borrowing_guidance(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {
+                'message': 'cho tui hỏi thủ tục lấy sách về đọc',
+                'user_role': 'student',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Quy trình mượn sách', response.data['reply'])
+        self.assertEqual(response.data['action']['path'], '/books')
+        call_gemini_api_mock.assert_not_called()
+        query_relevant_books_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Câu trả lời chung từ mô hình')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_domain_intent_dataset_tolerates_a_small_polite_suffix(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {
+                'message': 'cho tui hỏi thủ tục lấy sách về đọc nha',
+                'user_role': 'student',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Quy trình mượn sách', response.data['reply'])
+        call_gemini_api_mock.assert_not_called()
+        query_relevant_books_mock.assert_not_called()
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong', 'role': 'student', 'role_label': 'Sinh viên',
+        'card_code': 'SV-NLU-01', 'department': 'CNTT', 'is_locked': False,
+        'active_loans': [], 'active_loans_count': 0, 'overdue_count': 0,
+        'max_borrow_limit': 5, 'max_borrow_days': 14,
+        'unpaid_fines_count': 0, 'unpaid_amount': 0, 'reservations': [],
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_unaccented_renewal_guidance_returns_the_loan_workflow(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='renewal_nlu_student', password='test-password',
+            full_name='Phong', card_code='SV-NLU-01', role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'lam sao de gia han sach', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('gia hạn', response.data['reply'].lower())
+        self.assertEqual(response.data['action'], {
+            'label': 'Mở sách đang mượn',
+            'path': '/loans',
+        })
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong', 'role': 'student', 'role_label': 'Sinh viên',
+        'card_code': 'SV-NLU-02', 'department': 'CNTT', 'is_locked': False,
+        'active_loans': [{
+            'book_title': 'Cấu trúc dữ liệu và giải thuật',
+            'due_at': '08/12/2026', 'status_str': 'Còn 11 ngày',
+            'can_renew': True,
+        }],
+        'active_loans_count': 1, 'overdue_count': 0,
+        'max_borrow_limit': 5, 'max_borrow_days': 14,
+        'unpaid_fines_count': 0, 'unpaid_amount': 0, 'reservations': [],
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_unaccented_personal_loan_question_returns_the_users_actual_loans(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='loan_nlu_student', password='test-password',
+            full_name='Phong', card_code='SV-NLU-02', role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'toi dang muon sach gi', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('Cấu trúc dữ liệu và giải thuật', response.data['reply'])
+        self.assertEqual(response.data['action']['path'], '/loans')
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Cô Lan', 'role': 'lecturer', 'role_label': 'Giảng viên',
+        'card_code': 'GV-NLU-01', 'department': 'CNTT', 'is_locked': False,
+        'active_loans': [], 'active_loans_count': 0, 'overdue_count': 0,
+        'max_borrow_limit': 10, 'max_borrow_days': 30,
+        'unpaid_fines_count': 0, 'unpaid_amount': 0, 'reservations': [],
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_lecturer_policy_uses_authenticated_role_for_unaccented_question(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        lecturer = User.objects.create_user(
+            username='lecturer_nlu', password='test-password',
+            full_name='Cô Lan', card_code='GV-NLU-01', role='lecturer',
+        )
+        self.client.force_authenticate(lecturer)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'toi la giang vien duoc muon may cuon va bao lau', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('10 cuốn', response.data['reply'])
+        self.assertIn('30 ngày', response.data['reply'])
+        self.assertNotIn('5 cuốn', response.data['reply'])
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_unaccented_return_guidance_uses_the_library_procedure(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+    ):
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'lam sao de tra sach vay', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('Quy trình trả sách', response.data['reply'])
+        self.assertIn('Quầy lưu thông', response.data['reply'])
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
+    @patch('apps.assistant.views.get_patron_context', return_value={
+        'name': 'Phong', 'role': 'student', 'role_label': 'Sinh viên',
+        'card_code': 'SV-NLU-03', 'department': 'CNTT', 'is_locked': False,
+        'active_loans': [], 'active_loans_count': 0, 'overdue_count': 0,
+        'max_borrow_limit': 5, 'max_borrow_days': 14,
+        'unpaid_fines_count': 0, 'unpaid_amount': 0,
+        'reservations': [{
+            'book_title': 'Giải tích 1',
+            'status_desc': 'Đang chờ độc giả khác trả sách',
+        }],
+    })
+    @patch('apps.assistant.views.call_gemini_api', return_value='Sai ý định')
+    @patch('apps.assistant.views.query_relevant_books', return_value=[])
+    def test_unaccented_reservation_status_returns_existing_requests_not_a_new_reservation(
+        self,
+        query_relevant_books_mock,
+        call_gemini_api_mock,
+        _get_patron_context_mock,
+    ):
+        student = User.objects.create_user(
+            username='reservation_nlu_student', password='test-password',
+            full_name='Phong', card_code='SV-NLU-03', role='student',
+        )
+        self.client.force_authenticate(student)
+
+        response = self.client.post(
+            reverse('ai-chat'),
+            {'message': 'sach toi dat truoc den dau roi', 'user_role': 'student'},
+            format='json',
+        )
+
+        self.assertIn('Giải tích 1', response.data['reply'])
+        self.assertIn('Đang chờ độc giả khác trả sách', response.data['reply'])
+        self.assertEqual(response.data['action'], {
+            'label': 'Xem yêu cầu đặt trước',
+            'path': '/reservations',
+        })
+        query_relevant_books_mock.assert_not_called()
+        call_gemini_api_mock.assert_not_called()
+
     @patch('apps.assistant.views.get_admin_library_statistics', return_value={
         'locked_users_count': 7,
         'locked_users': [],
