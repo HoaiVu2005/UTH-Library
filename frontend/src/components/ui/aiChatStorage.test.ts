@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
-import { getChatStorageKey, prepareSessionsForStorage } from './aiChatStorage';
+import {
+  consumeFreshChatOnLogin,
+  getChatStorageKey,
+  markFreshChatOnLogin,
+  prepareSessionsForStorage,
+} from './aiChatStorage';
+
+function createMemoryStorage(): Storage {
+  const values = new Map<string, string>();
+  return {
+    get length() { return values.size; },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => Array.from(values.keys())[index] ?? null,
+    removeItem: (key) => { values.delete(key); },
+    setItem: (key, value) => { values.set(key, value); },
+  };
+}
 
 describe('getChatStorageKey', () => {
   it('isolates chat history by authenticated user and role', () => {
@@ -17,6 +34,20 @@ describe('getChatStorageKey', () => {
 
   it('uses an isolated anonymous key when authentication is unresolved', () => {
     expect(getChatStorageKey(null)).toBe('uthie_ai_chat_sessions_v2:anonymous');
+  });
+});
+
+describe('fresh chat after login', () => {
+  it('starts a new chat once for the account that has just logged in', () => {
+    const storage = createMemoryStorage();
+    const student = { id: 12, role: 'student' };
+    const librarian = { id: 99, role: 'librarian' };
+
+    markFreshChatOnLogin(student, storage);
+
+    expect(consumeFreshChatOnLogin(librarian, storage)).toBe(false);
+    expect(consumeFreshChatOnLogin(student, storage)).toBe(true);
+    expect(consumeFreshChatOnLogin(student, storage)).toBe(false);
   });
 });
 

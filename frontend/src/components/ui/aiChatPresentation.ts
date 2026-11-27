@@ -9,6 +9,11 @@ export type ChatAction = {
   is_ready?: boolean;
 };
 
+export type WelcomeAction = {
+  label: string;
+  prompt: string;
+};
+
 export const AI_CHAT_REQUEST_CONFIG = {
   timeout: 10_000,
 } as const;
@@ -51,6 +56,37 @@ const SUGGESTED_BOOK_CARD_TONES: SuggestedBookCardTone[] = [
   },
 ];
 
+const WELCOME_ACTIONS: Record<ChatRole, WelcomeAction[]> = {
+  student: [
+    { label: 'Tìm giáo trình theo môn học', prompt: 'Gợi ý giáo trình phù hợp với môn học của tôi' },
+    { label: 'Sách nào sắp đến hạn?', prompt: 'Kiểm tra giúp tôi những sách đang mượn sắp đến hạn' },
+    { label: 'Gia hạn sách đang mượn', prompt: 'Hướng dẫn tôi gia hạn sách đang mượn' },
+    { label: 'Kiểm tra hàng chờ đặt trước', prompt: 'Kiểm tra vị trí của tôi trong hàng chờ đặt trước' },
+    { label: 'Kiểm tra tiền phạt', prompt: 'Tôi có khoản phạt thư viện nào chưa thanh toán không?' },
+  ],
+  lecturer: [
+    { label: 'Tìm tài liệu nghiên cứu', prompt: 'Gợi ý tài liệu nghiên cứu phù hợp với chuyên ngành của tôi' },
+    { label: 'Sách nào sắp đến hạn?', prompt: 'Kiểm tra giúp tôi những sách đang mượn sắp đến hạn' },
+    { label: 'Gia hạn tài liệu đang mượn', prompt: 'Hướng dẫn tôi gia hạn tài liệu đang mượn' },
+    { label: 'Tra cứu tài liệu số', prompt: 'Gợi ý tài liệu số tôi có thể đọc trực tuyến' },
+    { label: 'Chính sách dành cho giảng viên', prompt: 'Cho tôi biết chính sách mượn sách dành cho giảng viên' },
+  ],
+  librarian: [
+    { label: 'Sinh viên nào đang quá hạn?', prompt: 'Cho tôi danh sách sinh viên đang mượn sách quá hạn' },
+    { label: 'Kiểm tra bạn đọc bị khóa', prompt: 'Cho tôi danh sách bạn đọc đang bị khóa thẻ' },
+    { label: 'Sách sắp hết bản khả dụng', prompt: 'Cho tôi danh sách sách sắp hết bản khả dụng' },
+    { label: 'Tiền phạt chưa thu', prompt: 'Tổng hợp các khoản tiền phạt chưa thu' },
+    { label: 'Tìm bản sao theo mã vạch', prompt: 'Hướng dẫn tôi kiểm tra bản sao sách theo mã vạch' },
+  ],
+  admin: [
+    { label: 'Tổng quan vận hành hôm nay', prompt: 'Tóm tắt tình hình vận hành thư viện hôm nay' },
+    { label: 'Sinh viên nào đang quá hạn?', prompt: 'Cho tôi danh sách sinh viên đang mượn sách quá hạn' },
+    { label: 'Kiểm tra bạn đọc bị khóa', prompt: 'Cho tôi danh sách bạn đọc đang bị khóa thẻ' },
+    { label: 'Sách sắp hết bản khả dụng', prompt: 'Cho tôi danh sách sách sắp hết bản khả dụng' },
+    { label: 'Tiền phạt chưa thu', prompt: 'Tổng hợp các khoản tiền phạt chưa thu' },
+  ],
+};
+
 function capitalizeName(value: string): string {
   const normalized = value.trim();
   return normalized ? normalized.charAt(0).toLocaleUpperCase('vi-VN') + normalized.slice(1) : '';
@@ -68,8 +104,8 @@ export function getAdminMetricLabel(value: number | null | undefined): string {
   return value == null ? '—' : value.toLocaleString('vi-VN');
 }
 
-export function getWelcomeActions(_role: ChatRole): [] {
-  return [];
+export function getWelcomeActions(role: ChatRole): WelcomeAction[] {
+  return WELCOME_ACTIONS[role];
 }
 
 export function getConversationWidthClass(isFullscreen: boolean, isAdmin: boolean): string {

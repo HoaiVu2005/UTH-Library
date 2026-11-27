@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, setAccessToken, getAccessToken, setRefreshToken, getRefreshToken } from '@/lib/api';
+import { markFreshChatOnLogin } from '@/components/ui/aiChatStorage';
 
 export interface UserSummary {
   id: number;
@@ -185,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined') {
       localStorage.setItem('uth_has_session', 'true');
       localStorage.setItem('uth_user', JSON.stringify(loggedUser));
+      markFreshChatOnLogin(loggedUser);
     }
     return loggedUser;
   };

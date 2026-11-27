@@ -53,9 +53,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import uthieAvatarImg from '@/assets/uthie-avatar.jpg';
 import uthChatBackgroundImg from '@/assets/uth-chat-background.jpg';
-import { getChatStorageKey, prepareSessionsForStorage } from './aiChatStorage';
+import { consumeFreshChatOnLogin, getChatStorageKey, prepareSessionsForStorage } from './aiChatStorage';
 import {
   getChatGreeting,
+  getWelcomeActions,
   getChatCanvasTone,
   getAdminMetricLabel,
   AI_CHAT_REQUEST_CONFIG,
@@ -353,16 +354,18 @@ export const AIChatWidget: React.FC = () => {
     fullName: user?.full_name,
     username: user?.username,
   });
+  const welcomeActions = getWelcomeActions(chatRole);
   const chatCanvasTone = getChatCanvasTone();
   const storageKey = getChatStorageKey(user);
 
   const getInitialSessions = (key: string = storageKey): ChatSession[] => {
+    let storedSessions: ChatSession[] = [];
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          storedSessions = parsed;
         }
       }
     } catch (e) {
@@ -374,7 +377,10 @@ export const AIChatWidget: React.FC = () => {
       createdAt: Date.now(),
       messages: [createWelcomeMessage(isAdmin, isLecturer, user?.full_name || user?.username)],
     };
-    return [defaultSession];
+    if (user && consumeFreshChatOnLogin(user)) {
+      return [defaultSession, ...storedSessions];
+    }
+    return storedSessions.length > 0 ? storedSessions : [defaultSession];
   };
 
   const [sessions, setSessions] = useState<ChatSession[]>(getInitialSessions);
@@ -2172,6 +2178,22 @@ export const AIChatWidget: React.FC = () => {
                                   ? 'UTHie hỗ trợ tra cứu tài liệu nghiên cứu, sách đang mượn và chính sách dành cho giảng viên.'
                                   : 'UTHie hỗ trợ tìm giáo trình, tra cứu tài liệu và kiểm tra tình trạng mượn trả.'}
                             </p>
+                          </div>
+                          <div
+                            className="mt-4 flex max-w-2xl flex-wrap justify-center gap-2"
+                            aria-label={isAdmin ? 'Gợi ý nghiệp vụ cho thủ thư' : 'Gợi ý câu hỏi cho bạn đọc'}
+                          >
+                            {welcomeActions.map((action) => (
+                              <button
+                                key={action.prompt}
+                                type="button"
+                                onClick={() => handleSendMessage(action.prompt)}
+                                disabled={loading}
+                                className="min-h-10 rounded-xl border border-teal-200 bg-[#F7FCFB] px-3.5 py-2 text-left text-xs font-semibold leading-5 text-[#24565B] shadow-xs transition-colors hover:border-teal-400 hover:bg-white hover:text-teal-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0E979D] disabled:cursor-not-allowed disabled:opacity-55 sm:text-[13px]"
+                              >
+                                {action.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       )}

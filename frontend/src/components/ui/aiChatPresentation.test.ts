@@ -68,10 +68,23 @@ describe('AI chat presentation by role', () => {
     ).toBe('Chào Phong!');
   });
 
-  it('keeps the empty chat focused by removing suggestion actions', () => {
-    expect(getWelcomeActions('admin')).toEqual([]);
-    expect(getWelcomeActions('lecturer')).toEqual([]);
-    expect(getWelcomeActions('student')).toEqual([]);
+  it('offers distinct starter prompts for students and librarians', () => {
+    const studentActions = getWelcomeActions('student');
+    const librarianActions = getWelcomeActions('librarian');
+
+    expect(studentActions).toHaveLength(5);
+    expect(librarianActions).toHaveLength(5);
+    expect(studentActions[0]).toEqual({
+      label: 'Tìm giáo trình theo môn học',
+      prompt: 'Gợi ý giáo trình phù hợp với môn học của tôi',
+    });
+    expect(librarianActions[0]).toEqual({
+      label: 'Sinh viên nào đang quá hạn?',
+      prompt: 'Cho tôi danh sách sinh viên đang mượn sách quá hạn',
+    });
+    expect(studentActions.map((action) => action.prompt)).not.toEqual(
+      librarianActions.map((action) => action.prompt),
+    );
     expect(shouldShowBookSuggestions('admin')).toBe(false);
     expect(shouldShowBookSuggestions('student')).toBe(true);
   });
